@@ -15,6 +15,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "388909510648-8ms51ld85uutdmp989kj0qqleks6otmn.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.mindhunter.parkme",
+            "certificate_hash": "8e445fad584ce3e9509cf777c2303ece7a740f23"
+          }
+        },
+        {
           "client_id": "388909510648-cqtetqn8ol1nbfgb3gg7jkjuofb20t54.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
@@ -31,7 +39,23 @@
           }
         },
         {
-          "client_id": "388909510648-a4icdo9ikqp0h4sosve71ii2hv76n4qn.apps.googleusercontent.com",
+          "client_id": "388909510648-njv7nb8u0ja2cu94hvg8j98phvcqnrj6.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.mindhunter.parkme",
+            "certificate_hash": "62366c9f784c9c7ad3481521fd54631fdb5ddaa1"
+          }
+        },
+        {
+          "client_id": "388909510648-t3p4mgco5dv7nvjvaa76ebpr3e3f9hib.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.mindhunter.parkme",
+            "certificate_hash": "48b405c856ca2e6059af9541e106e59c7d9c48e2"
+          }
+        },
+        {
+          "client_id": "388909510648-d2fc74m6u4vj569m2nmchan4m0p664c7.apps.googleusercontent.com",
           "client_type": 3
         }
       ],

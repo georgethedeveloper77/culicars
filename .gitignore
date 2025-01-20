@@ -1,0 +1,94 @@
+# Flutter/Dart specific files
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+*.log
+
+# iOS specific files
+ios/Flutter/.last_build_id
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Generated.xcconfig
+ios/Flutter/flutter_export_environment.sh
+ios/Flutter/GeneratedPluginRegistrant.*
+
+# Xcode specific files
+*.xcworkspace
+*.xcuserstate
+*.xcodeproj/project.xcworkspace/
+*.xcodeproj/xcuserdata/
+
+# Android specific files
+android/.gradle/
+android/app/build/
+android/local.properties
+android/app/proguard-rules.pro
+android/gradle.properties
+android/key.properties
+
+# Gradle specific files
+.gradle/
+**/build/
+
+# Generated files
+*.class
+*.swp
+*.lock
+*.DS_Store
+*.idea/
+.idea/workspace.xml
+.idea/libraries
+.idea/modules.xml
+.idea/.name
+.idea/vcs.xml
+.idea/gradle.xml
+*.iml
+*.ipr
+*.iws
+
+# IntelliJ related files
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# VS Code specific files
+.vscode/
+
+# JetBrains IDEs
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+
+# macOS specific files
+*.DS_Store
+
+# Web related files
+web/.dart_tool/
+web/build/
+
+# Windows specific files
+windows/flutter/ephemeral/
+windows/CMakeLists.txt
+windows/flutter/GeneratedPluginRegistrant.h
+windows/flutter/GeneratedPluginRegistrant.cpp
+windows/flutter/flutter_export_environment.cmake
+
+# Linux specific files
+linux/flutter/ephemeral/
+linux/flutter/CMakeLists.txt
+linux/flutter/GeneratedPluginRegistrant.h
+linux/flutter/GeneratedPluginRegistrant.cc
+linux/flutter/flutter_export_environment.cmake
+
+# Android NDK
+**/obj/
+
+# Flutter generated localization
+.l10n/

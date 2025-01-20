@@ -39,7 +39,7 @@
 			<string>Bundle ID</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>buysell1.page.link</string>
+				<string>culicars.page.link</string>
 			</array>
 		</dict>
 		<dict>
@@ -65,7 +65,7 @@
 	<key>FacebookAppID</key>
 	<string>000000000000</string>
 	<key>FacebookDisplayName</key>
-	<string>PSX Motors Classified</string>
+	<string>CuliCars</string>
 	<key>GADApplicationIdentifier</key>
 	<string>ca-app-pub-3940256099942544~1458002511</string>
 	<key>LSApplicationQueriesSchemes</key>

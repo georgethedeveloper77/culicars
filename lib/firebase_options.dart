@@ -23,10 +23,7 @@ class DefaultFirebaseOptions {
       case TargetPlatform.android:
         return android;
       case TargetPlatform.iOS:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for ios - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return ios;
       case TargetPlatform.macOS:
         throw UnsupportedError(
           'DefaultFirebaseOptions have not been configured for macos - '
@@ -67,6 +64,18 @@ class DefaultFirebaseOptions {
     databaseURL: 'https://parkme-19215.firebaseio.com',
     storageBucket: 'parkme-19215.firebasestorage.app',
     measurementId: 'G-EX7NQT0W55',
+  );
+
+  static const FirebaseOptions ios = FirebaseOptions(
+    apiKey: 'AIzaSyBEMfy3brlQCUe-2y6IKhrx06-KOo6PIS8',
+    appId: '1:388909510648:ios:a0964938c6910a1f83300d',
+    messagingSenderId: '388909510648',
+    projectId: 'parkme-19215',
+    databaseURL: 'https://parkme-19215.firebaseio.com',
+    storageBucket: 'parkme-19215.firebasestorage.app',
+    androidClientId: '388909510648-8ms51ld85uutdmp989kj0qqleks6otmn.apps.googleusercontent.com',
+    iosClientId: '388909510648-k6i5ftbol2iag2r803fnplnl9psfd3gr.apps.googleusercontent.com',
+    iosBundleId: 'com.mindhunter.parkme',
   );
 
 }

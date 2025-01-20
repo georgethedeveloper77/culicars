@@ -3,23 +3,23 @@
 <plist version="1.0">
 <dict>
 	<key>CLIENT_ID</key>
-	<string>000000000000-00000000000000000000000000000000.apps.googleusercontent.com</string>
+	<string>388909510648-k6i5ftbol2iag2r803fnplnl9psfd3gr.apps.googleusercontent.com</string>
 	<key>REVERSED_CLIENT_ID</key>
-	<string>com.googleusercontent.apps.000000000000-00000000000000000000000000000000</string>
+	<string>com.googleusercontent.apps.388909510648-k6i5ftbol2iag2r803fnplnl9psfd3gr</string>
 	<key>ANDROID_CLIENT_ID</key>
-	<string>000000000000-00000000000000000000000000000000.apps.googleusercontent.com</string>
+	<string>388909510648-8ms51ld85uutdmp989kj0qqleks6otmn.apps.googleusercontent.com</string>
 	<key>API_KEY</key>
-	<string>AIzaSyD_0000000000000000000000000000000</string>
+	<string>AIzaSyBEMfy3brlQCUe-2y6IKhrx06-KOo6PIS8</string>
 	<key>GCM_SENDER_ID</key>
-	<string>000000000000</string>
+	<string>388909510648</string>
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
 	<string>com.mindhunter.parkme</string>
 	<key>PROJECT_ID</key>
-	<string>flutter-store-ecommerce</string>
+	<string>parkme-19215</string>
 	<key>STORAGE_BUCKET</key>
-	<string>flutter-store-ecommerce.appspot.com</string>
+	<string>parkme-19215.firebasestorage.app</string>
 	<key>IS_ADS_ENABLED</key>
 	<false></false>
 	<key>IS_ANALYTICS_ENABLED</key>
@@ -31,8 +31,8 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:000000000000:ios:0000000000000000000000</string>
+	<string>1:388909510648:ios:a0964938c6910a1f83300d</string>
 	<key>DATABASE_URL</key>
-	<string>https://flutter-store-ecommerce.firebaseio.com</string>
+	<string>https://parkme-19215.firebaseio.com</string>
 </dict>
 </plist>
