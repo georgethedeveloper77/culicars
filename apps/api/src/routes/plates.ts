@@ -1,27 +1,36 @@
 // apps/api/src/routes/plates.ts
+import { Router, type Request, type Response } from "express";
+import { normalizePlate, normalizeVin } from "../lib/normalize";
+import { badRequest } from "../lib/errors";
+import * as store from "../store";
 
-import { Router } from "express";
-
-const router = Router();
+const router: Router = Router();
 
 /**
- * Plate -> VIN candidates
  * GET /plates/:plate
+ * Returns VIN candidates. Plate is "human input"; VIN remains primary key.
  */
-router.get("/:plate", (req, res) => {
-  const plate = String(req.params.plate || "").trim().toUpperCase();
+router.get("/:plate", (req: Request, res: Response) => {
+  const plateRaw = String(req.params.plate || "");
+  const plate = normalizePlate(plateRaw);
 
-  res.json({
+  if (!plate) throw badRequest("Invalid plate");
+
+  const candidates = store.resolvePlateToVinCandidates(plate).map((c: any) => {
+    const vin = normalizeVin(c.vin) ?? c.vin;
+    const existing = store.getReportByVin?.(vin);
+
+    return {
+      vin,
+      confidence: typeof c.confidence === "number" ? c.confidence : 0.6,
+      source: c.source ?? "unknown",
+      existingReportId: existing?.id ?? null,
+    };
+  });
+
+  return res.json({
     plate,
-    candidates: [
-      {
-        vin: "JH4KX12345ABC0001",
-        id: "JH4KX12345ABC0001", // id == vin
-        plate,
-        vehicle: { make: "Toyota", model: "Probox", year: 2017 },
-        confidence: 0.86,
-      },
-    ],
+    candidates,
   });
 });
 

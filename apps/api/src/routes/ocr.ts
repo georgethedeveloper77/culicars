@@ -1,79 +1,76 @@
 // apps/api/src/routes/ocr.ts
+import { Router, type Request, type Response } from "express";
+import multer from "multer";
+import { normalizeVin, normalizePlate } from "../lib/normalize";
+import { badRequest } from "../lib/errors";
+import * as store from "../store";
 
-import { Router } from "express";
+const router: Router = Router();
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 6 * 1024 * 1024 } });
 
-const router = Router();
-
-type OcrRequest = {
-  // image as base64 string (data URL allowed)
-  imageBase64?: string;
-
-  // optional: user can type “plate guess” to help matching
-  hint?: string;
-};
-
-type OcrResponse = {
-  ok: true;
-  vin?: string;
-  plate?: string;
-  confidence: number; // 0..1
-  rawText: string;
-  note?: string;
-};
-
-// Very light VIN heuristic: 17 chars, A-H J-N P-R S-Z 0-9 (no I,O,Q).
-function extractVin(text: string): string | null {
-  const cleaned = text.toUpperCase().replace(/[^A-Z0-9]/g, " ");
-  const tokens = cleaned.split(/\s+/).filter(Boolean);
-
-  // VIN regex: 17 chars, excludes I,O,Q
-  const vinRe = /^[A-HJ-NPR-Z0-9]{17}$/;
-
-  for (const t of tokens) {
-    if (vinRe.test(t)) return t;
-  }
-  return null;
+function extractVinFromText(text: string): string | null {
+  // VIN: 17 chars, excluding I,O,Q
+  const m = text
+    .toUpperCase()
+    .match(/\b([A-HJ-NPR-Z0-9]{17})\b/);
+  return m?.[1] ?? null;
 }
 
-// Kenyan plate heuristic (simple): K?? ####? e.g. KDG271X or KDA123A
-function extractKenyanPlate(text: string): string | null {
-  const cleaned = text.toUpperCase().replace(/[^A-Z0-9]/g, "");
-  // Match K + 2 letters + 3/4 digits + optional letter (classic KE)
-  // Examples: KDA123A, KDG271X, KBX123C, KDD1234
-  const plateRe = /K[A-Z]{2}\d{3,4}[A-Z]?/g;
-  const m = cleaned.match(plateRe);
+function extractPlateFromText(text: string): string | null {
+  // Loose Kenyan-ish plate patterns (you can refine later)
+  const t = text.toUpperCase().replace(/\s+/g, "");
+  // Examples: KDA123A, KDG271X, KAA123A etc
+  const m = t.match(/\bK[A-Z]{2}\d{3}[A-Z]\b/);
   return m?.[0] ?? null;
 }
 
-router.post("/", async (req, res) => {
-  const body = (req.body ?? {}) as OcrRequest;
+/**
+ * POST /ocr/scan
+ * multipart: file
+ * json: { imageBase64 }
+ *
+ * For now we don't do real OCR; we accept optional "hintText" in body for dev/testing.
+ */
+router.post("/scan", upload.single("file"), async (req: Request, res: Response) => {
+  const hintText = String(req.body?.hintText || "");
 
-  // NOTE: This is a stub. We don't actually OCR the image yet.
-  // We simulate the pipeline using `hint` and basic regex extraction.
+  const imageBase64 = typeof req.body?.imageBase64 === "string" ? req.body.imageBase64 : null;
+  const hasFile = !!req.file?.buffer?.length;
 
-  const hint = (body.hint ?? "").toString();
+  if (!hasFile && !imageBase64 && !hintText) {
+    throw badRequest("Provide a file upload, imageBase64, or hintText for demo.");
+  }
 
-  // Pretend OCR text:
-  // - if hint given, include it in rawText so extraction can work.
-  // - else return a generic mock that includes demo VIN + plate.
-  const rawText = hint
-    ? `USER_HINT ${hint}`
-    : "VIN JH4KX12345ABC0001 PLATE KDG271X";
+  // ---- Demo OCR flow ----
+  // Replace this later with a real OCR engine (Tesseract/Google Vision/etc).
+  const detectedVin = normalizeVin(extractVinFromText(hintText));
+  const detectedPlate = normalizePlate(extractPlateFromText(hintText));
 
-  const vin = extractVin(rawText) ?? undefined;
-  const plate = extractKenyanPlate(rawText) ?? undefined;
+  // If we got VIN, we can directly find/create report.
+  let reportId: string | null = null;
+  if (detectedVin) {
+    const existing = store.getReportByVin?.(detectedVin);
+    reportId = existing?.id ?? null;
+  }
 
-  const response: OcrResponse = {
+  // If we got plate, resolve candidates.
+  const candidates =
+    detectedPlate ? store.resolvePlateToVinCandidates(detectedPlate) : [];
+
+  return res.json({
     ok: true,
-    vin,
-    plate,
-    confidence: vin ? 0.92 : plate ? 0.75 : 0.2,
-    rawText,
+    vin: detectedVin ?? null,
+    plate: detectedPlate ?? null,
+    reportId,
+    candidates: (candidates || []).map((c: any) => ({
+      vin: normalizeVin(c.vin) ?? c.vin,
+      confidence: typeof c.confidence === "number" ? c.confidence : 0.6,
+      source: c.source ?? "unknown",
+      existingReportId: store.getReportByVin?.(normalizeVin(c.vin) ?? c.vin)?.id ?? null,
+    })),
     note:
-      "OCR is stubbed. Next step: real OCR engine (Vision API / Tesseract) + VIN-first parsing.",
-  };
-
-  res.json(response);
+      "OCR is currently demo-mode. Send hintText to test, then we’ll plug a real OCR provider.",
+  });
 });
 
 export default router;

@@ -1,17 +1,48 @@
 // apps/api/src/routes/contributions.ts
+import { Router, type Request, type Response } from "express";
+import { normalizeVin, normalizePlate } from "../lib/normalize";
+import { badRequest } from "../lib/errors";
+import * as store from "../store";
 
-import { Router } from "express";
-
-const router = Router();
+const router: Router = Router();
 
 /**
- * Placeholder route so app.use("/contributions", ...) is valid.
- * Later: payments / unlock purchase etc.
+ * POST /contributions
+ * Body:
+ * {
+ *   vin: string,
+ *   plate?: string,
+ *   payload: any,
+ *   source?: string
+ * }
+ *
+ * Contributions are always tied to VIN (primary index).
  */
-router.get("/", (_req, res) => {
-  res.json({
+router.post("/", (req: Request, res: Response) => {
+  const vin = normalizeVin(req.body?.vin);
+  const plate = normalizePlate(req.body?.plate);
+  const payload = req.body?.payload;
+  const source = String(req.body?.source || "user");
+
+  if (!vin) throw badRequest("vin is required");
+  if (payload == null) throw badRequest("payload is required");
+
+  // Ensure report exists for this VIN (VIN-primary).
+  const report = store.upsertReportForVin(vin, { plate: plate ?? undefined });
+
+  const contribution = store.addContribution({
+    reportId: report.id,
+    vin,
+    plate: plate ?? report?.vehicle?.plate ?? null,
+    payload,
+    source,
+  });
+
+  return res.status(201).json({
     ok: true,
-    message: "Contributions endpoint placeholder.",
+    reportId: report.id,
+    vin,
+    contribution,
   });
 });
 
