@@ -1,12 +1,13 @@
 // apps/api/src/server.ts
 
-import express, { type RequestHandler } from "express";
-import cors from "cors";
-
 import * as reportsMod from "./routes/reports";
 import * as platesMod from "./routes/plates";
 import * as contributionsMod from "./routes/contributions";
 import * as ocrMod from "./routes/ocr";
+
+app.get("/", (_req, res) => {
+  res.json({ ok: true, service: "culicars-api" });
+});
 
 function resolveRouter(mod: any): RequestHandler {
   const r = mod?.default ?? mod?.router ?? mod;
