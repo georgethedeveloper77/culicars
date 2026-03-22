@@ -5,3 +5,4 @@ node_modules
 dist
 .turbo
 *.log
+.culicars-6d08c5488857.json

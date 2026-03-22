@@ -8,9 +8,7 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "resolveJsonModule": true,
-    "outDir": "dist",
-    "rootDir": "src"
+    "resolveJsonModule": true
   },
   "exclude": ["node_modules", "dist"]
 }

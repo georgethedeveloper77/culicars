@@ -1,8 +1,6 @@
 // apps/api/src/app.ts
-// Express app — middleware stack + route mounting
-// Middleware order: helmet → cors → json → logger → IP rate limit → routes → 404 → error handler
 
-import express from 'express';
+import express, { type Express } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import { corsOptions } from './config/cors';
@@ -10,12 +8,13 @@ import { requestLogger } from './middleware/requestLogger';
 import { ipRateLimiter } from './middleware/rateLimiter';
 import { errorHandler } from './middleware/errorHandler';
 import { optionalAuth } from './middleware/optionalAuth';
-
-// Routes
+import { auth } from './middleware/auth';
+import ocrRouter from './routes/ocr';
+import ntsaRouter from './routes/ntsa';
 import healthRouter from './routes/health';
 import searchRouter from './routes/search';
 
-const app = express();
+const app: Express = express();
 
 // ── Global Middleware ──────────────────────────────
 app.use(helmet());
@@ -26,7 +25,9 @@ app.use(ipRateLimiter);
 
 // ── Routes ────────────────────────────────────────
 app.use('/health', healthRouter);
-app.use('/search', optionalAuth, searchRouter);   // Thread 3 — public, guests ok
+app.use('/search', optionalAuth, searchRouter);
+app.use('/ocr', auth, ocrRouter);
+app.use('/ntsa', auth, ntsaRouter);
 
 // ── 404 Catch-All ─────────────────────────────────
 app.use((_req, res) => {

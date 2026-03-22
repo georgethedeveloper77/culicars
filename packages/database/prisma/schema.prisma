@@ -356,9 +356,10 @@ model Report {
   generatedAt    DateTime?    @map("generated_at") @db.Timestamptz
   updatedAt      DateTime?    @updatedAt @map("updated_at") @db.Timestamptz
 
-  vehicle  Vehicle         @relation(fields: [vin], references: [vin])
-  sections ReportSection[]
-  unlocks  ReportUnlock[]
+  vehicle      Vehicle         @relation(fields: [vin], references: [vin])
+  sections     ReportSection[]
+  unlocks      ReportUnlock[]
+  ledgerEntries CreditLedger[]
 
   @@index([vin], name: "idx_reports_vin")
   @@map("reports")
