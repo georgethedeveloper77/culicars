@@ -1,8 +1,12 @@
 node_modules
 .env
-.env.local
+.env.*
 .next
 dist
 .turbo
 *.log
-.json
+
+# service account / secret files
+*-service-account.json
+firebase-admin*.json
+culicars-*.json
