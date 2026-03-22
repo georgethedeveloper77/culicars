@@ -9,4 +9,4 @@ dist
 # service account / secret files
 *-service-account.json
 firebase-admin*.json
-culicars-*.json
+culicars-*.jsonculicars-*.json
