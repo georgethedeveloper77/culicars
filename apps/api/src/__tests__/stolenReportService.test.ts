@@ -242,7 +242,7 @@ describe('markRecovered', () => {
       makeReportRow({ status: 'active', vin: 'JTDBR32E540012345' }) as never,
     );
     vi.mocked(prisma.stolen_reports.update).mockResolvedValue(
-      makeReportRow({ status: 'recovered' }) as never,
+      makeReportRow({ status: 'recovered', vin: 'JTDBR32E540012345' }) as never,
     );
     vi.mocked(prisma.vehicle_events.create).mockResolvedValue({} as never);
     vi.mocked(prisma.reports.updateMany).mockResolvedValue({ count: 1 } as never);
