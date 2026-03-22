@@ -1,8 +1,5 @@
 node_modules
-# Secrets
-*.json
 .env
-.env.*
 .env.local
 .next
 dist
