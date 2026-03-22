@@ -1,0 +1,52 @@
+// packages/database/index.ts
+export { prisma, default } from './client';
+
+// Re-export all Prisma types
+export type {
+  User,
+  Profile,
+  Vehicle,
+  PlateVinMap,
+  Report,
+  ReportSection,
+  ReportUnlock,
+  VehicleEvent,
+  StolenReport,
+  Wallet,
+  CreditLedger,
+  PaymentProvider,
+  Payment,
+  Contribution,
+  CorConsent,
+  OcrScan,
+  ScraperJob,
+  ScraperDataRaw,
+  AdminSetting,
+} from '@prisma/client';
+
+export {
+  UserRole,
+  InspStatus,
+  CaveatSt,
+  CorSource,
+  PvmSource,
+  ReportStatus,
+  RiskLevel,
+  Recommendation,
+  SectionType,
+  DataStatus,
+  EventType,
+  EventSource,
+  StolenStatus,
+  ReporterType,
+  LedgerType,
+  ProviderSlug,
+  PayStatus,
+  ContribType,
+  ContribStatus,
+  DocType,
+  OcrSource,
+  ScraperSrc,
+  JobStatus,
+  JobTrigger,
+} from '@prisma/client';

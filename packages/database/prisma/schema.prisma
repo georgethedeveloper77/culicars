@@ -1,0 +1,652 @@
+// CuliCars — Prisma Schema
+// VIN is the PRIMARY KEY for the entire system
+// Plate resolves to VIN via plate_vin_map
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────
+
+enum UserRole {
+  guest
+  user
+  admin
+  dealer
+}
+
+enum InspStatus {
+  passed
+  failed
+  expired
+  unknown
+}
+
+enum CaveatSt {
+  clear
+  caveat
+  unknown
+}
+
+enum CorSource {
+  user_webview
+  admin
+}
+
+enum PvmSource {
+  ntsa_cor
+  kra_import
+  scraper
+  contribution
+  ocr
+  admin
+}
+
+enum ReportStatus {
+  draft
+  ready
+  stale
+}
+
+enum RiskLevel {
+  clean
+  low
+  medium
+  high
+  critical
+}
+
+enum Recommendation {
+  proceed
+  caution
+  avoid
+}
+
+enum SectionType {
+  IDENTITY
+  PURPOSE
+  THEFT
+  ODOMETER
+  LEGAL
+  DAMAGE
+  SPECS_EQUIPMENT
+  IMPORT
+  OWNERSHIP
+  SERVICE
+  PHOTOS
+  TIMELINE
+  STOLEN_REPORTS
+  RECOMMENDATION
+}
+
+enum DataStatus {
+  found
+  not_found
+  not_checked
+}
+
+enum EventType {
+  MANUFACTURED
+  REGISTERED
+  INSPECTED
+  INSPECTION_FAILED
+  DAMAGED
+  REPAIRED
+  SERVICED
+  STOLEN
+  RECOVERED
+  WANTED
+  IMPORTED
+  EXPORTED
+  KRA_CLEARED
+  OWNERSHIP_CHANGE
+  PSV_LICENSED
+  PSV_REVOKED
+  LISTED_FOR_SALE
+  SOLD
+  AUCTIONED
+  CONTRIBUTION_ADDED
+  ADMIN_NOTE
+}
+
+enum EventSource {
+  ntsa_cor
+  kra
+  scraper_jiji
+  scraper_pigiame
+  scraper_olx
+  scraper_autochek
+  scraper_autoexpress
+  scraper_kra_ibid
+  scraper_auction
+  scraper_beforward
+  contribution
+  community_stolen_report
+  admin
+}
+
+enum StolenStatus {
+  pending
+  active
+  recovered
+  rejected
+  duplicate
+}
+
+enum ReporterType {
+  owner
+  family
+  witness
+  police
+}
+
+enum LedgerType {
+  purchase
+  spend
+  bonus
+  refund
+  admin_grant
+  admin_deduct
+}
+
+enum ProviderSlug {
+  mpesa
+  paypal
+  stripe
+  google_pay
+  apple_iap
+  revenuecat
+  card
+}
+
+enum PayStatus {
+  pending
+  success
+  failed
+  refunded
+}
+
+enum ContribType {
+  MILEAGE_RECORD
+  DAMAGE_REPORT
+  SERVICE_RECORD
+  OWNERSHIP_TRANSFER
+  LISTING_PROOF
+  INSPECTION_RECORD
+  IMPORT_DOCUMENT
+  THEFT_REPORT
+  PHOTO_EVIDENCE
+  GENERAL_NOTE
+}
+
+enum ContribStatus {
+  pending
+  approved
+  rejected
+  flagged
+}
+
+enum DocType {
+  logbook
+  import_doc
+  dashboard
+  plate_photo
+  ntsa_cor
+}
+
+enum OcrSource {
+  user_upload
+  ntsa_cor_auto
+  admin
+}
+
+enum ScraperSrc {
+  JIJI
+  PIGIAME
+  OLX
+  AUTOCHEK
+  AUTOSKENYA
+  KABA
+  AUTO_EXPRESS
+  KRA_IBID
+  GARAM
+  MOGO
+  CAR_DUKA
+  BEFORWARD
+  STC_JAPAN
+  MANUAL_IMPORT
+}
+
+enum JobStatus {
+  queued
+  running
+  completed
+  failed
+}
+
+enum JobTrigger {
+  scheduled
+  manual
+}
+
+// ─────────────────────────────────────────────
+// USERS + PROFILES
+// ─────────────────────────────────────────────
+
+model User {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email     String   @unique
+  role      UserRole @default(user)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime? @updatedAt @map("updated_at") @db.Timestamptz
+
+  profile          Profile?
+  wallet           Wallet?
+  creditLedger     CreditLedger[]
+  payments         Payment[]
+  reportUnlocks    ReportUnlock[]
+  contributions    Contribution[]
+  reviewedContribs Contribution[]  @relation("contributionReviewer")
+  corConsents      CorConsent[]
+  ocrScans         OcrScan[]
+  stolenReports    StolenReport[]  @relation("stolenReporter")
+  reviewedStolen   StolenReport[]  @relation("stolenReviewer")
+  adminSettings    AdminSetting[]
+
+  @@map("users")
+}
+
+model Profile {
+  userId        String   @id @map("user_id") @db.Uuid
+  displayName   String?  @map("display_name")
+  phone         String?
+  avatarUrl     String?  @map("avatar_url")
+  county        String?
+  preferredLang String   @default("en") @map("preferred_lang")
+  updatedAt     DateTime? @updatedAt @map("updated_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("profiles")
+}
+
+// ─────────────────────────────────────────────
+// VEHICLES — VIN is PRIMARY KEY
+// ─────────────────────────────────────────────
+
+model Vehicle {
+  vin                String    @id // 17-char VIN
+  chassisNumber      String?   @map("chassis_number")
+  make               String?
+  model              String?
+  year               Int?
+  engineCc           Int?      @map("engine_cc")
+  fuelType           String?   @map("fuel_type")
+  transmission       String?
+  bodyType           String?   @map("body_type")
+  color              String?
+  countryOfOrigin    String?   @map("country_of_origin")
+  importCountry      String?   @map("import_country")
+  isImported         Boolean   @default(false) @map("is_imported")
+  japanAuctionGrade  String?   @map("japan_auction_grade")
+  japanAuctionMileage Int?     @map("japan_auction_mileage")
+  kraPin             String?   @map("kra_pin")
+  ntsaId             String?   @map("ntsa_id")
+  inspectionStatus   InspStatus? @map("inspection_status")
+  lastInspectionDate DateTime?  @map("last_inspection_date") @db.Date
+  caveatStatus       CaveatSt?  @map("caveat_status")
+  psvLicensed        Boolean   @default(false) @map("psv_licensed")
+  ntsaCorVerified    Boolean   @default(false) @map("ntsa_cor_verified")
+  ntsaCorDate        DateTime? @map("ntsa_cor_date") @db.Timestamptz
+  ntsaCorSource      CorSource? @map("ntsa_cor_source")
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime? @updatedAt @map("updated_at") @db.Timestamptz
+
+  plateVinMaps   PlateVinMap[]
+  reports        Report[]
+  vehicleEvents  VehicleEvent[]
+  stolenReports  StolenReport[]
+  contributions  Contribution[]
+
+  @@map("vehicles")
+}
+
+// ─────────────────────────────────────────────
+// PLATE → VIN MAP
+// ─────────────────────────────────────────────
+
+model PlateVinMap {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  plate       String    // normalized: 'KCA123A'
+  plateDisplay String?  @map("plate_display") // formatted: 'KCA 123A'
+  vin         String
+  confidence  Float?    @default(0.5)
+  source      PvmSource?
+  verifiedAt  DateTime? @map("verified_at") @db.Timestamptz
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  vehicle Vehicle @relation(fields: [vin], references: [vin])
+
+  @@index([plate], name: "idx_pvm_plate")
+  @@index([vin], name: "idx_pvm_vin")
+  @@map("plate_vin_map")
+}
+
+// ─────────────────────────────────────────────
+// REPORTS + SECTIONS + UNLOCKS
+// ─────────────────────────────────────────────
+
+model Report {
+  id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  vin            String
+  status         ReportStatus @default(draft)
+  riskScore      Int?         @map("risk_score")
+  riskLevel      RiskLevel?   @map("risk_level")
+  recommendation Recommendation?
+  sourcesChecked Int          @default(0) @map("sources_checked")
+  recordsFound   Int          @default(0) @map("records_found")
+  generatedAt    DateTime?    @map("generated_at") @db.Timestamptz
+  updatedAt      DateTime?    @updatedAt @map("updated_at") @db.Timestamptz
+
+  vehicle  Vehicle         @relation(fields: [vin], references: [vin])
+  sections ReportSection[]
+  unlocks  ReportUnlock[]
+
+  @@index([vin], name: "idx_reports_vin")
+  @@map("reports")
+}
+
+model ReportSection {
+  id          String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  reportId    String      @map("report_id") @db.Uuid
+  sectionType SectionType @map("section_type")
+  data        Json?
+  isLocked    Boolean     @default(true) @map("is_locked")
+  recordCount Int         @default(0) @map("record_count")
+  dataStatus  DataStatus  @default(not_checked) @map("data_status")
+  updatedAt   DateTime?   @updatedAt @map("updated_at") @db.Timestamptz
+
+  report Report @relation(fields: [reportId], references: [id])
+
+  @@map("report_sections")
+}
+
+model ReportUnlock {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  reportId    String   @map("report_id") @db.Uuid
+  creditsSpent Int     @map("credits_spent")
+  unlockedAt  DateTime @default(now()) @map("unlocked_at") @db.Timestamptz
+
+  user   User   @relation(fields: [userId], references: [id])
+  report Report @relation(fields: [reportId], references: [id])
+
+  @@unique([userId, reportId])
+  @@map("report_unlocks")
+}
+
+// ─────────────────────────────────────────────
+// VEHICLE EVENTS — TIMELINE
+// ─────────────────────────────────────────────
+
+model VehicleEvent {
+  id          String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  vin         String
+  eventType   EventType   @map("event_type")
+  eventDate   DateTime    @map("event_date") @db.Date
+  country     String      @default("KE")
+  county      String?
+  source      EventSource?
+  sourceRef   String?     @map("source_ref")
+  confidence  Float?      @default(0.8)
+  metadata    Json?
+  createdAt   DateTime    @default(now()) @map("created_at") @db.Timestamptz
+
+  vehicle Vehicle @relation(fields: [vin], references: [vin])
+
+  @@index([vin], name: "idx_events_vin")
+  @@index([eventDate], name: "idx_events_date")
+  @@map("vehicle_events")
+}
+
+// ─────────────────────────────────────────────
+// STOLEN REPORTS — COMMUNITY SAFETY
+// ─────────────────────────────────────────────
+
+model StolenReport {
+  id              String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  plate           String
+  plateDisplay    String?      @map("plate_display")
+  vin             String?
+  reporterUserId  String?      @map("reporter_user_id") @db.Uuid
+  reporterType    ReporterType? @map("reporter_type")
+  dateStolen      DateTime     @map("date_stolen") @db.Date
+  countyStolen    String       @map("county_stolen")
+  townStolen      String       @map("town_stolen")
+  policeObNumber  String?      @map("police_ob_number")
+  policeStation   String?      @map("police_station")
+  carColor        String       @map("car_color")
+  identifyingMarks String?     @map("identifying_marks")
+  photoUrls       String[]     @map("photo_urls")
+  contactPhone    String?      @map("contact_phone")
+  contactEmail    String?      @map("contact_email")
+  status          StolenStatus @default(pending)
+  isObVerified    Boolean      @default(false) @map("is_ob_verified")
+  adminNote       String?      @map("admin_note")
+  reviewedBy      String?      @map("reviewed_by") @db.Uuid
+  reviewedAt      DateTime?    @map("reviewed_at") @db.Timestamptz
+  recoveryDate    DateTime?    @map("recovery_date") @db.Date
+  recoveryCounty  String?      @map("recovery_county")
+  recoveryNotes   String?      @map("recovery_notes")
+  createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz
+
+  vehicle  Vehicle? @relation(fields: [vin], references: [vin])
+  reporter User?    @relation("stolenReporter", fields: [reporterUserId], references: [id])
+  reviewer User?    @relation("stolenReviewer", fields: [reviewedBy], references: [id])
+
+  @@index([plate], name: "idx_stolen_plate")
+  @@index([vin], name: "idx_stolen_vin")
+  @@index([status], name: "idx_stolen_status")
+  @@map("stolen_reports")
+}
+
+// ─────────────────────────────────────────────
+// WALLETS + CREDIT LEDGER
+// ─────────────────────────────────────────────
+
+model Wallet {
+  userId    String   @id @map("user_id") @db.Uuid
+  balance   Int      @default(0)
+  updatedAt DateTime? @updatedAt @map("updated_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("wallets")
+}
+
+model CreditLedger {
+  id            String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId        String     @map("user_id") @db.Uuid
+  type          LedgerType
+  creditsDelta  Int        @map("credits_delta")
+  balanceBefore Int        @map("balance_before")
+  balanceAfter  Int        @map("balance_after")
+  source        String?
+  reportId      String?    @map("report_id") @db.Uuid
+  txRef         String?    @map("tx_ref")
+  metadata      Json?
+  createdAt     DateTime   @default(now()) @map("created_at") @db.Timestamptz
+
+  user   User    @relation(fields: [userId], references: [id])
+  report Report? @relation(fields: [reportId], references: [id])
+
+  @@index([userId], name: "idx_ledger_user")
+  @@map("credit_ledger")
+}
+
+// ─────────────────────────────────────────────
+// PAYMENT PROVIDERS + PAYMENTS
+// ─────────────────────────────────────────────
+
+model PaymentProvider {
+  id        String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name      String
+  slug      ProviderSlug @unique
+  isEnabled Boolean      @default(false) @map("is_enabled")
+  config    Json?
+  updatedAt DateTime?    @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("payment_providers")
+}
+
+model Payment {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId       String    @map("user_id") @db.Uuid
+  provider     String
+  amount       Int
+  currency     String    @default("KES")
+  credits      Int
+  status       PayStatus @default(pending)
+  providerRef  String?   @unique @map("provider_ref")
+  providerMeta Json?     @map("provider_meta")
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime? @updatedAt @map("updated_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("payments")
+}
+
+// ─────────────────────────────────────────────
+// CONTRIBUTIONS
+// ─────────────────────────────────────────────
+
+model Contribution {
+  id                  String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  vin                 String
+  userId              String?      @map("user_id") @db.Uuid
+  type                ContribType
+  title               String
+  description         String?
+  data                Json?
+  evidenceUrls        String[]     @map("evidence_urls")
+  verificationDocUrls String[]     @map("verification_doc_urls")
+  status              ContribStatus @default(pending)
+  adminNote           String?      @map("admin_note")
+  reviewedBy          String?      @map("reviewed_by") @db.Uuid
+  reviewedAt          DateTime?    @map("reviewed_at") @db.Timestamptz
+  confidenceScore     Float?       @map("confidence_score")
+  createdAt           DateTime     @default(now()) @map("created_at") @db.Timestamptz
+
+  vehicle  Vehicle @relation(fields: [vin], references: [vin])
+  user     User?   @relation(fields: [userId], references: [id])
+  reviewer User?   @relation("contributionReviewer", fields: [reviewedBy], references: [id])
+
+  @@map("contributions")
+}
+
+// ─────────────────────────────────────────────
+// COR CONSENTS
+// ─────────────────────────────────────────────
+
+model CorConsent {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId       String    @map("user_id") @db.Uuid
+  vin          String
+  plate        String
+  consentedAt  DateTime  @default(now()) @map("consented_at") @db.Timestamptz
+  pdfProcessed Boolean   @default(false) @map("pdf_processed")
+  processedAt  DateTime? @map("processed_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("cor_consents")
+}
+
+// ─────────────────────────────────────────────
+// OCR SCANS
+// ─────────────────────────────────────────────
+
+model OcrScan {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId          String?   @map("user_id") @db.Uuid
+  imageUrl        String    @map("image_url")
+  documentType    DocType?  @map("document_type")
+  rawOcrResult    Json?     @map("raw_ocr_result")
+  extractedPlate  String?   @map("extracted_plate")
+  extractedVin    String?   @map("extracted_vin")
+  extractedChassis String?  @map("extracted_chassis")
+  confidence      Float?
+  confirmedValue  String?   @map("confirmed_value")
+  source          OcrSource?
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@map("ocr_scans")
+}
+
+// ─────────────────────────────────────────────
+// SCRAPER JOBS + RAW DATA
+// ─────────────────────────────────────────────
+
+model ScraperJob {
+  id          String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  source      ScraperSrc
+  status      JobStatus  @default(queued)
+  trigger     JobTrigger?
+  itemsFound  Int        @default(0) @map("items_found")
+  itemsStored Int        @default(0) @map("items_stored")
+  itemsSkipped Int       @default(0) @map("items_skipped")
+  startedAt   DateTime?  @map("started_at") @db.Timestamptz
+  completedAt DateTime?  @map("completed_at") @db.Timestamptz
+  errorLog    String?    @map("error_log")
+  createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz
+
+  rawData ScraperDataRaw[]
+
+  @@map("scraper_jobs")
+}
+
+model ScraperDataRaw {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  jobId       String    @map("job_id") @db.Uuid
+  source      String
+  rawData     Json      @map("raw_data")
+  vin         String?
+  plate       String?
+  processed   Boolean   @default(false)
+  processedAt DateTime? @map("processed_at") @db.Timestamptz
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  job ScraperJob @relation(fields: [jobId], references: [id])
+
+  @@index([vin], name: "idx_raw_vin")
+  @@index([plate], name: "idx_raw_plate")
+  @@index([processed], name: "idx_raw_processed")
+  @@map("scraper_data_raw")
+}
+
+// ─────────────────────────────────────────────
+// ADMIN SETTINGS
+// ─────────────────────────────────────────────
+
+model AdminSetting {
+  key         String    @id
+  value       Json
+  description String?
+  updatedBy   String?   @map("updated_by") @db.Uuid
+  updatedAt   DateTime? @updatedAt @map("updated_at") @db.Timestamptz
+
+  user User? @relation(fields: [updatedBy], references: [id])
+
+  @@map("admin_settings")
+}
