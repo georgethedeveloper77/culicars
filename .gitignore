@@ -8,3 +8,7 @@ dist
 culicars-*.json
 firebase-admin*.json
 *-service-account.jsonculicars-*.json
+
+culicars-*.json
+firebase-admin*.json
+*-service-account.json
