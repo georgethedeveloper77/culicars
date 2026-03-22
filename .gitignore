@@ -5,8 +5,6 @@ node_modules
 dist
 .turbo
 *.log
-
-# service account / secret files
-*-service-account.json
+culicars-*.json
 firebase-admin*.json
-culicars-*.jsonculicars-*.json
+*-service-account.jsonculicars-*.json
