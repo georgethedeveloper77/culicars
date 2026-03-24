@@ -14,7 +14,7 @@ class NtsaFetchWidget extends StatefulWidget {
     super.key,
     required this.vin,
     required this.plate,
-    required this.authToken,
+    this.authToken,
     required this.onSuccess,
   });
 

@@ -105,7 +105,13 @@ class _ReportFullScreenState extends State<ReportFullScreen> {
             const Divider(height: 1),
 
             // NTSA COR fetch
-            NtsaFetchWidget(vin: r.vin),
+            NtsaFetchWidget(
+              vin: r.vin,
+              plate: r.vehicle?['plate'] as String? ??
+                  r.vehicle?['plateDisplay'] as String? ?? '',
+              authToken: null,  // ApiClient handles auth internally via headers
+              onSuccess: _load, // reload report after NTSA data added
+            ),
 
             const Divider(height: 1),
 
