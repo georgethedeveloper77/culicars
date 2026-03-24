@@ -11,7 +11,7 @@ export async function buildOwnershipSection(vin: string): Promise<{
   recordCount: number;
   dataStatus: 'found' | 'not_found' | 'not_checked';
 }> {
-  const ownershipEvents = await prisma.vehicleEvents.findMany({
+  const ownershipEvents = await prisma.vehicleEvent.findMany({
     where: {
       vin,
       eventType: 'OWNERSHIP_CHANGE',

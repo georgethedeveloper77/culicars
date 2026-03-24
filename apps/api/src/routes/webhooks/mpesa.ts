@@ -10,7 +10,7 @@ import { Router } from 'express';
 import { confirmPayment, failPayment } from '../../services/paymentProviderService';
 import type { MpesaCallbackBody } from '../../types/payment.types';
 
-const router = Router();
+const router: import("express").Router = Router();
 
 // M-Pesa sends JSON callbacks — no auth header, we validate by structure
 router.post('/', async (req, res) => {

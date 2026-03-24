@@ -1,5 +1,5 @@
 // apps/api/src/lib/prisma.ts
-// Re-export the singleton Prisma client from the database package
-
+// env.ts loads dotenv before this module is used
 import { prisma } from '@culicars/database';
+export { prisma };
 export default prisma;

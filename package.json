@@ -5,6 +5,10 @@
   "scripts": {
     "dev": "turbo dev",
     "build": "turbo build",
+    "build:api": "turbo build --filter=@culicars/api",
+    "build:web": "turbo build --filter=@culicars/web",
+    "build:admin": "turbo build --filter=@culicars/admin",
+    "start:api": "node apps/api/dist/index.js",
     "lint": "turbo lint"
   },
   "devDependencies": {

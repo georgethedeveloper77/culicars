@@ -119,7 +119,7 @@ export async function initiatePayment(
       where: { id: payment.id },
       data: {
         providerRef: result.providerRef,
-        providerMeta: result.providerData ?? undefined,
+        providerMeta: (result.providerData ?? undefined) as any,
         updatedAt: new Date(),
       },
     });
@@ -177,7 +177,7 @@ export async function confirmPayment(
     where: { id: payment.id },
     data: {
       status: 'success',
-      providerMeta: providerMeta ?? undefined,
+      providerMeta: (providerMeta ?? undefined) as any,
       updatedAt: new Date(),
     },
   });

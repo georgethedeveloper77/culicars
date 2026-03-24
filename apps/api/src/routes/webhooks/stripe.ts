@@ -13,7 +13,7 @@ import { env } from '../../config/env';
 import { confirmPayment, failPayment } from '../../services/paymentProviderService';
 import type { StripeWebhookEvent } from '../../types/payment.types';
 
-const router = Router();
+const router: import("express").Router = Router();
 
 /**
  * Verify Stripe webhook signature using the raw body.
@@ -65,7 +65,7 @@ router.post('/', raw({ type: 'application/json' }), async (req, res) => {
     // req.body is a Buffer when using raw() parser
     const rawBody = Buffer.isBuffer(req.body) ? req.body : Buffer.from(JSON.stringify(req.body));
 
-    const valid = verifyStripeSignature(rawBody, signature, env.STRIPE_WEBHOOK_SECRET);
+    const valid = verifyStripeSignature(rawBody, signature, env.STRIPE_WEBHOOK_SECRET!);
     if (!valid) {
       console.warn('[Stripe Webhook] Invalid signature');
       return res.status(401).json({ error: 'Invalid signature' });

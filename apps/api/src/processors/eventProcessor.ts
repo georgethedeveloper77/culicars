@@ -4,8 +4,8 @@ import { isDuplicateEvent } from './duplicateResolver';
 
 export interface VehicleEventData {
   vin: string;
-  event_type: string;
-  event_date: Date;
+  eventType: string;
+  eventDate: Date;
   country?: string;
   county?: string | null;
   source: string;
@@ -21,24 +21,24 @@ export interface VehicleEventData {
 export async function insertEvent(data: VehicleEventData): Promise<boolean> {
   const isDupe = await isDuplicateEvent({
     vin: data.vin,
-    event_type: data.event_type,
-    event_date: data.event_date,
+    event_type: data.eventType as any,
+    event_date: data.eventDate,
     source_ref: data.source_ref,
   });
 
   if (isDupe) return false;
 
-  await prisma.vehicle_events.create({
+  await prisma.vehicleEvent.create({
     data: {
       vin: data.vin,
-      event_type: data.event_type,
-      event_date: data.event_date,
+      eventType: data.eventType as any,
+      eventDate: data.eventDate,
       country: data.country ?? 'KE',
       county: data.county ?? null,
-      source: data.source,
-      source_ref: data.source_ref ?? null,
+      source: data.source as any,
+      sourceRef: data.source_ref ?? null,
       confidence: data.confidence ?? 0.5,
-      metadata: data.metadata ?? {},
+      metadata: (data.metadata ?? {}) as any,
     },
   });
 

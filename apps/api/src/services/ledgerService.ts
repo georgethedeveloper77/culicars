@@ -6,7 +6,7 @@
 // ============================================================
 
 import prisma from '../lib/prisma';
-import type { PrismaClient } from '@culicars/database';
+import type { PrismaClient } from '@prisma/client';
 import type { LedgerType } from '../types/payment.types';
 
 type TxClient = Omit<
@@ -44,7 +44,7 @@ export async function appendEntry(
       source: input.source,
       reportId: input.reportId ?? null,
       txRef: input.txRef ?? null,
-      metadata: input.metadata ?? undefined,
+      metadata: (input.metadata ?? undefined) as any,
     },
   });
 }

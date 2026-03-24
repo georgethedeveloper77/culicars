@@ -5,7 +5,7 @@
 import { normalizePlate, detectInputType } from '@culicars/utils';
 import { resolveByPlate, resolveByVin } from './plateResolver';
 import { validateAndDecode } from './vinDecoder';
-import { checkStolen, checkStolenByPlate, checkStolenByVin } from './stolenAlertService';
+import { checkVehicle, checkPlate, checkVin } from './stolenAlertService';
 import { getSuggestionStrings } from './fuzzyMatcher';
 import type { SearchResponse, SearchCandidate, StolenAlert, SearchType } from '../types/search.types';
 
@@ -41,7 +41,7 @@ export async function search(
     candidates = await resolveByPlate(plateResult.normalized);
 
     const vins = candidates.map((c) => c.vin);
-    stolenAlert = await checkStolen(plateResult.normalized, vins[0] ?? null);
+    stolenAlert = await checkVehicle({ plate: plateResult.normalized, vin: vins[0] ?? null }) as any;
 
     if (candidates.length === 0) {
       suggestions = await getSuggestionStrings(plateResult.normalized);
@@ -63,7 +63,7 @@ export async function search(
     candidates = await resolveByVin(vinResult.vin);
 
     const plate = candidates[0]?.plate ?? null;
-    stolenAlert = await checkStolen(plate, vinResult.vin);
+    stolenAlert = await checkVehicle({ plate, vin: vinResult.vin }) as any;
 
     // If vehicle not in DB but VIN is valid, return VIN decode as virtual candidate
     if (candidates.length === 0 && vinResult.decode) {
@@ -102,7 +102,7 @@ export async function search(
     if (plateResult.valid) {
       candidates = await resolveByPlate(plateResult.normalized);
       normalizedQuery = plateResult.normalized;
-      stolenAlert = await checkStolenByPlate(plateResult.normalized);
+      stolenAlert = await checkPlate(plateResult.normalized) as any;
     }
 
     if (candidates.length === 0) {
@@ -111,7 +111,7 @@ export async function search(
         candidates = await resolveByVin(vinResult.vin);
         normalizedQuery = vinResult.vin;
         queryType = 'vin';
-        stolenAlert = await checkStolenByVin(vinResult.vin);
+        stolenAlert = await checkVin(vinResult.vin) as any;
       }
     }
 

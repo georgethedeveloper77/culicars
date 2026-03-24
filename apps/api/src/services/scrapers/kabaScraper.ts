@@ -66,7 +66,7 @@ export class KabaScraper extends BaseScraper {
         source: 'KABA',
         vin: null,
         plate: plate_raw,
-        raw_data: {
+        rawData: {
           listing_id,
           title,
           price_text,

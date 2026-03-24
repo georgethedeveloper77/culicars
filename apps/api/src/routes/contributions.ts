@@ -1,16 +1,16 @@
 // apps/api/src/routes/contributions.ts
 
 import { Router, Request, Response, NextFunction } from 'express';
-import { validateContributionSubmission } from '../services/contributionValidator.js';
+import { validateContributionSubmission } from '../services/contributionValidator';
 import {
   submitContribution,
   getContributionsByVin,
   moderateContribution,
   getContributionById,
-} from '../services/contributionService.js';
-import { requireRole } from '../middleware/requireRole.js';
+} from '../services/contributionService';
+import { requireRole } from '../middleware/requireRole';
 
-const router = Router();
+const router: import("express").Router = Router();
 
 // ---------------------------------------------------------------------------
 // POST /contributions

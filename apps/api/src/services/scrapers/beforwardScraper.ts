@@ -103,7 +103,7 @@ export class BeforwardScraper extends BaseScraper {
         source: 'BEFORWARD',
         vin: vin_raw,
         plate: null,
-        raw_data: {
+        rawData: {
           stock_no,
           vin: vin_raw,
           make,

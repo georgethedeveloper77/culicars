@@ -3,7 +3,7 @@ import prisma from '../lib/prisma';
 
 export interface PlateVinData {
   plate: string;        // Normalized: 'KCA123A'
-  plate_display: string; // Formatted: 'KCA 123A'
+  plateDisplay: string; // Formatted: 'KCA 123A'
   vin: string;
   confidence: number;
   source: string;
@@ -15,32 +15,32 @@ export interface PlateVinData {
  * One VIN can have multiple plates (re-registration).
  */
 export async function processPlate(data: PlateVinData): Promise<void> {
-  const existing = await prisma.plate_vin_map.findFirst({
+  const existing = await prisma.plateVinMap.findFirst({
     where: { plate: data.plate, vin: data.vin },
   });
 
   if (!existing) {
-    await prisma.plate_vin_map.create({
+    await prisma.plateVinMap.create({
       data: {
         plate: data.plate,
-        plate_display: data.plate_display,
+        plateDisplay: data.plateDisplay,
         vin: data.vin,
         confidence: data.confidence,
-        source: data.source,
-        verified_at: data.confidence >= 0.9 ? new Date() : null,
+        source: data.source as any,
+        verifiedAt: data.confidence >= 0.9 ? new Date() : null,
       },
     });
     return;
   }
 
   // Only update if incoming confidence is higher
-  if (data.confidence > existing.confidence) {
-    await prisma.plate_vin_map.update({
+  if (data.confidence > (existing.confidence ?? 0)) {
+    await prisma.plateVinMap.update({
       where: { id: existing.id },
       data: {
         confidence: data.confidence,
-        source: data.source,
-        verified_at: data.confidence >= 0.9 ? new Date() : existing.verified_at,
+        source: data.source as any,
+        verifiedAt: data.confidence >= 0.9 ? new Date() : existing.verifiedAt,
       },
     });
   }

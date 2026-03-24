@@ -24,14 +24,14 @@ export interface ProcessorResult {
 export async function processJobRawData(jobId: string): Promise<ProcessorResult> {
   const result: ProcessorResult = { processed: 0, inserted: 0, skipped: 0, errors: 0 };
 
-  const batch = await prisma.scraper_data_raw.findMany({
-    where: { job_id: jobId, processed: false },
-    orderBy: { created_at: 'asc' },
+  const batch = await prisma.scraperDataRaw.findMany({
+    where: { jobId: jobId, processed: false },
+    orderBy: { createdAt: 'asc' },
   });
 
   for (const row of batch) {
     try {
-      const raw = row.raw_data as Record<string, unknown>;
+      const raw = row.rawData as Record<string, unknown>;
       const resolvedVin = normalizeVin(row.vin ?? (raw.vin as string));
       const source = (row.source as string).toUpperCase();
 
@@ -55,9 +55,9 @@ export async function processJobRawData(jobId: string): Promise<ProcessorResult>
       }
 
       // Mark as processed regardless of outcome
-      await prisma.scraper_data_raw.update({
+      await prisma.scraperDataRaw.update({
         where: { id: row.id },
-        data: { processed: true, processed_at: new Date() },
+        data: { processed: true, processedAt: new Date() },
       });
 
       result.processed++;
@@ -66,9 +66,9 @@ export async function processJobRawData(jobId: string): Promise<ProcessorResult>
       console.error(`[rawDataProcessor] Error processing row ${row.id}:`, err);
 
       // Still mark as processed to avoid infinite retry loops
-      await prisma.scraper_data_raw.update({
+      await prisma.scraperDataRaw.update({
         where: { id: row.id },
-        data: { processed: true, processed_at: new Date() },
+        data: { processed: true, processedAt: new Date() },
       }).catch(() => {/* ignore secondary error */});
     }
   }
@@ -83,11 +83,11 @@ export async function processJobRawData(jobId: string): Promise<ProcessorResult>
 export async function processAllPending(): Promise<ProcessorResult> {
   const result: ProcessorResult = { processed: 0, inserted: 0, skipped: 0, errors: 0 };
 
-  const pendingJobs = await prisma.scraper_data_raw
-    .groupBy({ by: ['job_id'], where: { processed: false } });
+  const pendingJobs = await prisma.scraperDataRaw
+    .groupBy({ by: ['jobId'], where: { processed: false } });
 
-  for (const { job_id } of pendingJobs) {
-    const jobResult = await processJobRawData(job_id);
+  for (const { jobId } of pendingJobs) {
+    const jobResult = await processJobRawData(jobId);
     result.processed += jobResult.processed;
     result.inserted += jobResult.inserted;
     result.skipped += jobResult.skipped;

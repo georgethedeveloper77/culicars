@@ -1,5 +1,9 @@
 // apps/api/src/app.ts
 
+import dotenv from 'dotenv';
+import path from 'path';
+dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
+
 import express, { type Express } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';

@@ -62,7 +62,7 @@ export class AutosKenyaScraper extends BaseScraper {
         source: 'AUTOSKENYA',
         vin: null,
         plate: null,
-        raw_data: {
+        rawData: {
           listing_id,
           title,
           price_text,

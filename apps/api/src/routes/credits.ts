@@ -11,7 +11,7 @@ import { auth } from '../middleware/auth';
 import { getOrCreateWallet } from '../services/walletService';
 import { getUserLedger } from '../services/ledgerService';
 
-const router = Router();
+const router: import("express").Router = Router();
 
 // ── GET /credits/balance ────────────────────────────────────
 router.get('/balance', auth, async (req, res, next) => {

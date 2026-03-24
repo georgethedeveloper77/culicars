@@ -13,7 +13,7 @@ export async function buildPhotosSection(vin: string): Promise<{
 }> {
   // Photos come from contributions (evidence_urls) and events with photo metadata
   const [contributions, photoEvents] = await Promise.all([
-    prisma.contributions.findMany({
+    prisma.contribution.findMany({
       where: {
         vin,
         status: 'approved',
@@ -27,7 +27,7 @@ export async function buildPhotosSection(vin: string): Promise<{
     }),
 
     // Events that may have photos in metadata (listings, auctions)
-    prisma.vehicleEvents.findMany({
+    prisma.vehicleEvent.findMany({
       where: {
         vin,
         eventType: { in: ['LISTED_FOR_SALE', 'AUCTIONED', 'CONTRIBUTION_ADDED'] },
@@ -60,7 +60,8 @@ export async function buildPhotosSection(vin: string): Promise<{
   // From events
   for (const event of photoEvents) {
     const meta = event.metadata as Record<string, unknown> | null;
-    const photoUrls = meta?.photoUrls as string[] | meta?.photos as string[] | undefined;
+    const photoUrls = (meta?.photoUrls as string[] | undefined)
+    ?? (meta?.photos as string[] | undefined);
     if (Array.isArray(photoUrls)) {
       const dateKey = event.eventDate.toISOString().substring(0, 7);
       for (const url of photoUrls) {

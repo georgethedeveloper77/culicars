@@ -1,0 +1,25 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "CuliCars (Android)",
+      "request": "launch",
+      "type": "dart",
+      "args": [
+        "--dart-define=API_URL=http://10.0.2.2:3000",
+        "--dart-define=SUPABASE_URL=https://pqelsdkisaephcislwbv.supabase.co",
+        "--dart-define=SUPABASE_ANON_KEY=sb_publishable_-nau3scx6kTHyZXDxkxeZQ_xzUere3O"
+      ]
+    },
+    {
+      "name": "CuliCars (iOS)",
+      "request": "launch",
+      "type": "dart",
+      "args": [
+        "--dart-define=API_URL=http://localhost:3000",
+        "--dart-define=SUPABASE_URL=https://pqelsdkisaephcislwbv.supabase.co",
+        "--dart-define=SUPABASE_ANON_KEY=sb_publishable_-nau3scx6kTHyZXDxkxeZQ_xzUere3O"
+      ]
+    }
+  ]
+}

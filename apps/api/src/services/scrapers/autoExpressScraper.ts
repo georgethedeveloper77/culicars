@@ -68,7 +68,7 @@ export class AutoExpressScraper extends BaseScraper {
         source: 'AUTO_EXPRESS',
         vin: vin_raw,
         plate: plate_raw,
-        raw_data: {
+        rawData: {
           record_id,
           plate: plate_raw,
           vin: vin_raw,

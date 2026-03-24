@@ -28,7 +28,7 @@ vi.mock('../services/enrichmentService.js', () => ({
   applyContribution: vi.fn().mockResolvedValue(undefined),
 }));
 
-import prisma from '../lib/prisma.js';
+import prisma from '../lib/prisma';
 import {
   submitContribution,
   getContributionsByVin,
@@ -62,8 +62,8 @@ beforeEach(() => {
 
 describe('submitContribution', () => {
   it('creates a contribution for a known vehicle', async () => {
-    vi.mocked(prisma.vehicles.findUnique).mockResolvedValue(mockVehicle as never);
-    vi.mocked(prisma.contributions.create).mockResolvedValue(makeContribRow() as never);
+    vi.mocked(prisma.vehicle.findUnique).mockResolvedValue(mockVehicle as never);
+    vi.mocked(prisma.contribution.create).mockResolvedValue(makeContribRow() as never);
 
     const result = await submitContribution(
       {
@@ -75,13 +75,13 @@ describe('submitContribution', () => {
       null,
     );
 
-    expect(prisma.contributions.create).toHaveBeenCalledOnce();
+    expect(prisma.contribution.create).toHaveBeenCalledOnce();
     expect(result.type).toBe('SERVICE_RECORD');
     expect(result.status).toBe('pending');
   });
 
   it('throws 404 when vehicle not found', async () => {
-    vi.mocked(prisma.vehicles.findUnique).mockResolvedValue(null);
+    vi.mocked(prisma.vehicle.findUnique).mockResolvedValue(null);
 
     await expect(
       submitContribution(
@@ -96,10 +96,10 @@ describe('submitContribution', () => {
   });
 
   it('sets higher confidence when user is authenticated with evidence', async () => {
-    vi.mocked(prisma.vehicles.findUnique).mockResolvedValue(mockVehicle as never);
+    vi.mocked(prisma.vehicle.findUnique).mockResolvedValue(mockVehicle as never);
 
     let capturedData: Record<string, unknown> = {};
-    vi.mocked(prisma.contributions.create).mockImplementation(async (args: never) => {
+    vi.mocked(prisma.contribution.create).mockImplementation(async (args: never) => {
       capturedData = (args as { data: Record<string, unknown> }).data;
       return makeContribRow({ confidence_score: capturedData['confidence_score'] }) as never;
     });
@@ -123,13 +123,13 @@ describe('submitContribution', () => {
 
 describe('getContributionsByVin', () => {
   it('returns only approved contributions for non-admin', async () => {
-    vi.mocked(prisma.contributions.findMany).mockResolvedValue([
+    vi.mocked(prisma.contribution.findMany).mockResolvedValue([
       makeContribRow({ status: 'approved' }),
     ] as never);
 
     const result = await getContributionsByVin('JTDBR32E540012345', false);
 
-    expect(prisma.contributions.findMany).toHaveBeenCalledWith(
+    expect(prisma.contribution.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({ status: 'approved' }),
       }),
@@ -138,7 +138,7 @@ describe('getContributionsByVin', () => {
   });
 
   it('returns all contributions for admin', async () => {
-    vi.mocked(prisma.contributions.findMany).mockResolvedValue([
+    vi.mocked(prisma.contribution.findMany).mockResolvedValue([
       makeContribRow({ status: 'pending' }),
       makeContribRow({ id: 'c2', status: 'approved' }),
     ] as never);
@@ -146,7 +146,7 @@ describe('getContributionsByVin', () => {
     const result = await getContributionsByVin('JTDBR32E540012345', true);
 
     // Where clause should not include status filter
-    expect(prisma.contributions.findMany).toHaveBeenCalledWith(
+    expect(prisma.contribution.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { vin: 'JTDBR32E540012345' },
       }),
@@ -159,12 +159,12 @@ describe('moderateContribution', () => {
   it('approves contribution and triggers enrichment', async () => {
     const { applyContribution } = await import('../services/enrichmentService.js');
 
-    vi.mocked(prisma.contributions.findUnique).mockResolvedValue(makeContribRow() as never);
-    vi.mocked(prisma.contributions.update).mockResolvedValue(
+    vi.mocked(prisma.contribution.findUnique).mockResolvedValue(makeContribRow() as never);
+    vi.mocked(prisma.contribution.update).mockResolvedValue(
       makeContribRow({ status: 'approved' }) as never,
     );
-    vi.mocked(prisma.reports.updateMany).mockResolvedValue({ count: 0 } as never);
-    vi.mocked(prisma.vehicle_events.create).mockResolvedValue({} as never);
+    vi.mocked(prisma.report.updateMany).mockResolvedValue({ count: 0 } as never);
+    vi.mocked(prisma.vehicleEvent.create).mockResolvedValue({} as never);
 
     const result = await moderateContribution(
       'contrib-001',
@@ -179,8 +179,8 @@ describe('moderateContribution', () => {
   it('rejects contribution without triggering enrichment', async () => {
     const { applyContribution } = await import('../services/enrichmentService.js');
 
-    vi.mocked(prisma.contributions.findUnique).mockResolvedValue(makeContribRow() as never);
-    vi.mocked(prisma.contributions.update).mockResolvedValue(
+    vi.mocked(prisma.contribution.findUnique).mockResolvedValue(makeContribRow() as never);
+    vi.mocked(prisma.contribution.update).mockResolvedValue(
       makeContribRow({ status: 'rejected' }) as never,
     );
 
@@ -195,7 +195,7 @@ describe('moderateContribution', () => {
   });
 
   it('throws 404 when contribution not found', async () => {
-    vi.mocked(prisma.contributions.findUnique).mockResolvedValue(null);
+    vi.mocked(prisma.contribution.findUnique).mockResolvedValue(null);
 
     await expect(
       moderateContribution('missing-id', { status: 'approved' }, 'admin-id'),

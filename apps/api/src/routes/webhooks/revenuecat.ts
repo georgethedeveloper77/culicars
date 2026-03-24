@@ -15,7 +15,7 @@ import { grantCredits } from '../../services/creditService';
 import prisma from '../../lib/prisma';
 import type { RevenuecatWebhookBody } from '../../types/payment.types';
 
-const router = Router();
+const router: import("express").Router = Router();
 
 /**
  * Verify RevenueCat webhook authorization.

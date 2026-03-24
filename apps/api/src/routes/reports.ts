@@ -19,7 +19,7 @@ import {
   unlockReportSchema,
 } from '../validators/reportValidator';
 
-const router = Router();
+const router: import("express").Router = Router();
 
 /**
  * GET /reports/by-vin/:vin

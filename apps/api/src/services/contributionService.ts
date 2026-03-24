@@ -1,6 +1,6 @@
 // apps/api/src/services/contributionService.ts
 
-import prisma from '../lib/prisma.js';
+import prisma from '../lib/prisma';
 import { scoreContribution, buildFactors } from './confidenceScorer.js';
 import { applyContribution } from './enrichmentService.js';
 import type {
@@ -19,7 +19,7 @@ export async function submitContribution(
   userId: string | null,
 ): Promise<ContributionRecord> {
   // Ensure vehicle exists
-  const vehicle = await prisma.vehicles.findUnique({ where: { vin: submission.vin } });
+  const vehicle = await prisma.vehicle.findUnique({ where: { vin: submission.vin } });
   if (!vehicle) {
     throw Object.assign(new Error(`Vehicle not found: ${submission.vin}`), { status: 404 });
   }
@@ -34,18 +34,18 @@ export async function submitContribution(
 
   const confidenceScore = scoreContribution(factors);
 
-  const record = await prisma.contributions.create({
+  const record = await prisma.contribution.create({
     data: {
       vin: submission.vin,
-      user_id: userId,
+      userId: userId,
       type: submission.type,
       title: submission.title.trim(),
       description: submission.description?.trim() ?? null,
-      data: submission.data ?? {},
-      evidence_urls: submission.evidenceUrls ?? [],
-      verification_doc_urls: submission.verificationDocUrls ?? [],
+      data: (submission.data ?? {}) as any,
+      evidenceUrls: submission.evidenceUrls ?? [],
+      verificationDocUrls: submission.verificationDocUrls ?? [],
       status: 'pending',
-      confidence_score: confidenceScore,
+      confidenceScore: confidenceScore,
     },
   });
 
@@ -65,9 +65,9 @@ export async function getContributionsByVin(
     where['status'] = 'approved';
   }
 
-  const rows = await prisma.contributions.findMany({
+  const rows = await prisma.contribution.findMany({
     where,
-    orderBy: { created_at: 'desc' },
+    orderBy: { createdAt: 'desc' },
   });
 
   return rows.map(mapContribution);
@@ -82,18 +82,18 @@ export async function moderateContribution(
   moderation: ContributionModeration,
   adminUserId: string,
 ): Promise<ContributionRecord> {
-  const existing = await prisma.contributions.findUnique({ where: { id } });
+  const existing = await prisma.contribution.findUnique({ where: { id } });
   if (!existing) {
     throw Object.assign(new Error('Contribution not found'), { status: 404 });
   }
 
-  const updated = await prisma.contributions.update({
+  const updated = await prisma.contribution.update({
     where: { id },
     data: {
       status: moderation.status,
-      admin_note: moderation.adminNote ?? null,
-      reviewed_by: adminUserId,
-      reviewed_at: new Date(),
+      adminNote: moderation.adminNote ?? null,
+      reviewedBy: adminUserId,
+      reviewedAt: new Date(),
     },
   });
 
@@ -106,8 +106,8 @@ export async function moderateContribution(
       title: updated.title,
       description: updated.description,
       data: updated.data as Record<string, unknown> | null,
-      evidenceUrls: updated.evidence_urls as string[],
-      confidenceScore: updated.confidence_score ? Number(updated.confidence_score) : null,
+      evidenceUrls: updated.evidenceUrls as string[],
+      confidenceScore: updated.confidenceScore ? Number(updated.confidenceScore) : null,
     };
     await applyContribution(contributionRow);
   }
@@ -120,7 +120,7 @@ export async function moderateContribution(
 // ---------------------------------------------------------------------------
 
 export async function getContributionById(id: string): Promise<ContributionRecord | null> {
-  const row = await prisma.contributions.findUnique({ where: { id } });
+  const row = await prisma.contribution.findUnique({ where: { id } });
   return row ? mapContribution(row) : null;
 }
 

@@ -41,7 +41,7 @@ interface SectionResult {
  */
 export async function generateReport(vin: string): Promise<string> {
   // Verify vehicle exists
-  const vehicle = await prisma.vehicles.findUnique({
+  const vehicle = await prisma.vehicle.findUnique({
     where: { vin },
     select: { vin: true },
   });
@@ -113,7 +113,7 @@ export async function generateReport(vin: string): Promise<string> {
   // Upsert report + sections in a transaction
   const reportId = await prisma.$transaction(async (tx) => {
     // Check for existing report
-    const existing = await tx.reports.findFirst({
+    const existing = await tx.report.findFirst({
       where: { vin },
       select: { id: true },
     });
@@ -122,7 +122,7 @@ export async function generateReport(vin: string): Promise<string> {
 
     if (existing) {
       // Update existing report
-      await tx.reports.update({
+      await tx.report.update({
         where: { id: existing.id },
         data: {
           status: 'ready',
@@ -138,12 +138,12 @@ export async function generateReport(vin: string): Promise<string> {
       reportId = existing.id;
 
       // Delete old sections and recreate
-      await tx.reportSections.deleteMany({
+      await tx.reportSection.deleteMany({
         where: { reportId },
       });
     } else {
       // Create new report
-      const report = await tx.reports.create({
+      const report = await tx.report.create({
         data: {
           vin,
           status: 'ready',
@@ -160,7 +160,7 @@ export async function generateReport(vin: string): Promise<string> {
     }
 
     // Create all sections
-    await tx.reportSections.createMany({
+    await tx.reportSection.createMany({
       data: sections.map((s) => ({
         reportId,
         sectionType: s.sectionType,
@@ -183,7 +183,7 @@ export async function generateReport(vin: string): Promise<string> {
  * Called when new data arrives (e.g., NTSA COR, stolen report approved).
  */
 export async function regenerateStaleReports(vin: string): Promise<void> {
-  const staleReports = await prisma.reports.findMany({
+  const staleReports = await prisma.report.findMany({
     where: { vin, status: 'stale' },
     select: { id: true },
   });

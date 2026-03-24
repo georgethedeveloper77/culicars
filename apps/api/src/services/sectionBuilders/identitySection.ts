@@ -12,7 +12,7 @@ export async function buildIdentitySection(vin: string): Promise<{
   dataStatus: 'found' | 'not_found' | 'not_checked';
 }> {
   const [vehicle, plates] = await Promise.all([
-    prisma.vehicles.findUnique({
+    prisma.vehicle.findUnique({
       where: { vin },
       select: {
         vin: true,

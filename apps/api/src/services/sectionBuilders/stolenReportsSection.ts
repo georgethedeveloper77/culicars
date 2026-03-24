@@ -12,7 +12,7 @@ export async function buildStolenReportsSection(vin: string): Promise<{
   dataStatus: 'found' | 'not_found' | 'not_checked';
 }> {
   // Get all non-rejected stolen reports for this VIN
-  const reports = await prisma.stolenReports.findMany({
+  const reports = await prisma.stolenReport.findMany({
     where: {
       vin,
       status: { not: 'rejected' },
@@ -41,7 +41,7 @@ export async function buildStolenReportsSection(vin: string): Promise<{
 
   let plateReports: typeof reports = [];
   if (plateValues.length > 0) {
-    plateReports = await prisma.stolenReports.findMany({
+    plateReports = await prisma.stolenReport.findMany({
       where: {
         plate: { in: plateValues },
         vin: null, // Only those without VIN (to avoid duplicates)

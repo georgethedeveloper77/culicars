@@ -10,7 +10,7 @@ import { ocrScanBodySchema } from '../validators/ocrValidator';
 import { processImageOcr } from '../services/ocrService';
 import { uploadFile, UploadError } from '../storage/uploadHandler';
 
-const router = Router();
+const router: import("express").Router = Router();
 
 // Multer: in-memory storage, max 10MB, images only
 const upload = multer({

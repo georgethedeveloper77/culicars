@@ -15,15 +15,19 @@ import type { FullReport, ReportPreview, ReportSection } from '../types/report.t
  */
 export async function getOrGenerateByVin(vin: string): Promise<string> {
   // Check for existing ready report
-  const existing = await prisma.reports.findFirst({
+  const existing = await prisma.report.findFirst({
     where: { vin, status: 'ready' },
     select: { id: true },
   });
 
-  if (existing) return existing.id;
+  if (existing) {
+    // Verify it has sections — if not, regenerate
+    const sectionCount = await prisma.reportSection.count({ where: { reportId: existing.id } });
+    if (sectionCount > 0) return existing.id;
+  }
 
   // Check for stale — regenerate
-  const stale = await prisma.reports.findFirst({
+  const stale = await prisma.report.findFirst({
     where: { vin, status: 'stale' },
     select: { id: true },
   });
@@ -44,10 +48,10 @@ export async function getReportPreview(
   reportId: string,
   userId?: string
 ): Promise<ReportPreview | null> {
-  const report = await prisma.reports.findUnique({
+  const report = await prisma.report.findUnique({
     where: { id: reportId },
     include: {
-      reportSections: {
+      sections: {
         select: {
           sectionType: true,
           isLocked: true,
@@ -61,7 +65,7 @@ export async function getReportPreview(
   if (!report) return null;
 
   // Get vehicle info
-  const vehicle = await prisma.vehicles.findUnique({
+  const vehicle = await prisma.vehicle.findUnique({
     where: { vin: report.vin },
     select: {
       make: true,
@@ -80,14 +84,14 @@ export async function getReportPreview(
   });
 
   // Stolen alert
-  const stolenCount = await prisma.stolenReports.count({
+  const stolenCount = await prisma.stolenReport.count({
     where: { vin: report.vin, status: 'active' },
   });
 
   // Check if user has unlocked
   let isUnlocked = false;
   if (userId) {
-    const unlock = await prisma.reportUnlocks.findUnique({
+    const unlock = await prisma.reportUnlock.findUnique({
       where: {
         userId_reportId: { userId, reportId },
       },
@@ -96,7 +100,7 @@ export async function getReportPreview(
   }
 
   // Adjust locked status if user has unlocked
-  const sectionSummary = report.reportSections.map((s) => ({
+  const sectionSummary = (report.sections ?? []).map((s) => ({
     sectionType: s.sectionType as SectionType,
     isLocked: isUnlocked ? false : s.isLocked,
     dataStatus: s.dataStatus as 'found' | 'not_found' | 'not_checked',
@@ -146,7 +150,7 @@ export async function getFullReport(
   // Check unlock status
   let isUnlocked = false;
   if (userId) {
-    const unlock = await prisma.reportUnlocks.findUnique({
+    const unlock = await prisma.reportUnlock.findUnique({
       where: {
         userId_reportId: { userId, reportId },
       },
@@ -155,7 +159,7 @@ export async function getFullReport(
   }
 
   // Get all sections with data
-  const dbSections = await prisma.reportSections.findMany({
+  const dbSections = await prisma.reportSection.findMany({
     where: { reportId },
     orderBy: { id: 'asc' },
   });

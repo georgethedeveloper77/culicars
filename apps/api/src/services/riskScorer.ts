@@ -20,7 +20,7 @@ export async function scoreRisk(vin: string): Promise<RiskResult> {
     ownershipEvents,
     purposeEvents,
   ] = await Promise.all([
-    prisma.vehicles.findUnique({
+    prisma.vehicle.findUnique({
       where: { vin },
       select: {
         inspectionStatus: true,
@@ -32,12 +32,12 @@ export async function scoreRisk(vin: string): Promise<RiskResult> {
     }),
 
     // Active stolen reports
-    prisma.stolenReports.count({
+    prisma.stolenReport.count({
       where: { vin, status: 'active' },
     }),
 
     // Damage events (check for severe)
-    prisma.vehicleEvents.findMany({
+    prisma.vehicleEvent.findMany({
       where: {
         vin,
         eventType: { in: ['DAMAGED', 'REPAIRED'] },
@@ -46,7 +46,7 @@ export async function scoreRisk(vin: string): Promise<RiskResult> {
     }),
 
     // Mileage-related events for rollback check
-    prisma.vehicleEvents.findMany({
+    prisma.vehicleEvent.findMany({
       where: {
         vin,
         eventType: { in: ['SERVICED', 'INSPECTED', 'LISTED_FOR_SALE', 'AUCTIONED'] },
@@ -56,12 +56,12 @@ export async function scoreRisk(vin: string): Promise<RiskResult> {
     }),
 
     // Ownership changes
-    prisma.vehicleEvents.count({
+    prisma.vehicleEvent.count({
       where: { vin, eventType: 'OWNERSHIP_CHANGE' },
     }),
 
     // PSV/taxi events
-    prisma.vehicleEvents.count({
+    prisma.vehicleEvent.count({
       where: { vin, eventType: 'PSV_LICENSED' },
     }),
   ]);

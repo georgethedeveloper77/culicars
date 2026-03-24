@@ -37,7 +37,7 @@ export async function isDuplicateEvent(candidate: EventCandidate): Promise<boole
     where.source_ref = source_ref;
   }
 
-  const existing = await prisma.vehicle_events.findFirst({ where });
+  const existing = await prisma.vehicleEvent.findFirst({ where });
   return existing !== null;
 }
 

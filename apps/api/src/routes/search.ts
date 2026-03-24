@@ -7,7 +7,7 @@ import { Router } from 'express';
 import { searchQuerySchema } from '../validators/searchValidator';
 import { search } from '../services/searchService';
 
-const router = Router();
+const router: import("express").Router = Router();
 
 router.get('/', async (req, res, next) => {
   try {

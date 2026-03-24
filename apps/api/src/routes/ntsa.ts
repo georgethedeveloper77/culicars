@@ -20,7 +20,7 @@ import { parseCorText } from '../services/ntsaCorParser';
 import { enrichFromCor } from '../services/corEnrichService';
 import type { NtsaCorProcessResponse } from '../types/ocr.types';
 
-const router = Router();
+const router: import("express").Router = Router();
 
 /**
  * POST /ntsa/consent
@@ -56,7 +56,7 @@ router.post(
         where: {
           userId,
           vin,
-          plate: normalizedPlate,
+          plate: normalizedPlate.normalized,
           pdfProcessed: false,
         },
       });
@@ -78,7 +78,7 @@ router.post(
         data: {
           userId,
           vin,
-          plate: normalizedPlate,
+          plate: normalizedPlate.normalized,
         },
       });
 

@@ -18,7 +18,7 @@ import {
 } from '../services/paymentProviderService';
 import type { ProviderSlug } from '../types/payment.types';
 
-const router = Router();
+const router: import("express").Router = Router();
 
 // ── GET /payments/providers ─────────────────────────────────
 // Public: returns only enabled providers so frontend renders dynamically

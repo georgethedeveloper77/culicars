@@ -17,7 +17,7 @@ export async function buildOdometerSection(vin: string): Promise<{
   dataStatus: 'found' | 'not_found' | 'not_checked';
 }> {
   const [vehicle, mileageEvents] = await Promise.all([
-    prisma.vehicles.findUnique({
+    prisma.vehicle.findUnique({
       where: { vin },
       select: {
         year: true,
@@ -28,7 +28,7 @@ export async function buildOdometerSection(vin: string): Promise<{
     }),
 
     // Events that may carry mileage in metadata
-    prisma.vehicleEvents.findMany({
+    prisma.vehicleEvent.findMany({
       where: {
         vin,
         eventType: {

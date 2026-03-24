@@ -97,7 +97,7 @@ function extractWithPattern(
       value: cleaned,
       confidence: Math.max(0, Math.min(1, confidence)),
       raw,
-      isValid,
+      isValid: isValid.valid,
     });
   }
 }

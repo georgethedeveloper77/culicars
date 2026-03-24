@@ -4,7 +4,7 @@ import { requireRole } from '../middleware/requireRole';
 import { runScraper, getRegisteredSources } from '../services/scraperOrchestrator';
 import { getJob, listJobs, ScraperSource } from '../services/scraperJobService';
 
-const router = Router();
+const router: import("express").Router = Router();
 
 // All scraper routes require admin
 router.use(requireRole('admin'));

@@ -12,7 +12,7 @@ export async function buildLegalSection(vin: string): Promise<{
   dataStatus: 'found' | 'not_found' | 'not_checked';
 }> {
   const [vehicle, legalEvents] = await Promise.all([
-    prisma.vehicles.findUnique({
+    prisma.vehicle.findUnique({
       where: { vin },
       select: {
         inspectionStatus: true,
@@ -21,7 +21,7 @@ export async function buildLegalSection(vin: string): Promise<{
       },
     }),
 
-    prisma.vehicleEvents.findMany({
+    prisma.vehicleEvent.findMany({
       where: {
         vin,
         eventType: {

@@ -36,13 +36,13 @@ export class AutochekScraper extends BaseScraper {
     if (!res.ok) throw new Error(`HTTP ${res.status} from ${url}`);
 
     const json = await res.json();
-    const cars: Record<string, unknown>[] = json.result ?? json.data ?? [];
+    const cars: Record<string, unknown>[] = (json as any).result ?? (json as any).data ?? [];
 
     return cars.map((car) => ({
       source: 'AUTOCHEK',
       vin: (car.vin as string) ?? null,
       plate: null,
-      raw_data: {
+      rawData: {
         listing_id: car.id ?? car.carId,
         title: `${car.year ?? ''} ${car.make ?? ''} ${car.model ?? ''}`.trim(),
         make: car.make,

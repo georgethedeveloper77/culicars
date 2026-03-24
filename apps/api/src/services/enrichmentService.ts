@@ -3,7 +3,7 @@
 // Applies approved contributions to the live vehicle record.
 // Called by contributionService.moderate() when status → 'approved'.
 
-import prisma from '../lib/prisma.js';
+import prisma from '../lib/prisma';
 import type { ContribType } from '../types/contribution.types.js';
 
 interface ContributionRow {
@@ -61,7 +61,7 @@ export async function applyContribution(contribution: ContributionRow): Promise<
   }
 
   // After enrichment, mark existing reports as stale so they regenerate
-  await prisma.reports.updateMany({
+  await prisma.report.updateMany({
     where: { vin },
     data: { status: 'stale' },
   });
@@ -78,11 +78,11 @@ async function applyMileageRecord(
 ): Promise<void> {
   if (!data?.mileage || !data?.date) return;
 
-  await prisma.vehicle_events.create({
+  await prisma.vehicleEvent.create({
     data: {
       vin,
-      event_type: 'SERVICED', // Mileage records often come from service visits
-      event_date: new Date(data.date as string),
+      eventType: 'SERVICED', // Mileage records often come from service visits
+      eventDate: new Date(data.date as string),
       source: 'contribution',
       confidence,
       metadata: { mileage: data.mileage, source: 'contribution' },
@@ -95,15 +95,15 @@ async function applyDamageReport(
   data: Record<string, unknown> | null,
   confidence: number,
 ): Promise<void> {
-  await prisma.vehicle_events.create({
+  await prisma.vehicleEvent.create({
     data: {
       vin,
-      event_type: 'DAMAGED',
-      event_date: data?.date ? new Date(data.date as string) : new Date(),
+      eventType: 'DAMAGED',
+      eventDate: data?.date ? new Date(data.date as string) : new Date(),
       county: (data?.county as string) ?? null,
       source: 'contribution',
       confidence,
-      metadata: data ?? {},
+      metadata: (data ?? {}) as any,
     },
   });
 }
@@ -114,20 +114,20 @@ async function applyServiceRecord(
   confidence: number,
 ): Promise<void> {
   const data = contribution.data;
-  await prisma.vehicle_events.create({
+  await prisma.vehicleEvent.create({
     data: {
       vin,
-      event_type: 'SERVICED',
-      event_date: data?.date ? new Date(data.date as string) : new Date(),
+      eventType: 'SERVICED',
+      eventDate: data?.date ? new Date(data.date as string) : new Date(),
       county: (data?.county as string) ?? null,
       source: 'contribution',
       confidence,
-      metadata: {
+      metadata: ({
         garageName: data?.garageName,
         mileage: data?.mileage,
         workDone: contribution.description,
         ...data,
-      },
+      }) as any,
     },
   });
 }
@@ -137,14 +137,14 @@ async function applyOwnershipTransfer(
   data: Record<string, unknown> | null,
   confidence: number,
 ): Promise<void> {
-  await prisma.vehicle_events.create({
+  await prisma.vehicleEvent.create({
     data: {
       vin,
-      event_type: 'OWNERSHIP_CHANGE',
-      event_date: data?.date ? new Date(data.date as string) : new Date(),
+      eventType: 'OWNERSHIP_CHANGE',
+      eventDate: data?.date ? new Date(data.date as string) : new Date(),
       source: 'contribution',
       confidence,
-      metadata: data ?? {},
+      metadata: (data ?? {}) as any,
     },
   });
 }
@@ -157,15 +157,15 @@ async function applyInspectionRecord(
   const eventType =
     data?.passed === false ? 'INSPECTION_FAILED' : 'INSPECTED';
 
-  await prisma.vehicle_events.create({
+  await prisma.vehicleEvent.create({
     data: {
       vin,
-      event_type: eventType,
-      event_date: data?.date ? new Date(data.date as string) : new Date(),
+      eventType: eventType as any,
+      eventDate: data?.date ? new Date(data.date as string) : new Date(),
       county: (data?.county as string) ?? null,
       source: 'contribution',
       confidence,
-      metadata: data ?? {},
+      metadata: (data ?? {}) as any,
     },
   });
 }
@@ -175,14 +175,14 @@ async function applyImportDocument(
   data: Record<string, unknown> | null,
   confidence: number,
 ): Promise<void> {
-  await prisma.vehicle_events.create({
+  await prisma.vehicleEvent.create({
     data: {
       vin,
-      event_type: 'IMPORTED',
-      event_date: data?.importDate ? new Date(data.importDate as string) : new Date(),
+      eventType: 'IMPORTED',
+      eventDate: data?.importDate ? new Date(data.importDate as string) : new Date(),
       source: 'contribution',
       confidence,
-      metadata: data ?? {},
+      metadata: (data ?? {}) as any,
     },
   });
 }
@@ -194,15 +194,15 @@ async function applyGenericEvent(
   confidence: number,
   sourceRef: string,
 ): Promise<void> {
-  await prisma.vehicle_events.create({
+  await prisma.vehicleEvent.create({
     data: {
       vin,
-      event_type: eventType,
-      event_date: new Date(),
+      eventType: eventType as any,
+      eventDate: new Date(),
       source: 'contribution',
-      source_ref: sourceRef,
+      sourceRef: sourceRef,
       confidence,
-      metadata: data ?? {},
+      metadata: (data ?? {}) as any,
     },
   });
 }

@@ -19,7 +19,7 @@ export async function unlockReport(
   reportId: string
 ): Promise<UnlockResult> {
   // Check if already unlocked
-  const existing = await prisma.reportUnlocks.findUnique({
+  const existing = await prisma.reportUnlock.findUnique({
     where: {
       userId_reportId: { userId, reportId },
     },
@@ -27,7 +27,7 @@ export async function unlockReport(
 
   if (existing) {
     // Already unlocked — return success without charging
-    const wallet = await prisma.wallets.findUnique({
+    const wallet = await prisma.wallet.findUnique({
       where: { userId },
       select: { balance: true },
     });
@@ -41,7 +41,7 @@ export async function unlockReport(
   }
 
   // Verify report exists
-  const report = await prisma.reports.findUnique({
+  const report = await prisma.report.findUnique({
     where: { id: reportId },
     select: { id: true, vin: true, status: true },
   });
@@ -57,7 +57,7 @@ export async function unlockReport(
   // Atomic transaction: debit wallet + create ledger entry + create unlock
   const result = await prisma.$transaction(async (tx) => {
     // Get current balance (with row lock via findFirst + forUpdate pattern)
-    const wallet = await tx.wallets.findUnique({
+    const wallet = await tx.wallet.findUnique({
       where: { userId },
     });
 
@@ -75,7 +75,7 @@ export async function unlockReport(
     const balanceAfter = balanceBefore - UNLOCK_COST;
 
     // Debit wallet
-    await tx.wallets.update({
+    await tx.wallet.update({
       where: { userId },
       data: {
         balance: balanceAfter,
@@ -97,7 +97,7 @@ export async function unlockReport(
     });
 
     // Create unlock record
-    await tx.reportUnlocks.create({
+    await tx.reportUnlock.create({
       data: {
         userId,
         reportId,
@@ -123,7 +123,7 @@ export async function hasUnlocked(
   userId: string,
   reportId: string
 ): Promise<boolean> {
-  const unlock = await prisma.reportUnlocks.findUnique({
+  const unlock = await prisma.reportUnlock.findUnique({
     where: {
       userId_reportId: { userId, reportId },
     },

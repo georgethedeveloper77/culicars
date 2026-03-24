@@ -22,19 +22,19 @@ export async function buildPurposeSection(vin: string): Promise<{
   dataStatus: 'found' | 'not_found' | 'not_checked';
 }> {
   const [vehicle, psvEvents, allEvents] = await Promise.all([
-    prisma.vehicles.findUnique({
+    prisma.vehicle.findUnique({
       where: { vin },
       select: { psvLicensed: true },
     }),
 
     // PSV license events
-    prisma.vehicleEvents.findMany({
+    prisma.vehicleEvent.findMany({
       where: { vin, eventType: 'PSV_LICENSED' },
       select: { eventDate: true, source: true, metadata: true },
     }),
 
     // All events — check metadata for commercial use indicators
-    prisma.vehicleEvents.findMany({
+    prisma.vehicleEvent.findMany({
       where: { vin },
       select: { eventType: true, metadata: true, source: true },
     }),

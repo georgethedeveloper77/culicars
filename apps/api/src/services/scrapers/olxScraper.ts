@@ -61,7 +61,7 @@ export class OlxScraper extends BaseScraper {
         source: 'OLX',
         vin: null,
         plate: null,
-        raw_data: {
+        rawData: {
           listing_id,
           title,
           price_text,

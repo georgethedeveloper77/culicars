@@ -59,7 +59,7 @@ export class JijiScraper extends BaseScraper {
               source: 'JIJI',
               vin: null,
               plate: null,
-              raw_data: {
+              rawData: {
                 listing_id: item['@id'] ?? item.identifier,
                 title: item.name,
                 price: item.offers?.price,
@@ -96,13 +96,13 @@ export class JijiScraper extends BaseScraper {
       const year_match = title.match(yearPattern)?.[0] ?? null;
 
       // Avoid duplicates with JSON-LD parsed items
-      if (items.some((it) => it.raw_data.listing_id === listing_id)) continue;
+      if (items.some((it) => it.rawData.listing_id === listing_id)) continue;
 
       items.push({
         source: 'JIJI',
         vin: null,
         plate: null,
-        raw_data: {
+        rawData: {
           listing_id,
           title: title.trim(),
           price_text,

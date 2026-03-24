@@ -5,7 +5,7 @@ export interface RawScrapedItem {
   source: string;
   vin?: string | null;
   plate?: string | null;
-  raw_data: Record<string, unknown>;
+  rawData: Record<string, unknown>;
 }
 
 export interface ScraperOptions {
@@ -72,15 +72,15 @@ export abstract class BaseScraper {
     if (items.length === 0) return 0;
 
     const data = items.map((item) => ({
-      job_id: jobId,
+      jobId: jobId,
       source: item.source,
-      raw_data: item.raw_data,
+      rawData: item.rawData as any,
       vin: item.vin ?? null,
       plate: item.plate ?? null,
       processed: false,
     }));
 
-    const result = await prisma.scraper_data_raw.createMany({ data });
+    const result = await prisma.scraperDataRaw.createMany({ data: data as any });
     return result.count;
   }
 }

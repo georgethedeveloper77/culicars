@@ -28,7 +28,7 @@ vi.mock('../lib/prisma.js', () => ({
   },
 }));
 
-import prisma from '../lib/prisma.js';
+import prisma from '../lib/prisma';
 import {
   submitReport,
   getByPlate,
@@ -85,13 +85,13 @@ beforeEach(() => {
 // ---------------------------------------------------------------------------
 describe('submitReport', () => {
   it('creates a pending report', async () => {
-    vi.mocked(prisma.stolen_reports.findFirst).mockResolvedValue(null);
-    vi.mocked(prisma.stolen_reports.create).mockResolvedValue(makeReportRow() as never);
+    vi.mocked(prisma.stolenReport.findFirst).mockResolvedValue(null);
+    vi.mocked(prisma.stolenReport.create).mockResolvedValue(makeReportRow() as never);
 
     const result = await submitReport(baseSubmission, null);
 
-    expect(prisma.stolen_reports.create).toHaveBeenCalledOnce();
-    const createArgs = vi.mocked(prisma.stolen_reports.create).mock.calls[0][0] as {
+    expect(prisma.stolenReport.create).toHaveBeenCalledOnce();
+    const createArgs = vi.mocked(prisma.stolenReport.create).mock.calls[0][0] as {
       data: Record<string, unknown>;
     };
     expect(createArgs.data['plate']).toBe('KCA123A'); // normalised
@@ -100,30 +100,30 @@ describe('submitReport', () => {
   });
 
   it('normalises plate by removing spaces and uppercasing', async () => {
-    vi.mocked(prisma.stolen_reports.findFirst).mockResolvedValue(null);
-    vi.mocked(prisma.stolen_reports.create).mockResolvedValue(makeReportRow() as never);
+    vi.mocked(prisma.stolenReport.findFirst).mockResolvedValue(null);
+    vi.mocked(prisma.stolenReport.create).mockResolvedValue(makeReportRow() as never);
 
     await submitReport({ ...baseSubmission, plate: 'kca 123a' }, null);
 
-    const createArgs = vi.mocked(prisma.stolen_reports.create).mock.calls[0][0] as {
+    const createArgs = vi.mocked(prisma.stolenReport.create).mock.calls[0][0] as {
       data: Record<string, unknown>;
     };
     expect(createArgs.data['plate']).toBe('KCA123A');
   });
 
   it('rejects duplicate report submitted within 24 hours', async () => {
-    vi.mocked(prisma.stolen_reports.findFirst).mockResolvedValue(makeReportRow() as never);
+    vi.mocked(prisma.stolenReport.findFirst).mockResolvedValue(makeReportRow() as never);
 
     await expect(submitReport(baseSubmission, null)).rejects.toMatchObject({ status: 409 });
   });
 
   it('stores reporter user_id when authenticated', async () => {
-    vi.mocked(prisma.stolen_reports.findFirst).mockResolvedValue(null);
-    vi.mocked(prisma.stolen_reports.create).mockResolvedValue(makeReportRow() as never);
+    vi.mocked(prisma.stolenReport.findFirst).mockResolvedValue(null);
+    vi.mocked(prisma.stolenReport.create).mockResolvedValue(makeReportRow() as never);
 
     await submitReport(baseSubmission, 'user-xyz');
 
-    const createArgs = vi.mocked(prisma.stolen_reports.create).mock.calls[0][0] as {
+    const createArgs = vi.mocked(prisma.stolenReport.create).mock.calls[0][0] as {
       data: Record<string, unknown>;
     };
     expect(createArgs.data['reporter_user_id']).toBe('user-xyz');
@@ -135,11 +135,11 @@ describe('submitReport', () => {
 // ---------------------------------------------------------------------------
 describe('getByPlate', () => {
   it('returns reports for a normalised plate', async () => {
-    vi.mocked(prisma.stolen_reports.findMany).mockResolvedValue([makeReportRow()] as never);
+    vi.mocked(prisma.stolenReport.findMany).mockResolvedValue([makeReportRow()] as never);
 
     const results = await getByPlate('KCA 123A');
 
-    expect(prisma.stolen_reports.findMany).toHaveBeenCalledWith(
+    expect(prisma.stolenReport.findMany).toHaveBeenCalledWith(
       expect.objectContaining({ where: { plate: 'KCA123A' } }),
     );
     expect(results).toHaveLength(1);
@@ -148,7 +148,7 @@ describe('getByPlate', () => {
 
 describe('getByVin', () => {
   it('returns reports for a VIN', async () => {
-    vi.mocked(prisma.stolen_reports.findMany).mockResolvedValue([
+    vi.mocked(prisma.stolenReport.findMany).mockResolvedValue([
       makeReportRow({ vin: 'JTDBR32E540012345' }),
     ] as never);
 
@@ -167,13 +167,13 @@ describe('reviewReport', () => {
       status: 'active',
     });
 
-    vi.mocked(prisma.stolen_reports.findUnique).mockResolvedValue(
+    vi.mocked(prisma.stolenReport.findUnique).mockResolvedValue(
       makeReportRow() as never,
     );
-    vi.mocked(prisma.stolen_reports.update).mockResolvedValue(reportWithVin as never);
-    vi.mocked(prisma.vehicles.findUnique).mockResolvedValue({ vin: 'JTDBR32E540012345' } as never);
-    vi.mocked(prisma.vehicle_events.create).mockResolvedValue({} as never);
-    vi.mocked(prisma.reports.updateMany).mockResolvedValue({ count: 1 } as never);
+    vi.mocked(prisma.stolenReport.update).mockResolvedValue(reportWithVin as never);
+    vi.mocked(prisma.vehicle.findUnique).mockResolvedValue({ vin: 'JTDBR32E540012345' } as never);
+    vi.mocked(prisma.vehicleEvent.create).mockResolvedValue({} as never);
+    vi.mocked(prisma.report.updateMany).mockResolvedValue({ count: 1 } as never);
 
     const result = await reviewReport(
       'report-001',
@@ -182,8 +182,8 @@ describe('reviewReport', () => {
     );
 
     expect(result.status).toBe('active');
-    expect(prisma.vehicle_events.create).toHaveBeenCalledOnce();
-    const eventArgs = vi.mocked(prisma.vehicle_events.create).mock.calls[0][0] as {
+    expect(prisma.vehicleEvent.create).toHaveBeenCalledOnce();
+    const eventArgs = vi.mocked(prisma.vehicleEvent.create).mock.calls[0][0] as {
       data: Record<string, unknown>;
     };
     expect(eventArgs.data['event_type']).toBe('STOLEN');
@@ -195,37 +195,37 @@ describe('reviewReport', () => {
       status: 'active',
     });
 
-    vi.mocked(prisma.stolen_reports.findUnique).mockResolvedValue(makeReportRow() as never);
-    vi.mocked(prisma.stolen_reports.update).mockResolvedValue(reportWithVin as never);
-    vi.mocked(prisma.vehicles.findUnique).mockResolvedValue(null);
-    vi.mocked(prisma.vehicles.create).mockResolvedValue({} as never);
-    vi.mocked(prisma.plate_vin_map.upsert).mockResolvedValue({} as never);
-    vi.mocked(prisma.vehicle_events.create).mockResolvedValue({} as never);
-    vi.mocked(prisma.reports.updateMany).mockResolvedValue({ count: 0 } as never);
+    vi.mocked(prisma.stolenReport.findUnique).mockResolvedValue(makeReportRow() as never);
+    vi.mocked(prisma.stolenReport.update).mockResolvedValue(reportWithVin as never);
+    vi.mocked(prisma.vehicle.findUnique).mockResolvedValue(null);
+    vi.mocked(prisma.vehicle.create).mockResolvedValue({} as never);
+    vi.mocked(prisma.plateVinMap.upsert).mockResolvedValue({} as never);
+    vi.mocked(prisma.vehicleEvent.create).mockResolvedValue({} as never);
+    vi.mocked(prisma.report.updateMany).mockResolvedValue({ count: 0 } as never);
 
     await reviewReport('report-001', { status: 'active' }, 'admin-id');
 
-    expect(prisma.vehicles.create).toHaveBeenCalledOnce();
+    expect(prisma.vehicle.create).toHaveBeenCalledOnce();
   });
 
   it('marks existing reports as stale on approval', async () => {
     const reportWithVin = makeReportRow({ vin: 'JTDBR32E540012345', status: 'active' });
 
-    vi.mocked(prisma.stolen_reports.findUnique).mockResolvedValue(makeReportRow() as never);
-    vi.mocked(prisma.stolen_reports.update).mockResolvedValue(reportWithVin as never);
-    vi.mocked(prisma.vehicles.findUnique).mockResolvedValue({ vin: 'JTDBR32E540012345' } as never);
-    vi.mocked(prisma.vehicle_events.create).mockResolvedValue({} as never);
-    vi.mocked(prisma.reports.updateMany).mockResolvedValue({ count: 2 } as never);
+    vi.mocked(prisma.stolenReport.findUnique).mockResolvedValue(makeReportRow() as never);
+    vi.mocked(prisma.stolenReport.update).mockResolvedValue(reportWithVin as never);
+    vi.mocked(prisma.vehicle.findUnique).mockResolvedValue({ vin: 'JTDBR32E540012345' } as never);
+    vi.mocked(prisma.vehicleEvent.create).mockResolvedValue({} as never);
+    vi.mocked(prisma.report.updateMany).mockResolvedValue({ count: 2 } as never);
 
     await reviewReport('report-001', { status: 'active' }, 'admin-id');
 
-    expect(prisma.reports.updateMany).toHaveBeenCalledWith(
+    expect(prisma.report.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({ data: { status: 'stale' } }),
     );
   });
 
   it('throws 404 for missing report', async () => {
-    vi.mocked(prisma.stolen_reports.findUnique).mockResolvedValue(null);
+    vi.mocked(prisma.stolenReport.findUnique).mockResolvedValue(null);
 
     await expect(
       reviewReport('no-such-id', { status: 'active' }, 'admin-id'),
@@ -238,14 +238,14 @@ describe('reviewReport', () => {
 // ---------------------------------------------------------------------------
 describe('markRecovered', () => {
   it('marks an active report as recovered and adds RECOVERED event', async () => {
-    vi.mocked(prisma.stolen_reports.findUnique).mockResolvedValue(
+    vi.mocked(prisma.stolenReport.findUnique).mockResolvedValue(
       makeReportRow({ status: 'active', vin: 'JTDBR32E540012345' }) as never,
     );
-    vi.mocked(prisma.stolen_reports.update).mockResolvedValue(
+    vi.mocked(prisma.stolenReport.update).mockResolvedValue(
       makeReportRow({ status: 'recovered', vin: 'JTDBR32E540012345' }) as never,
     );
-    vi.mocked(prisma.vehicle_events.create).mockResolvedValue({} as never);
-    vi.mocked(prisma.reports.updateMany).mockResolvedValue({ count: 1 } as never);
+    vi.mocked(prisma.vehicleEvent.create).mockResolvedValue({} as never);
+    vi.mocked(prisma.report.updateMany).mockResolvedValue({ count: 1 } as never);
 
     const result = await markRecovered(
       'report-001',
@@ -254,7 +254,7 @@ describe('markRecovered', () => {
     );
 
     expect(result.status).toBe('recovered');
-    expect(prisma.vehicle_events.create).toHaveBeenCalledWith(
+    expect(prisma.vehicleEvent.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({ event_type: 'RECOVERED' }),
       }),
@@ -262,7 +262,7 @@ describe('markRecovered', () => {
   });
 
   it('rejects recovery on non-active report', async () => {
-    vi.mocked(prisma.stolen_reports.findUnique).mockResolvedValue(
+    vi.mocked(prisma.stolenReport.findUnique).mockResolvedValue(
       makeReportRow({ status: 'pending' }) as never,
     );
 
@@ -276,7 +276,7 @@ describe('markRecovered', () => {
   });
 
   it('throws 403 when a different user tries to mark recovered', async () => {
-    vi.mocked(prisma.stolen_reports.findUnique).mockResolvedValue(
+    vi.mocked(prisma.stolenReport.findUnique).mockResolvedValue(
       makeReportRow({ status: 'active', reporter_user_id: 'owner-id' }) as never,
     );
 

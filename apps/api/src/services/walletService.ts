@@ -7,7 +7,7 @@
 // ============================================================
 
 import prisma from '../lib/prisma';
-import type { PrismaClient, Prisma } from '@culicars/database';
+import type { PrismaClient, Prisma } from '@prisma/client';
 
 type TxClient = Omit<
   PrismaClient,

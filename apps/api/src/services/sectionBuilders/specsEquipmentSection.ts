@@ -116,7 +116,7 @@ export async function buildSpecsEquipmentSection(vin: string): Promise<{
   recordCount: number;
   dataStatus: 'found' | 'not_found' | 'not_checked';
 }> {
-  const vehicle = await prisma.vehicles.findUnique({
+  const vehicle = await prisma.vehicle.findUnique({
     where: { vin },
   });
 

@@ -11,7 +11,7 @@ export async function buildServiceSection(vin: string): Promise<{
   recordCount: number;
   dataStatus: 'found' | 'not_found' | 'not_checked';
 }> {
-  const serviceEvents = await prisma.vehicleEvents.findMany({
+  const serviceEvents = await prisma.vehicleEvent.findMany({
     where: {
       vin,
       eventType: 'SERVICED',

@@ -18,7 +18,7 @@ import { BeforwardScraper } from './scrapers/beforwardScraper';
 
 type ScraperFactory = () => BaseScraper;
 
-const SCRAPER_REGISTRY: Map<ScraperSource, ScraperFactory> = new Map([
+const SCRAPER_REGISTRY = new Map<ScraperSource, ScraperFactory>([
   ['JIJI',        () => new JijiScraper()],
   ['PIGIAME',     () => new PigiaMeScraper()],
   ['OLX',         () => new OlxScraper()],
@@ -73,7 +73,7 @@ export async function runScraper(
   const jobId = job.id;
 
   try {
-    await updateJob(jobId, { status: 'running', started_at: new Date() });
+    await updateJob(jobId, { status: 'running', startedAt: new Date() });
 
     const scraper = factory();
     const items = await scraper.scrape();
@@ -85,7 +85,7 @@ export async function runScraper(
     // Process the raw data immediately after scraping
     const procResult = await processJobRawData(jobId);
 
-    await completeJob(jobId, { items_found, items_stored, items_skipped });
+    await completeJob(jobId, { itemsFound: items_found, itemsStored: items_stored, itemsSkipped: items_skipped });
 
     return {
       jobId,

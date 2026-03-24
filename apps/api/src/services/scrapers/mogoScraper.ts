@@ -78,7 +78,7 @@ export class MogoScraper extends BaseScraper {
         source: 'MOGO',
         vin: vin_raw,
         plate: plate_raw,
-        raw_data: {
+        rawData: {
           vehicle_id,
           title,
           vin: vin_raw,

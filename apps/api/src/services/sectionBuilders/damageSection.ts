@@ -50,7 +50,7 @@ export async function buildDamageSection(vin: string): Promise<{
   recordCount: number;
   dataStatus: 'found' | 'not_found' | 'not_checked';
 }> {
-  const damageEvents = await prisma.vehicleEvents.findMany({
+  const damageEvents = await prisma.vehicleEvent.findMany({
     where: {
       vin,
       eventType: 'DAMAGED',

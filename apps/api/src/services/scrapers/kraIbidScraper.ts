@@ -70,7 +70,7 @@ export class KraIbidScraper extends BaseScraper {
         source: 'KRA_IBID',
         vin: vin_raw,
         plate: null,
-        raw_data: {
+        rawData: {
           lot_number,
           vin: vin_raw,
           chassis_number: chassis,

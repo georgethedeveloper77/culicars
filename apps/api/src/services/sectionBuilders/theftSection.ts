@@ -13,7 +13,7 @@ export async function buildTheftSection(vin: string): Promise<{
 }> {
   const [stolenReports, theftEvents, recoveryEvents] = await Promise.all([
     // Community stolen reports
-    prisma.stolenReports.findMany({
+    prisma.stolenReport.findMany({
       where: { vin },
       select: {
         dateStolen: true,
@@ -26,13 +26,13 @@ export async function buildTheftSection(vin: string): Promise<{
     }),
 
     // Stolen events
-    prisma.vehicleEvents.findMany({
+    prisma.vehicleEvent.findMany({
       where: { vin, eventType: { in: ['STOLEN', 'WANTED'] } },
       select: { eventDate: true, source: true, metadata: true },
     }),
 
     // Recovery events
-    prisma.vehicleEvents.findMany({
+    prisma.vehicleEvent.findMany({
       where: { vin, eventType: 'RECOVERED' },
       select: { eventDate: true, source: true },
     }),

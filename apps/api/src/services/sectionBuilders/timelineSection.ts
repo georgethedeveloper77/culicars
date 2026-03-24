@@ -36,7 +36,7 @@ export async function buildTimelineSection(vin: string): Promise<{
   recordCount: number;
   dataStatus: 'found' | 'not_found' | 'not_checked';
 }> {
-  const events = await prisma.vehicleEvents.findMany({
+  const events = await prisma.vehicleEvent.findMany({
     where: { vin },
     select: {
       eventType: true,

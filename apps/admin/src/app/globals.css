@@ -1,0 +1,39 @@
+/* apps/admin/src/app/globals.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --cc-bg: #0E0E0E;
+  --cc-surface: #141414;
+  --cc-surface-2: #1A1A1A;
+  --cc-border: rgba(255,255,255,0.08);
+  --cc-accent: #D4A843;
+  --cc-accent-hover: #E8C060;
+  --cc-text: #E4E4E7;
+  --cc-muted: #71717A;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background-color: var(--cc-bg);
+  color: var(--cc-text);
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.12);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255,255,255,0.2);
+}

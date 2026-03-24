@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "tsx watch src/index.ts",
+    "dev": "tsx watch --env-file ../../.env src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
     "test": "vitest run",
@@ -13,6 +13,7 @@
     "@culicars/database": "workspace:*",
     "@culicars/utils": "workspace:*",
     "@google-cloud/vision": "^5.3.5",
+    "@prisma/client": "5.22.0",
     "@supabase/supabase-js": "^2.39.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.1",

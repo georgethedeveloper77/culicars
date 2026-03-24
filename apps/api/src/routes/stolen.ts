@@ -8,11 +8,11 @@ import {
   getById,
   reviewReport,
   markRecovered,
-} from '../services/stolenReportService.js';
-import { requireRole } from '../middleware/requireRole.js';
-import { validateStolenSubmission, validateRecoverySubmission } from '../validators/stolenValidator.js';
+} from '../services/stolenReportService';
+import { requireRole } from '../middleware/requireRole';
+import { validateStolenSubmission, validateRecoverySubmission } from '../validators/stolenValidator';
 
-const router = Router();
+const router: import("express").Router = Router();
 
 // ---------------------------------------------------------------------------
 // POST /stolen-reports

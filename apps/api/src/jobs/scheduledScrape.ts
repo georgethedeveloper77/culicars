@@ -1,6 +1,7 @@
 // apps/api/src/jobs/scheduledScrape.ts
 import cron from 'node-cron';
-import { runScraper, ScraperSource } from '../services/scraperOrchestrator';
+import { runScraper } from '../services/scraperOrchestrator';
+import type { ScraperSource } from '../services/scraperJobService';
 
 type ScheduleGroup = {
   label: string;

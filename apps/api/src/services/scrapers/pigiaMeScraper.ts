@@ -59,7 +59,7 @@ export class PigiaMeScraper extends BaseScraper {
         source: 'PIGIAME',
         vin: null,
         plate: null,
-        raw_data: {
+        rawData: {
           listing_id: ad_id,
           title,
           price_text,

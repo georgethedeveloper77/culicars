@@ -12,7 +12,7 @@ export async function buildImportSection(vin: string): Promise<{
   dataStatus: 'found' | 'not_found' | 'not_checked';
 }> {
   const [vehicle, importEvents] = await Promise.all([
-    prisma.vehicles.findUnique({
+    prisma.vehicle.findUnique({
       where: { vin },
       select: {
         countryOfOrigin: true,
@@ -24,7 +24,7 @@ export async function buildImportSection(vin: string): Promise<{
       },
     }),
 
-    prisma.vehicleEvents.findMany({
+    prisma.vehicleEvent.findMany({
       where: {
         vin,
         eventType: { in: ['IMPORTED', 'KRA_CLEARED', 'AUCTIONED', 'EXPORTED'] },

@@ -11,7 +11,7 @@ import { env } from '../../config/env';
 import { confirmPayment, failPayment } from '../../services/paymentProviderService';
 import type { PaypalWebhookBody } from '../../types/payment.types';
 
-const router = Router();
+const router: import("express").Router = Router();
 
 /**
  * Verify PayPal webhook signature.
