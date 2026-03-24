@@ -23,4 +23,5 @@ dist
 
 culicars-*.json
 firebase-admin*.json
-*-service-account.json
+*-service-account.json!packages/database/dist/
+!packages/utils/dist/
