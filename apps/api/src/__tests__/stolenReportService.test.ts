@@ -2,27 +2,27 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-vi.mock('../lib/prisma.js', () => ({
+vi.mock('../lib/prisma', () => ({
   default: {
-    stolen_reports: {
+    stolenReport: {
       create: vi.fn(),
       findMany: vi.fn(),
       findFirst: vi.fn(),
       findUnique: vi.fn(),
       update: vi.fn(),
     },
-    vehicles: {
+    vehicle: {
       findUnique: vi.fn(),
       create: vi.fn(),
     },
-    plate_vin_map: {
+    plateVinMap: {
       findFirst: vi.fn(),
       upsert: vi.fn(),
     },
-    vehicle_events: {
+    vehicleEvent: {
       create: vi.fn(),
     },
-    reports: {
+    report: {
       updateMany: vi.fn(),
     },
   },

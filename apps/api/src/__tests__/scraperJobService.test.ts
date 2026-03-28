@@ -13,7 +13,7 @@ import {
 vi.mock('../lib/prisma', () => ({
   __esModule: true,
   default: {
-    scraper_jobs: {
+    scraperJob: {
       create: vi.fn(),
       update: vi.fn(),
       findUnique: vi.fn(),
@@ -44,11 +44,11 @@ describe('scraperJobService', () => {
 
   describe('createJob', () => {
     it('creates a job with queued status', async () => {
-      (mockPrisma.scraper_jobs.create as MockInstance).mockResolvedValue(mockJob);
+      (mockPrisma.scraperJob.create as MockInstance).mockResolvedValue(mockJob);
 
       const job = await createJob('JIJI', 'scheduled');
 
-      expect(mockPrisma.scraper_jobs.create).toHaveBeenCalledWith({
+      expect(mockPrisma.scraperJob.create).toHaveBeenCalledWith({
         data: { source: 'JIJI', trigger: 'scheduled', status: 'queued' },
       });
       expect(job.status).toBe('queued');
@@ -56,17 +56,17 @@ describe('scraperJobService', () => {
     });
 
     it('defaults trigger to scheduled', async () => {
-      (mockPrisma.scraper_jobs.create as MockInstance).mockResolvedValue(mockJob);
+      (mockPrisma.scraperJob.create as MockInstance).mockResolvedValue(mockJob);
       await createJob('PIGIAME');
-      expect(mockPrisma.scraper_jobs.create).toHaveBeenCalledWith(
+      expect(mockPrisma.scraperJob.create).toHaveBeenCalledWith(
         expect.objectContaining({ data: expect.objectContaining({ trigger: 'scheduled' }) })
       );
     });
 
     it('accepts manual trigger', async () => {
-      (mockPrisma.scraper_jobs.create as MockInstance).mockResolvedValue({ ...mockJob, trigger: 'manual' });
+      (mockPrisma.scraperJob.create as MockInstance).mockResolvedValue({ ...mockJob, trigger: 'manual' });
       const job = await createJob('JIJI', 'manual');
-      expect(mockPrisma.scraper_jobs.create).toHaveBeenCalledWith(
+      expect(mockPrisma.scraperJob.create).toHaveBeenCalledWith(
         expect.objectContaining({ data: expect.objectContaining({ trigger: 'manual' }) })
       );
     });
@@ -75,11 +75,11 @@ describe('scraperJobService', () => {
   describe('updateJob', () => {
     it('updates job fields', async () => {
       const updated = { ...mockJob, status: 'running', started_at: new Date() };
-      (mockPrisma.scraper_jobs.update as MockInstance).mockResolvedValue(updated);
+      (mockPrisma.scraperJob.update as MockInstance).mockResolvedValue(updated);
 
       const result = await updateJob('job-uuid-1', { status: 'running', started_at: new Date() });
 
-      expect(mockPrisma.scraper_jobs.update).toHaveBeenCalledWith(
+      expect(mockPrisma.scraperJob.update).toHaveBeenCalledWith(
         expect.objectContaining({ where: { id: 'job-uuid-1' } })
       );
       expect(result.status).toBe('running');
@@ -89,7 +89,7 @@ describe('scraperJobService', () => {
   describe('completeJob', () => {
     it('marks job as completed with counts', async () => {
       const completed = { ...mockJob, status: 'completed', items_found: 50, items_stored: 45, items_skipped: 5 };
-      (mockPrisma.scraper_jobs.update as MockInstance).mockResolvedValue(completed);
+      (mockPrisma.scraperJob.update as MockInstance).mockResolvedValue(completed);
 
       const result = await completeJob('job-uuid-1', {
         items_found: 50,
@@ -97,7 +97,7 @@ describe('scraperJobService', () => {
         items_skipped: 5,
       });
 
-      expect(mockPrisma.scraper_jobs.update).toHaveBeenCalledWith(
+      expect(mockPrisma.scraperJob.update).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { id: 'job-uuid-1' },
           data: expect.objectContaining({
@@ -115,11 +115,11 @@ describe('scraperJobService', () => {
   describe('failJob', () => {
     it('marks job as failed with error message', async () => {
       const failed = { ...mockJob, status: 'failed', error_log: 'Network timeout' };
-      (mockPrisma.scraper_jobs.update as MockInstance).mockResolvedValue(failed);
+      (mockPrisma.scraperJob.update as MockInstance).mockResolvedValue(failed);
 
       const result = await failJob('job-uuid-1', 'Network timeout');
 
-      expect(mockPrisma.scraper_jobs.update).toHaveBeenCalledWith(
+      expect(mockPrisma.scraperJob.update).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
             status: 'failed',
@@ -134,14 +134,14 @@ describe('scraperJobService', () => {
 
   describe('getJob', () => {
     it('returns job by id', async () => {
-      (mockPrisma.scraper_jobs.findUnique as MockInstance).mockResolvedValue(mockJob);
+      (mockPrisma.scraperJob.findUnique as MockInstance).mockResolvedValue(mockJob);
       const job = await getJob('job-uuid-1');
       expect(job).not.toBeNull();
       expect(job!.id).toBe('job-uuid-1');
     });
 
     it('returns null when not found', async () => {
-      (mockPrisma.scraper_jobs.findUnique as MockInstance).mockResolvedValue(null);
+      (mockPrisma.scraperJob.findUnique as MockInstance).mockResolvedValue(null);
       const job = await getJob('nonexistent');
       expect(job).toBeNull();
     });
@@ -150,11 +150,11 @@ describe('scraperJobService', () => {
   describe('listJobs', () => {
     it('returns list of jobs ordered by created_at desc', async () => {
       const jobs = [mockJob, { ...mockJob, id: 'job-uuid-2' }];
-      (mockPrisma.scraper_jobs.findMany as MockInstance).mockResolvedValue(jobs);
+      (mockPrisma.scraperJob.findMany as MockInstance).mockResolvedValue(jobs);
 
       const result = await listJobs(50);
       expect(result).toHaveLength(2);
-      expect(mockPrisma.scraper_jobs.findMany).toHaveBeenCalledWith(
+      expect(mockPrisma.scraperJob.findMany).toHaveBeenCalledWith(
         expect.objectContaining({ orderBy: { created_at: 'desc' }, take: 50 })
       );
     });

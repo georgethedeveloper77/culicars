@@ -67,7 +67,7 @@ describe('scraperOrchestrator', () => {
       await runScraper('JIJI', 'manual');
       expect(mockUpdateJob).toHaveBeenCalledWith(
         'job-uuid-1',
-        expect.objectContaining({ status: 'running', started_at: expect.any(Date) })
+        expect.objectContaining({ status: 'running', startedAt: expect.any(Date) })
       );
     });
 
@@ -86,7 +86,7 @@ describe('scraperOrchestrator', () => {
       await runScraper('JIJI');
       expect(mockCompleteJob).toHaveBeenCalledWith(
         'job-uuid-1',
-        expect.objectContaining({ items_found: 2, items_stored: 2, items_skipped: 0 })
+        expect.objectContaining({ itemsFound: 2, itemsStored: 2, itemsSkipped: 0 })
       );
     });
 

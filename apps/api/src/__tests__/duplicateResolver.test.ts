@@ -5,7 +5,7 @@ import { isDuplicateEvent, filterDuplicateEvents } from '../processors/duplicate
 vi.mock('../lib/prisma', () => ({
   __esModule: true,
   default: {
-    vehicle_events: {
+    vehicleEvent: {
       findFirst: vi.fn(),
     },
   },
@@ -26,22 +26,22 @@ describe('duplicateResolver', () => {
 
   describe('isDuplicateEvent', () => {
     it('returns false when no matching event exists', async () => {
-      (mockPrisma.vehicle_events.findFirst as MockInstance).mockResolvedValue(null);
+      (mockPrisma.vehicleEvent.findFirst as MockInstance).mockResolvedValue(null);
       const result = await isDuplicateEvent(baseCandidate);
       expect(result).toBe(false);
     });
 
     it('returns true when matching event exists within 30-day window', async () => {
-      (mockPrisma.vehicle_events.findFirst as MockInstance).mockResolvedValue({ id: 'existing-event' });
+      (mockPrisma.vehicleEvent.findFirst as MockInstance).mockResolvedValue({ id: 'existing-event' });
       const result = await isDuplicateEvent(baseCandidate);
       expect(result).toBe(true);
     });
 
     it('queries with correct date window (±30 days)', async () => {
-      (mockPrisma.vehicle_events.findFirst as MockInstance).mockResolvedValue(null);
+      (mockPrisma.vehicleEvent.findFirst as MockInstance).mockResolvedValue(null);
       await isDuplicateEvent(baseCandidate);
 
-      const call = (mockPrisma.vehicle_events.findFirst as MockInstance).mock.calls[0][0];
+      const call = (mockPrisma.vehicleEvent.findFirst as MockInstance).mock.calls[0][0];
       const { gte, lte } = call.where.event_date;
 
       const diffStart = baseCandidate.event_date.getTime() - gte.getTime();
@@ -53,24 +53,24 @@ describe('duplicateResolver', () => {
     });
 
     it('includes source_ref in query when provided', async () => {
-      (mockPrisma.vehicle_events.findFirst as MockInstance).mockResolvedValue(null);
+      (mockPrisma.vehicleEvent.findFirst as MockInstance).mockResolvedValue(null);
       await isDuplicateEvent(baseCandidate);
 
-      const call = (mockPrisma.vehicle_events.findFirst as MockInstance).mock.calls[0][0];
+      const call = (mockPrisma.vehicleEvent.findFirst as MockInstance).mock.calls[0][0];
       expect(call.where.source_ref).toBe('svc-001');
     });
 
     it('omits source_ref from query when null', async () => {
-      (mockPrisma.vehicle_events.findFirst as MockInstance).mockResolvedValue(null);
+      (mockPrisma.vehicleEvent.findFirst as MockInstance).mockResolvedValue(null);
       await isDuplicateEvent({ ...baseCandidate, source_ref: null });
 
-      const call = (mockPrisma.vehicle_events.findFirst as MockInstance).mock.calls[0][0];
+      const call = (mockPrisma.vehicleEvent.findFirst as MockInstance).mock.calls[0][0];
       expect(call.where.source_ref).toBeUndefined();
     });
 
     it('new events more than 30 days apart are not duplicates', async () => {
       // findFirst returns null = no match in window = not duplicate
-      (mockPrisma.vehicle_events.findFirst as MockInstance).mockResolvedValue(null);
+      (mockPrisma.vehicleEvent.findFirst as MockInstance).mockResolvedValue(null);
 
       const result = await isDuplicateEvent({
         vin: 'JTDBR32E540012345',
@@ -92,7 +92,7 @@ describe('duplicateResolver', () => {
       ];
 
       // First is duplicate, second and third are not
-      (mockPrisma.vehicle_events.findFirst as MockInstance)
+      (mockPrisma.vehicleEvent.findFirst as MockInstance)
         .mockResolvedValueOnce({ id: 'existing' })  // svc-001 = dupe
         .mockResolvedValueOnce(null)                  // svc-002 = new
         .mockResolvedValueOnce(null);                 // svc-003 = new
@@ -104,13 +104,13 @@ describe('duplicateResolver', () => {
     });
 
     it('returns empty array when all are duplicates', async () => {
-      (mockPrisma.vehicle_events.findFirst as MockInstance).mockResolvedValue({ id: 'existing' });
+      (mockPrisma.vehicleEvent.findFirst as MockInstance).mockResolvedValue({ id: 'existing' });
       const result = await filterDuplicateEvents([baseCandidate, baseCandidate]);
       expect(result).toHaveLength(0);
     });
 
     it('returns all when none are duplicates', async () => {
-      (mockPrisma.vehicle_events.findFirst as MockInstance).mockResolvedValue(null);
+      (mockPrisma.vehicleEvent.findFirst as MockInstance).mockResolvedValue(null);
       const candidates = [
         { ...baseCandidate, source_ref: 'a' },
         { ...baseCandidate, source_ref: 'b' },

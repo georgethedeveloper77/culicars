@@ -5,7 +5,7 @@ import { BaseScraper, RawScrapedItem } from '../services/scrapers/baseScraper';
 vi.mock('../lib/prisma', () => ({
   __esModule: true,
   default: {
-    scraper_data_raw: {
+    scraperDataRaw: {
       createMany: vi.fn(),
     },
   },
@@ -47,7 +47,7 @@ describe('BaseScraper', () => {
 
   describe('saveRaw', () => {
     it('saves items to scraper_data_raw', async () => {
-      (mockPrisma.scraper_data_raw.createMany as MockInstance).mockResolvedValue({ count: 2 });
+      (mockPrisma.scraperDataRaw.createMany as MockInstance).mockResolvedValue({ count: 2 });
 
       const scraper = new TestScraper();
       const items: RawScrapedItem[] = [
@@ -58,7 +58,7 @@ describe('BaseScraper', () => {
       const count = await scraper.saveRaw(items, 'job-123');
 
       expect(count).toBe(2);
-      expect(mockPrisma.scraper_data_raw.createMany).toHaveBeenCalledWith({
+      expect(mockPrisma.scraperDataRaw.createMany).toHaveBeenCalledWith({
         data: [
           expect.objectContaining({ job_id: 'job-123', source: 'TEST', vin: 'VIN1111111111111111', plate: null, processed: false }),
           expect.objectContaining({ job_id: 'job-123', source: 'TEST', vin: null, plate: 'KCA999Z', processed: false }),
@@ -70,7 +70,7 @@ describe('BaseScraper', () => {
       const scraper = new TestScraper();
       const count = await scraper.saveRaw([], 'job-123');
       expect(count).toBe(0);
-      expect(mockPrisma.scraper_data_raw.createMany).not.toHaveBeenCalled();
+      expect(mockPrisma.scraperDataRaw.createMany).not.toHaveBeenCalled();
     });
   });
 

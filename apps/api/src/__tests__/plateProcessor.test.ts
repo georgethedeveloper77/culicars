@@ -5,7 +5,7 @@ import { processPlate, normalizePlate, formatPlate } from '../processors/platePr
 vi.mock('../lib/prisma', () => ({
   __esModule: true,
   default: {
-    plate_vin_map: {
+    plateVinMap: {
       findFirst: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
@@ -56,12 +56,12 @@ describe('plateProcessor', () => {
     };
 
     it('creates new plate mapping when none exists', async () => {
-      (mockPrisma.plate_vin_map.findFirst as MockInstance).mockResolvedValue(null);
-      (mockPrisma.plate_vin_map.create as MockInstance).mockResolvedValue({ id: 'new-id' });
+      (mockPrisma.plateVinMap.findFirst as MockInstance).mockResolvedValue(null);
+      (mockPrisma.plateVinMap.create as MockInstance).mockResolvedValue({ id: 'new-id' });
 
       await processPlate(plateData);
 
-      expect(mockPrisma.plate_vin_map.create).toHaveBeenCalledWith(
+      expect(mockPrisma.plateVinMap.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
             plate: 'KCA123A',
@@ -73,27 +73,27 @@ describe('plateProcessor', () => {
     });
 
     it('does not update when existing confidence is higher', async () => {
-      (mockPrisma.plate_vin_map.findFirst as MockInstance).mockResolvedValue({
+      (mockPrisma.plateVinMap.findFirst as MockInstance).mockResolvedValue({
         id: 'existing-id',
         confidence: 1.0, // NTSA COR - highest
       });
 
       await processPlate({ ...plateData, confidence: 0.5 });
 
-      expect(mockPrisma.plate_vin_map.update).not.toHaveBeenCalled();
+      expect(mockPrisma.plateVinMap.update).not.toHaveBeenCalled();
     });
 
     it('updates when incoming confidence is higher', async () => {
-      (mockPrisma.plate_vin_map.findFirst as MockInstance).mockResolvedValue({
+      (mockPrisma.plateVinMap.findFirst as MockInstance).mockResolvedValue({
         id: 'existing-id',
         confidence: 0.5,
         verified_at: null,
       });
-      (mockPrisma.plate_vin_map.update as MockInstance).mockResolvedValue({});
+      (mockPrisma.plateVinMap.update as MockInstance).mockResolvedValue({});
 
       await processPlate({ ...plateData, confidence: 0.9 });
 
-      expect(mockPrisma.plate_vin_map.update).toHaveBeenCalledWith(
+      expect(mockPrisma.plateVinMap.update).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { id: 'existing-id' },
           data: expect.objectContaining({ confidence: 0.9 }),
@@ -102,12 +102,12 @@ describe('plateProcessor', () => {
     });
 
     it('sets verified_at for confidence >= 0.9', async () => {
-      (mockPrisma.plate_vin_map.findFirst as MockInstance).mockResolvedValue(null);
-      (mockPrisma.plate_vin_map.create as MockInstance).mockResolvedValue({});
+      (mockPrisma.plateVinMap.findFirst as MockInstance).mockResolvedValue(null);
+      (mockPrisma.plateVinMap.create as MockInstance).mockResolvedValue({});
 
       await processPlate({ ...plateData, confidence: 0.9 });
 
-      expect(mockPrisma.plate_vin_map.create).toHaveBeenCalledWith(
+      expect(mockPrisma.plateVinMap.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({ verified_at: expect.any(Date) }),
         })
@@ -115,12 +115,12 @@ describe('plateProcessor', () => {
     });
 
     it('does not set verified_at for confidence < 0.9', async () => {
-      (mockPrisma.plate_vin_map.findFirst as MockInstance).mockResolvedValue(null);
-      (mockPrisma.plate_vin_map.create as MockInstance).mockResolvedValue({});
+      (mockPrisma.plateVinMap.findFirst as MockInstance).mockResolvedValue(null);
+      (mockPrisma.plateVinMap.create as MockInstance).mockResolvedValue({});
 
       await processPlate({ ...plateData, confidence: 0.5 });
 
-      expect(mockPrisma.plate_vin_map.create).toHaveBeenCalledWith(
+      expect(mockPrisma.plateVinMap.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({ verified_at: null }),
         })

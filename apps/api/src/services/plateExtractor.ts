@@ -2,7 +2,7 @@
 
 // Standard Kenyan plate: K + 2 letters + space? + 3 digits + optional letter
 // e.g. KCA 001A, KDB 456, KXX999Z
-const PLATE_RE = /\b(K[A-Z]{2}\s?\d{3}[A-Z]?)\b/i;
+const PLATE_RE = /\b(K[A-Z]{2}\s*\d{3}[A-Z]?)\b/i;
 
 /**
  * Extracts the first valid Kenyan number plate from raw OCR text.

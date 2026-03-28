@@ -3,21 +3,21 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Mock prisma before importing the service
-vi.mock('../lib/prisma.js', () => ({
+vi.mock('../lib/prisma', () => ({
   default: {
-    vehicles: {
+    vehicle: {
       findUnique: vi.fn(),
     },
-    contributions: {
+    contribution: {
       create: vi.fn(),
       findMany: vi.fn(),
       findUnique: vi.fn(),
       update: vi.fn(),
     },
-    reports: {
+    report: {
       updateMany: vi.fn(),
     },
-    vehicle_events: {
+    vehicleEvent: {
       create: vi.fn(),
     },
   },

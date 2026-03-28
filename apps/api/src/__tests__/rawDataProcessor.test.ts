@@ -5,7 +5,7 @@ import { processJobRawData } from '../processors/rawDataProcessor';
 vi.mock('../lib/prisma', () => ({
   __esModule: true,
   default: {
-    scraper_data_raw: {
+    scraperDataRaw: {
       findMany: vi.fn(),
       update: vi.fn(),
       groupBy: vi.fn(),
@@ -51,10 +51,10 @@ describe('rawDataProcessor', () => {
   beforeEach(() => vi.clearAllMocks());
 
   it('routes JIJI rows to listingProcessor', async () => {
-    (mockPrisma.scraper_data_raw.findMany as MockInstance).mockResolvedValue([
+    (mockPrisma.scraperDataRaw.findMany as MockInstance).mockResolvedValue([
       makeRow('row-1', 'JIJI'),
     ]);
-    (mockPrisma.scraper_data_raw.update as MockInstance).mockResolvedValue({});
+    (mockPrisma.scraperDataRaw.update as MockInstance).mockResolvedValue({});
 
     await processJobRawData('job-abc');
 
@@ -64,10 +64,10 @@ describe('rawDataProcessor', () => {
   });
 
   it('routes AUTO_EXPRESS rows to serviceRecordProcessor', async () => {
-    (mockPrisma.scraper_data_raw.findMany as MockInstance).mockResolvedValue([
+    (mockPrisma.scraperDataRaw.findMany as MockInstance).mockResolvedValue([
       makeRow('row-1', 'AUTO_EXPRESS'),
     ]);
-    (mockPrisma.scraper_data_raw.update as MockInstance).mockResolvedValue({});
+    (mockPrisma.scraperDataRaw.update as MockInstance).mockResolvedValue({});
 
     await processJobRawData('job-abc');
 
@@ -75,10 +75,10 @@ describe('rawDataProcessor', () => {
   });
 
   it('routes BEFORWARD rows to auctionProcessor', async () => {
-    (mockPrisma.scraper_data_raw.findMany as MockInstance).mockResolvedValue([
+    (mockPrisma.scraperDataRaw.findMany as MockInstance).mockResolvedValue([
       makeRow('row-1', 'BEFORWARD'),
     ]);
-    (mockPrisma.scraper_data_raw.update as MockInstance).mockResolvedValue({});
+    (mockPrisma.scraperDataRaw.update as MockInstance).mockResolvedValue({});
 
     await processJobRawData('job-abc');
 
@@ -86,22 +86,22 @@ describe('rawDataProcessor', () => {
   });
 
   it('marks each row as processed=true after handling', async () => {
-    (mockPrisma.scraper_data_raw.findMany as MockInstance).mockResolvedValue([
+    (mockPrisma.scraperDataRaw.findMany as MockInstance).mockResolvedValue([
       makeRow('row-1', 'JIJI'),
       makeRow('row-2', 'KRA_IBID'),
     ]);
-    (mockPrisma.scraper_data_raw.update as MockInstance).mockResolvedValue({});
+    (mockPrisma.scraperDataRaw.update as MockInstance).mockResolvedValue({});
 
     await processJobRawData('job-abc');
 
-    expect(mockPrisma.scraper_data_raw.update).toHaveBeenCalledTimes(2);
-    expect(mockPrisma.scraper_data_raw.update).toHaveBeenCalledWith(
+    expect(mockPrisma.scraperDataRaw.update).toHaveBeenCalledTimes(2);
+    expect(mockPrisma.scraperDataRaw.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: 'row-1' },
         data: expect.objectContaining({ processed: true, processed_at: expect.any(Date) }),
       })
     );
-    expect(mockPrisma.scraper_data_raw.update).toHaveBeenCalledWith(
+    expect(mockPrisma.scraperDataRaw.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: 'row-2' },
         data: expect.objectContaining({ processed: true }),
@@ -110,27 +110,27 @@ describe('rawDataProcessor', () => {
   });
 
   it('marks row as processed even when sub-processor throws', async () => {
-    (mockPrisma.scraper_data_raw.findMany as MockInstance).mockResolvedValue([
+    (mockPrisma.scraperDataRaw.findMany as MockInstance).mockResolvedValue([
       makeRow('row-err', 'JIJI'),
     ]);
-    (mockPrisma.scraper_data_raw.update as MockInstance).mockResolvedValue({});
+    (mockPrisma.scraperDataRaw.update as MockInstance).mockResolvedValue({});
     (processListing as MockInstance).mockRejectedValueOnce(new Error('DB error'));
 
     const result = await processJobRawData('job-abc');
 
     expect(result.errors).toBe(1);
-    expect(mockPrisma.scraper_data_raw.update).toHaveBeenCalledWith(
+    expect(mockPrisma.scraperDataRaw.update).toHaveBeenCalledWith(
       expect.objectContaining({ where: { id: 'row-err' } })
     );
   });
 
   it('returns correct counts', async () => {
-    (mockPrisma.scraper_data_raw.findMany as MockInstance).mockResolvedValue([
+    (mockPrisma.scraperDataRaw.findMany as MockInstance).mockResolvedValue([
       makeRow('row-1', 'JIJI'),
       makeRow('row-2', 'PIGIAME'),
       makeRow('row-3', 'BEFORWARD'),
     ]);
-    (mockPrisma.scraper_data_raw.update as MockInstance).mockResolvedValue({});
+    (mockPrisma.scraperDataRaw.update as MockInstance).mockResolvedValue({});
     (processListing as MockInstance).mockResolvedValueOnce(true).mockResolvedValueOnce(false);
     (processAuction as MockInstance).mockResolvedValueOnce(true);
 
