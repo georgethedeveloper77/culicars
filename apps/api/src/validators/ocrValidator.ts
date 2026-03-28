@@ -1,34 +1,36 @@
-// ============================================================
-// CuliCars — Thread 4: OCR Validators
-// ============================================================
+// apps/api/src/validators/ocrValidator.ts
 
-import { z } from 'zod';
+import { Request, Response, NextFunction } from 'express';
 
-export const ocrScanBodySchema = z.object({
-  documentType: z.enum([
-    'logbook',
-    'import_doc',
-    'dashboard',
-    'plate_photo',
-  ]),
-});
+/**
+ * Validates the mode query/body param for /ocr/scan.
+ */
+export function validateScanMode(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): void {
+  const mode = req.body?.mode ?? req.query?.mode ?? 'auto';
+  const valid = ['auto', 'plate', 'vin'];
+  if (!valid.includes(mode as string)) {
+    res.status(400).json({ error: `Invalid mode '${mode}'. Must be one of: ${valid.join(', ')}` });
+    return;
+  }
+  next();
+}
 
-export const ntsaCorBodySchema = z.object({
-  pdfUrl: z
-    .string()
-    .url('pdfUrl must be a valid URL')
-    .refine(
-      (url) => url.includes('ecitizen.go.ke') || url.includes('ntsa.go.ke'),
-      'PDF URL must originate from eCitizen or NTSA domain'
-    ),
-  consentId: z.string().uuid('consentId must be a valid UUID'),
-});
-
-export const consentBodySchema = z.object({
-  vin: z.string().length(17, 'VIN must be 17 characters'),
-  plate: z.string().min(2, 'Plate is required').max(15),
-});
-
-export type OcrScanBody = z.infer<typeof ocrScanBodySchema>;
-export type NtsaCorBody = z.infer<typeof ntsaCorBodySchema>;
-export type ConsentBody = z.infer<typeof consentBodySchema>;
+/**
+ * Validates that a VIN or plate is present for /ocr/ntsa-cor.
+ */
+export function validateCorRequest(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): void {
+  const { vin, plate } = req.body as { vin?: string; plate?: string };
+  if (!vin && !plate) {
+    res.status(400).json({ error: 'Provide at least one of: vin, plate' });
+    return;
+  }
+  next();
+}

@@ -1,0 +1,28 @@
+// ADD THESE MODELS to packages/database/prisma/schema.prisma
+// (append after existing models)
+
+model RawRecord {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  vin            String?
+  plate          String?
+  source         String
+  sourceId       String?  @map("source_id")
+  rawJson        Json?    @map("raw_json")
+  normalisedJson Json?    @map("normalised_json")
+  confidence     Decimal  @default(0) @db.Decimal(3, 2)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([vin])
+  @@index([plate])
+  @@index([source])
+  @@map("raw_records")
+}
+
+model AdminConfig {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedBy String?  @map("updated_by") @db.Uuid
+
+  @@map("admin_config")
+}

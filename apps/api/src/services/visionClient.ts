@@ -1,136 +1,60 @@
-// ============================================================
-// CuliCars — Thread 4: Google Cloud Vision Client
-// ============================================================
+// apps/api/src/services/visionClient.ts
 
 import { ImageAnnotatorClient } from '@google-cloud/vision';
-import type { VisionResponse, VisionAnnotation } from '../types/ocr.types';
 
-let client: ImageAnnotatorClient | null = null;
+let _client: ImageAnnotatorClient | null = null;
 
 function getClient(): ImageAnnotatorClient {
-  if (!client) {
-    // Uses GOOGLE_APPLICATION_CREDENTIALS env var automatically
-    client = new ImageAnnotatorClient();
+  if (!_client) {
+    const keyFile = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+    const keyJson = process.env.GOOGLE_CLOUD_VISION_KEY_JSON;
+
+    if (keyJson) {
+      const credentials = JSON.parse(keyJson);
+      _client = new ImageAnnotatorClient({ credentials });
+    } else if (keyFile) {
+      _client = new ImageAnnotatorClient({ keyFilename: keyFile });
+    } else {
+      throw new Error(
+        'Google Cloud Vision credentials not configured. ' +
+        'Set GOOGLE_APPLICATION_CREDENTIALS or GOOGLE_CLOUD_VISION_KEY_JSON.',
+      );
+    }
   }
-  return client;
+  return _client;
 }
 
 /**
- * Run OCR (TEXT_DETECTION) on an image buffer.
- * Returns structured text with per-block confidence.
+ * Runs text detection on a base64-encoded image.
+ * Returns the full text annotation string.
  */
-export async function detectText(imageBuffer: Buffer): Promise<VisionResponse> {
-  const visionClient = getClient();
+async function detectText(imageBase64: string, mimeType = 'image/jpeg'): Promise<string> {
+  const client = getClient();
+  const [result] = await client.textDetection({
+    image: { content: imageBase64 },
+  });
 
-  const [result] = await visionClient.documentTextDetection({
-    image: { content: imageBuffer.toString('base64') },
-    imageContext: {
-      languageHints: ['en'],
+  const annotations = result.textAnnotations;
+  if (!annotations || annotations.length === 0) return '';
+  // The first annotation contains the full text block
+  return annotations[0].description ?? '';
+}
+
+/**
+ * Extracts text from a base64-encoded PDF using Vision's document text detection.
+ * Concatenates all pages.
+ */
+async function detectTextInPdf(pdfBase64: string): Promise<string> {
+  const client = getClient();
+  const [result] = await client.documentTextDetection({
+    image: {
+      content: pdfBase64,
     },
   });
 
-  const fullTextAnnotation = result.fullTextAnnotation;
-  if (!fullTextAnnotation || !fullTextAnnotation.text) {
-    return { fullText: '', blocks: [], confidence: 0 };
-  }
-
-  const blocks: VisionAnnotation[] = [];
-  let totalConfidence = 0;
-  let blockCount = 0;
-
-  for (const page of fullTextAnnotation.pages || []) {
-    for (const block of page.blocks || []) {
-      const blockText = extractBlockText(block);
-      const blockConfidence = block.confidence ?? 0;
-
-      if (blockText.trim()) {
-        blocks.push({
-          text: blockText.trim(),
-          confidence: blockConfidence,
-          boundingBox: block.boundingBox?.vertices
-            ? {
-                vertices: block.boundingBox.vertices.map((v) => ({
-                  x: v.x ?? 0,
-                  y: v.y ?? 0,
-                })),
-              }
-            : undefined,
-        });
-        totalConfidence += blockConfidence;
-        blockCount++;
-      }
-    }
-  }
-
-  return {
-    fullText: fullTextAnnotation.text,
-    blocks,
-    confidence: blockCount > 0 ? totalConfidence / blockCount : 0,
-  };
+  const fullText = result.fullTextAnnotation;
+  if (!fullText) return '';
+  return fullText.text ?? '';
 }
 
-/**
- * Run OCR on a PDF buffer (for NTSA COR).
- * Uses DOCUMENT_TEXT_DETECTION with PDF input.
- */
-export async function detectTextFromPdf(
-  pdfBuffer: Buffer
-): Promise<VisionResponse> {
-  const visionClient = getClient();
-
-  const [result] = await visionClient.documentTextDetection({
-    image: { content: pdfBuffer.toString('base64') },
-    imageContext: {
-      languageHints: ['en'],
-    },
-  });
-
-  const fullTextAnnotation = result.fullTextAnnotation;
-  if (!fullTextAnnotation || !fullTextAnnotation.text) {
-    return { fullText: '', blocks: [], confidence: 0 };
-  }
-
-  const blocks: VisionAnnotation[] = [];
-  let totalConfidence = 0;
-  let blockCount = 0;
-
-  for (const page of fullTextAnnotation.pages || []) {
-    for (const block of page.blocks || []) {
-      const blockText = extractBlockText(block);
-      const blockConfidence = block.confidence ?? 0;
-
-      if (blockText.trim()) {
-        blocks.push({
-          text: blockText.trim(),
-          confidence: blockConfidence,
-        });
-        totalConfidence += blockConfidence;
-        blockCount++;
-      }
-    }
-  }
-
-  return {
-    fullText: fullTextAnnotation.text,
-    blocks,
-    confidence: blockCount > 0 ? totalConfidence / blockCount : 0,
-  };
-}
-
-/**
- * Extract text from a Vision block by traversing paragraphs → words → symbols.
- */
-function extractBlockText(block: any): string {
-  const parts: string[] = [];
-  for (const paragraph of block.paragraphs || []) {
-    const words: string[] = [];
-    for (const word of paragraph.words || []) {
-      const symbols = (word.symbols || [])
-        .map((s: any) => s.text || '')
-        .join('');
-      words.push(symbols);
-    }
-    parts.push(words.join(' '));
-  }
-  return parts.join('\n');
-}
+export const visionClient = { detectText, detectTextInPdf };

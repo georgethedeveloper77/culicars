@@ -73,6 +73,7 @@ app.use(ipRateLimiter);
 app.use('/health', healthRouter);
 app.use('/search', optionalAuth, searchRouter);                    // Thread 3
 app.use('/ocr', auth, ocrRouter);                                  // Thread 4
+app.use('/ocr', ocrRouter);                                        // Thread 4
 app.use('/ntsa', auth, ntsaRouter);                                // Thread 4
 app.use('/reports', optionalAuth, reportsRouter);                  // Thread 5
 app.use('/payments', optionalAuth, paymentsRouter);                // Thread 6

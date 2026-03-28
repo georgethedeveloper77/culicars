@@ -1,147 +1,100 @@
-// ============================================================
-// CuliCars — Thread 4: OCR Service (Main Orchestrator)
-// ============================================================
-// Orchestrates: upload → Vision API → extract plate/VIN/chassis
-// → compute confidence → persist to ocr_scans.
+// apps/api/src/services/ocrService.ts
 
-import prisma from '../lib/prisma';
-import { detectText } from './visionClient';
-import { extractPlates } from './plateExtractor';
-import { extractVins } from './vinExtractor';
-import { extractChassis } from './chassisExtractor';
-import { calculateOverallConfidence } from './ocrConfidence';
-import type {
-  OcrExtractionResult,
-  OcrScanResponse,
-  VisionResponse,
-} from '../types/ocr.types';
-import type { DocType, OcrSource } from '@culicars/database';
+import { visionClient } from './visionClient';
+import { plateExtractor } from './plateExtractor';
+import { vinExtractor } from './vinExtractor';
+import { ocrConfidence } from './ocrConfidence';
+import type { OcrScanResult, OcrTarget } from '../types/ocr.types';
 
-/**
- * Process an uploaded image through the OCR pipeline.
- *
- * Flow:
- * 1. Download/read image buffer
- * 2. Send to Google Cloud Vision (documentTextDetection)
- * 3. Extract plates, VINs, chassis numbers
- * 4. Score confidence
- * 5. Persist to ocr_scans table
- * 6. Return structured result
- */
-export async function processImageOcr(params: {
-  imageBuffer: Buffer;
-  imageUrl: string;
-  documentType: DocType;
-  userId: string;
-  source?: OcrSource;
-}): Promise<OcrScanResponse> {
-  const { imageBuffer, imageUrl, documentType, userId, source = 'user_upload' } = params;
+export type OcrMode = 'auto' | 'plate' | 'vin';
 
-  // Step 1: Run Vision API OCR
-  const visionResult = await detectText(imageBuffer);
+export interface OcrScanOptions {
+  mode?: OcrMode;
+  imageBuffer?: Buffer;
+  imageBase64?: string;
+  mimeType?: string;
+}
 
-  if (!visionResult.fullText.trim()) {
-    // No text detected — save empty result
-    return await saveOcrScan({
-      userId,
-      imageUrl,
-      documentType,
-      source,
-      visionResult,
-      extraction: emptyExtraction(),
+export interface OcrScanOutput {
+  success: boolean;
+  mode: OcrMode;
+  rawText: string;
+  plate?: string;
+  vin?: string;
+  confidence: number;
+  error?: string;
+}
+
+async function scan(opts: OcrScanOptions): Promise<OcrScanOutput> {
+  const { mode = 'auto', imageBuffer, imageBase64, mimeType = 'image/jpeg' } = opts;
+
+  if (!imageBuffer && !imageBase64) {
+    return {
+      success: false,
+      mode,
+      rawText: '',
       confidence: 0,
-    });
+      error: 'No image data provided',
+    };
   }
 
-  // Step 2: Extract plate, VIN, chassis from OCR text
-  const plates = extractPlates(visionResult.fullText);
-  const vins = extractVins(visionResult.fullText);
-  const chassis = extractChassis(visionResult.fullText);
+  const b64 = imageBase64 ?? imageBuffer!.toString('base64');
 
-  const extraction: OcrExtractionResult = {
-    plates,
-    vins,
-    chassis,
-    bestPlate: plates[0] ?? null,
-    bestVin: vins[0] ?? null,
-    bestChassis: chassis[0] ?? null,
-    overallConfidence: 0, // calculated below
-  };
+  let rawText: string;
+  try {
+    rawText = await visionClient.detectText(b64, mimeType);
+  } catch (err: any) {
+    return {
+      success: false,
+      mode,
+      rawText: '',
+      confidence: 0,
+      error: `Vision API error: ${err?.message ?? String(err)}`,
+    };
+  }
 
-  // Step 3: Calculate overall confidence
-  const confidence = calculateOverallConfidence(visionResult, extraction);
-  extraction.overallConfidence = confidence;
+  const conf = ocrConfidence.score(rawText);
 
-  // Step 4: Persist to ocr_scans
-  return await saveOcrScan({
-    userId,
-    imageUrl,
-    documentType,
-    source,
-    visionResult,
-    extraction,
-    confidence,
-  });
-}
+  if (mode === 'vin') {
+    const vin = vinExtractor.extract(rawText);
+    return {
+      success: !!vin,
+      mode,
+      rawText,
+      vin: vin ?? undefined,
+      confidence: vin ? conf : 0,
+    };
+  }
 
-/**
- * Save OCR scan result to database.
- */
-async function saveOcrScan(params: {
-  userId: string;
-  imageUrl: string;
-  documentType: DocType;
-  source: OcrSource;
-  visionResult: VisionResponse;
-  extraction: OcrExtractionResult;
-  confidence: number;
-}): Promise<OcrScanResponse> {
-  const {
-    userId,
-    imageUrl,
-    documentType,
-    source,
-    visionResult,
-    extraction,
-    confidence,
-  } = params;
+  if (mode === 'plate') {
+    const plate = plateExtractor.extract(rawText);
+    return {
+      success: !!plate,
+      mode,
+      rawText,
+      plate: plate ?? undefined,
+      confidence: plate ? conf : 0,
+    };
+  }
 
-  const scan = await prisma.ocrScan.create({
-    data: {
-      userId,
-      imageUrl,
-      documentType,
-      source,
-      rawOcrResult: visionResult as any,
-      extractedPlate: extraction.bestPlate?.value ?? null,
-      extractedVin: extraction.bestVin?.value ?? null,
-      extractedChassis: extraction.bestChassis?.value ?? null,
-      confidence,
-    },
-  });
+  // auto — try plate first, then VIN
+  const plate = plateExtractor.extract(rawText);
+  if (plate) {
+    return { success: true, mode: 'plate', rawText, plate, confidence: conf };
+  }
+
+  const vin = vinExtractor.extract(rawText);
+  if (vin) {
+    return { success: true, mode: 'vin', rawText, vin, confidence: conf };
+  }
 
   return {
-    id: scan.id,
-    documentType: scan.documentType as DocType,
-    imageUrl: scan.imageUrl,
-    extractedPlate: scan.extractedPlate,
-    extractedVin: scan.extractedVin,
-    extractedChassis: scan.extractedChassis,
-    confidence: scan.confidence ?? 0,
-    source: scan.source as OcrSource,
-    rawOcrResult: visionResult,
-    extraction,
+    success: false,
+    mode: 'auto',
+    rawText,
+    confidence: 0,
+    error: 'Could not extract plate or VIN from image',
   };
 }
 
-function emptyExtraction(): OcrExtractionResult {
-  return {
-    plates: [],
-    vins: [],
-    chassis: [],
-    bestPlate: null,
-    bestVin: null,
-    bestChassis: null,
-    overallConfidence: 0,
-  };
-}
+export const ocrService = { scan };

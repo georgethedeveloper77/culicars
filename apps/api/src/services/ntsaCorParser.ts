@@ -1,323 +1,199 @@
-// ============================================================
-// CuliCars — Thread 4: NTSA COR Parser
-// ============================================================
-// Parses NTSA Certificate of Registration (COR) PDF text.
-// CRITICAL: Owner name, ID number, address are DISCARDED — never stored.
-// Extracts: plate, VIN/chassis, make, model, inspection, caveat, transfers.
-
-import { normalizePlate } from '@culicars/utils';
-import type { NtsaCorRawFields, NtsaCorParsed } from '../types/ocr.types';
+// apps/api/src/services/ntsaCorParser.ts
 
 /**
- * Parse OCR text from an NTSA COR PDF.
- * Returns structured COR data with owner info stripped.
+ * Parses text extracted from an NTSA Certificate of Registration (COR) PDF.
+ *
+ * Owner PII (name, ID number, physical address) is intentionally discarded
+ * per product rules — it is NEVER stored or returned.
+ *
+ * Fields captured:
+ *   chassis / VIN, engine number, registration number (plate),
+ *   make, model, year, colour, body type, fuel type,
+ *   registration date, expiry date, tare, gross weight
  */
-export function parseCorText(ocrText: string): NtsaCorParsed {
-  const raw = extractRawFields(ocrText);
-  return sanitizeAndNormalize(raw);
+
+export interface CorFields {
+  plate?: string;
+  vin?: string;
+  engineNumber?: string;
+  make?: string;
+  model?: string;
+  year?: number;
+  colour?: string;
+  bodyType?: string;
+  fuelType?: string;
+  registrationDate?: string; // ISO date string
+  expiryDate?: string;       // ISO date string
+  tare?: number;             // kg
+  grossWeight?: number;      // kg
+  // owner PII fields are deliberately absent
 }
 
-/**
- * Extract raw key-value fields from COR OCR text.
- * COR PDFs typically have a label: value format.
- */
-function extractRawFields(text: string): NtsaCorRawFields {
-  const lines = text.split('\n').map((l) => l.trim());
-  const fullText = text;
-
-  return {
-    registrationNumber: findField(lines, fullText, [
-      'registration number',
-      'registration no',
-      'reg no',
-      'reg. no',
-      'number plate',
-      'plate no',
-    ]),
-
-    chassisNumber: findField(lines, fullText, [
-      'chassis number',
-      'chassis no',
-      'chassis/vin',
-      'vin no',
-      'vin number',
-      'frame no',
-      'frame number',
-    ]),
-
-    make: findField(lines, fullText, ['make', 'manufacturer']),
-
-    model: findField(lines, fullText, ['model', 'type/model']),
-
-    bodyType: findField(lines, fullText, [
-      'body type',
-      'body',
-      'type of body',
-    ]),
-
-    color: findField(lines, fullText, ['colo', 'colour', 'color']),
-
-    yearOfManufacture: parseYear(
-      findField(lines, fullText, [
-        'year of manufacture',
-        'year of mfg',
-        'year',
-        'manufactured',
-      ])
-    ),
-
-    engineCapacity: findField(lines, fullText, [
-      'engine capacity',
-      'engine cc',
-      'cc rating',
-      'cubic capacity',
-    ]),
-
-    fuelType: findField(lines, fullText, [
-      'fuel type',
-      'fuel',
-      'type of fuel',
-    ]),
-
-    registrationDate: findField(lines, fullText, [
-      'date of registration',
-      'registration date',
-      'date registered',
-      'first registration',
-    ]),
-
-    inspectionStatus: findField(lines, fullText, [
-      'inspection status',
-      'inspection',
-      'inspection result',
-      'mot status',
-    ]),
-
-    inspectionDate: findField(lines, fullText, [
-      'inspection date',
-      'date of inspection',
-      'last inspection',
-    ]),
-
-    caveatStatus: findField(lines, fullText, [
-      'caveat',
-      'caveat status',
-      'encumbrance',
-      'court order',
-    ]),
-
-    logbookNumber: findField(lines, fullText, [
-      'logbook number',
-      'logbook no',
-      'log book',
-    ]),
-
-    numberOfTransfers: parseTransferCount(
-      findField(lines, fullText, [
-        'number of transfers',
-        'transfer count',
-        'no. of transfers',
-        'ownership changes',
-      ])
-    ),
-
-    lastTransferDate: findField(lines, fullText, [
-      'last transfer date',
-      'date of last transfer',
-      'latest transfer',
-    ]),
-
-    // ⚠️ THESE ARE EXTRACTED BUT IMMEDIATELY DISCARDED:
-    // ownerName, ownerIdNumber, ownerAddress — NOT in returned object
-  };
+export interface ParseResult {
+  success: boolean;
+  fields: CorFields;
+  confidence: number; // 0–1
+  rawText: string;
+  warnings: string[];
 }
 
-/**
- * Find a field value by searching for label keywords.
- * Handles both "Label: Value" on same line and "Label\nValue" patterns.
- */
-function findField(
-  lines: string[],
-  fullText: string,
-  keywords: string[]
-): string | null {
-  const lowerLines = lines.map((l) => l.toLowerCase());
+// ─── helpers ────────────────────────────────────────────────────────────────
 
-  for (const keyword of keywords) {
-    const kw = keyword.toLowerCase();
+function first(text: string, ...patterns: RegExp[]): string | undefined {
+  for (const re of patterns) {
+    const m = text.match(re);
+    if (m?.[1]) return m[1].trim();
+  }
+  return undefined;
+}
 
-    for (let i = 0; i < lowerLines.length; i++) {
-      const line = lowerLines[i];
+function parseDate(raw: string | undefined): string | undefined {
+  if (!raw) return undefined;
+  // handle DD/MM/YYYY and DD-MM-YYYY
+  const m = raw.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+  if (!m) return undefined;
+  const [, d, mo, yr] = m;
+  return `${yr}-${mo.padStart(2, '0')}-${d.padStart(2, '0')}`;
+}
 
-      // Pattern 1: "Label: Value" or "Label  Value" on same line
-      if (line.includes(kw)) {
-        // Try colon separator
-        const colonIdx = lines[i].indexOf(':');
-        if (colonIdx > -1) {
-          const value = lines[i].slice(colonIdx + 1).trim();
-          if (value) return value;
-        }
+function parseYear(raw: string | undefined): number | undefined {
+  if (!raw) return undefined;
+  const y = parseInt(raw, 10);
+  return y >= 1950 && y <= new Date().getFullYear() + 1 ? y : undefined;
+}
 
-        // Try tab separator
-        const tabIdx = lines[i].indexOf('\t');
-        if (tabIdx > -1) {
-          const value = lines[i].slice(tabIdx + 1).trim();
-          if (value) return value;
-        }
+function parseKg(raw: string | undefined): number | undefined {
+  if (!raw) return undefined;
+  const n = parseFloat(raw.replace(/,/g, ''));
+  return isNaN(n) ? undefined : n;
+}
 
-        // Pattern 2: Value on next non-empty line
-        for (let j = i + 1; j < lines.length && j <= i + 2; j++) {
-          if (lines[j].trim() && !isLabelLine(lowerLines[j])) {
-            return lines[j].trim();
-          }
-        }
-      }
+// Kenyan plate format: KXX 000X  or KXX 000
+const PLATE_RE = /\b(K[A-Z]{2}\s?\d{3}[A-Z]?)\b/i;
+
+// Standard 17-char VIN
+const VIN_RE = /\b([A-HJ-NPR-Z0-9]{17})\b/i;
+
+// ─── main export ────────────────────────────────────────────────────────────
+
+function parse(rawText: string): ParseResult {
+  const text = rawText.replace(/\r/g, '\n');
+  const warnings: string[] = [];
+  const fields: CorFields = {};
+
+  // plate
+  const plateCandidates = text.match(new RegExp(PLATE_RE.source, 'gi')) ?? [];
+  if (plateCandidates.length > 0) {
+    // pick the most-repeated candidate (appears in multiple sections of COR)
+    const freq: Record<string, number> = {};
+    for (const c of plateCandidates) {
+      const k = c.toUpperCase().replace(/\s/g, '');
+      freq[k] = (freq[k] ?? 0) + 1;
     }
+    const best = Object.entries(freq).sort((a, b) => b[1] - a[1])[0];
+    if (best) fields.plate = best[0];
+  } else {
+    warnings.push('plate not found');
   }
 
-  return null;
-}
+  // VIN / chassis
+  fields.vin = first(
+    text,
+    /chassis\s*(?:no|number|#)?[:\s]+([A-HJ-NPR-Z0-9]{17})/i,
+    /vin[:\s]+([A-HJ-NPR-Z0-9]{17})/i,
+    /frame\s*no[:\s]+([A-HJ-NPR-Z0-9]{17})/i,
+  );
+  if (!fields.vin) {
+    // fallback: any 17-char sequence in the text
+    const m = text.match(VIN_RE);
+    if (m) fields.vin = m[1].toUpperCase();
+    else warnings.push('VIN not found');
+  }
 
-/**
- * Check if a line looks like a label (ends with :, or is all caps + short).
- */
-function isLabelLine(line: string): boolean {
-  const trimmed = line.trim();
-  if (trimmed.endsWith(':')) return true;
-  if (trimmed.length < 30 && trimmed === trimmed.toUpperCase()) return true;
-  return false;
-}
+  // engine number
+  fields.engineNumber = first(
+    text,
+    /engine\s*(?:no|number|#)?[:\s]+([A-Z0-9\-]{4,20})/i,
+  );
+  if (!fields.engineNumber) warnings.push('engine number not found');
 
-/**
- * Sanitize raw fields and normalize to typed COR result.
- * Owner info is already excluded from NtsaCorRawFields.
- */
-function sanitizeAndNormalize(raw: NtsaCorRawFields): NtsaCorParsed {
-  const rawResult = raw.registrationNumber
-  ? normalizePlate(raw.registrationNumber)
-  : null;
-const plate = rawResult
-  ? (typeof rawResult === 'string' ? rawResult : rawResult?.normalized || '')
-  : '';
+  // make
+  fields.make = first(
+    text,
+    /make\s*[:\s]+([A-Za-z]+)/i,
+    /manufacturer\s*[:\s]+([A-Za-z]+)/i,
+  );
 
-  return {
-    plate,
-    plateDisplay: formatPlateDisplay(plate),
-    vin: cleanChassis(raw.chassisNumber),
-    make: cleanText(raw.make),
-    model: cleanText(raw.model),
-    bodyType: cleanText(raw.bodyType),
-    color: cleanText(raw.color),
-    yearOfManufacture: raw.yearOfManufacture,
-    engineCapacity: parseEngineCC(raw.engineCapacity),
-    fuelType: cleanText(raw.fuelType),
-    registrationDate: parseDate(raw.registrationDate),
-    inspectionStatus: normalizeInspectionStatus(raw.inspectionStatus),
-    inspectionDate: parseDate(raw.inspectionDate),
-    caveatStatus: normalizeCaveatStatus(raw.caveatStatus),
-    logbookNumber: cleanText(raw.logbookNumber),
-    numberOfTransfers: raw.numberOfTransfers,
-    lastTransferDate: parseDate(raw.lastTransferDate),
-  };
-}
+  // model
+  fields.model = first(text, /model\s*[:\s]+([A-Za-z0-9\s\-]+?)(?:\n|$)/i);
 
-// ---- Helpers ----
+  // year of manufacture
+  const yearRaw = first(
+    text,
+    /year\s*of\s*manufacture\s*[:\s]+(\d{4})/i,
+    /year\s*[:\s]+(\d{4})/i,
+  );
+  fields.year = parseYear(yearRaw);
+  if (!fields.year) warnings.push('year not found');
 
-function cleanText(value: string | null): string | null {
-  if (!value) return null;
-  const cleaned = value.replace(/\s+/g, ' ').trim();
-  return cleaned || null;
-}
+  // colour
+  fields.colour = first(text, /colou?r\s*[:\s]+([A-Za-z\s\/]+?)(?:\n|$)/i);
 
-function cleanChassis(value: string | null): string {
-  if (!value) return '';
-  return value.replace(/[\s-]/g, '').toUpperCase();
-}
+  // body type
+  fields.bodyType = first(
+    text,
+    /body\s*type\s*[:\s]+([A-Za-z\s]+?)(?:\n|$)/i,
+    /body\s*[:\s]+([A-Za-z\s]+?)(?:\n|$)/i,
+  );
 
-function parseYear(value: string | null): number | null {
-  if (!value) return null;
-  const match = value.match(/\b(19|20)\d{2}\b/);
-  return match ? parseInt(match[0], 10) : null;
-}
+  // fuel type
+  fields.fuelType = first(
+    text,
+    /fuel\s*type\s*[:\s]+([A-Za-z]+)/i,
+    /fuel\s*[:\s]+([A-Za-z]+)/i,
+  );
 
-function parseEngineCC(value: string | null): number | null {
-  if (!value) return null;
-  const match = value.match(/(\d{3,5})/);
-  return match ? parseInt(match[1], 10) : null;
-}
+  // registration date
+  const regDateRaw = first(
+    text,
+    /date\s*of\s*(?:first\s*)?registration\s*[:\s]+([\d\/\-]+)/i,
+    /registration\s*date\s*[:\s]+([\d\/\-]+)/i,
+  );
+  fields.registrationDate = parseDate(regDateRaw);
 
-function parseTransferCount(value: string | null): number | null {
-  if (!value) return null;
-  const match = value.match(/(\d+)/);
-  return match ? parseInt(match[1], 10) : null;
-}
+  // expiry
+  const expiryRaw = first(
+    text,
+    /expiry\s*date\s*[:\s]+([\d\/\-]+)/i,
+    /valid\s*(?:until|to)\s*[:\s]+([\d\/\-]+)/i,
+  );
+  fields.expiryDate = parseDate(expiryRaw);
 
-function parseDate(value: string | null): Date | null {
-  if (!value) return null;
+  // tare / gross weight
+  const tareRaw = first(text, /tare\s*(?:weight)?\s*[:\s]+([\d,\.]+)/i);
+  fields.tare = parseKg(tareRaw);
 
-  // Try common formats: DD/MM/YYYY, DD-MM-YYYY, YYYY-MM-DD
-  const patterns = [
-    /(\d{2})[/\-.](\d{2})[/\-.](\d{4})/,  // DD/MM/YYYY
-    /(\d{4})[/\-.](\d{2})[/\-.](\d{2})/,  // YYYY-MM-DD
+  const grossRaw = first(
+    text,
+    /gross\s*(?:vehicle\s*)?weight\s*[:\s]+([\d,\.]+)/i,
+    /g\.?v\.?w\.?\s*[:\s]+([\d,\.]+)/i,
+  );
+  fields.grossWeight = parseKg(grossRaw);
+
+  // confidence: ratio of key fields found
+  const keyFields: Array<keyof CorFields> = [
+    'plate', 'vin', 'make', 'model', 'year', 'registrationDate',
   ];
+  const found = keyFields.filter((k) => fields[k] !== undefined).length;
+  const confidence = parseFloat((found / keyFields.length).toFixed(2));
 
-  for (const pattern of patterns) {
-    const match = value.match(pattern);
-    if (match) {
-      let year: number, month: number, day: number;
-
-      if (match[1].length === 4) {
-        // YYYY-MM-DD
-        year = parseInt(match[1]);
-        month = parseInt(match[2]);
-        day = parseInt(match[3]);
-      } else {
-        // DD/MM/YYYY (Kenya format)
-        day = parseInt(match[1]);
-        month = parseInt(match[2]);
-        year = parseInt(match[3]);
-      }
-
-      const date = new Date(year, month - 1, day);
-      if (!isNaN(date.getTime())) return date;
-    }
-  }
-
-  return null;
+  return {
+    success: confidence > 0,
+    fields,
+    confidence,
+    rawText,
+    warnings,
+  };
 }
 
-function normalizeInspectionStatus(
-  value: string | null
-): 'passed' | 'failed' | 'expired' | 'unknown' {
-  if (!value) return 'unknown';
-  const lower = value.toLowerCase();
-  if (lower.includes('pass') || lower.includes('valid')) return 'passed';
-  if (lower.includes('fail')) return 'failed';
-  if (lower.includes('expir')) return 'expired';
-  return 'unknown';
-}
-
-function normalizeCaveatStatus(
-  value: string | null
-): 'clear' | 'caveat' | 'unknown' {
-  if (!value) return 'unknown';
-  const lower = value.toLowerCase();
-  if (lower.includes('clear') || lower.includes('none') || lower.includes('no caveat')) {
-    return 'clear';
-  }
-  if (lower.includes('caveat') || lower.includes('encumbrance') || lower.includes('order')) {
-    return 'caveat';
-  }
-  return 'unknown';
-}
-
-function formatPlateDisplay(normalized: string): string {
-  if (!normalized) return '';
-  const kMatch = normalized.match(/^(K[A-Z]{2})(\d{3})([A-Z]?)$/);
-  if (kMatch) return `${kMatch[1]} ${kMatch[2]}${kMatch[3]}`.trim();
-
-  const govMatch = normalized.match(/^(GK|GN|CD|UN)(\d+)([A-Z]?)$/);
-  if (govMatch) return `${govMatch[1]} ${govMatch[2]}${govMatch[3]}`.trim();
-
-  return normalized;
-}
+export const ntsaCorParser = { parse };

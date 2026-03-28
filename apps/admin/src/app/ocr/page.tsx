@@ -1,128 +1,199 @@
 // apps/admin/src/app/ocr/page.tsx
 'use client';
 
-import { useEffect, useState } from 'react';
-import { apiGet } from '@/lib/api';
+import { useState } from 'react';
 import { PageHeader } from '@/components/ui/PageHeader';
-import { DataTable } from '@/components/ui/DataTable';
-import type { OcrScan } from '@/types/admin.types';
+import { StatusBadge } from '@/components/ui/StatusBadge';
+import { api } from '@/lib/api';
 
-const DOC_TYPE_LABELS: Record<string, string> = {
-  logbook: 'Logbook',
-  import_doc: 'Import Doc',
-  dashboard: 'Dashboard',
-  plate_photo: 'Plate Photo',
-  ntsa_cor: 'NTSA COR',
-};
+interface CorRecord {
+  id: string;
+  vin: string;
+  plate: string | null;
+  source: string;
+  confidence: number;
+  normalisedData: Record<string, unknown>;
+  createdAt: string;
+}
 
 export default function OcrPage() {
-  const [scans, setScans] = useState<OcrScan[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [vin, setVin] = useState('');
+  const [record, setRecord] = useState<CorRecord | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    apiGet<OcrScan[]>('/admin/ocr/scans')
-      .then(setScans)
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, []);
+  // PDF upload state
+  const [pdfVin, setPdfVin] = useState('');
+  const [pdfPlate, setPdfPlate] = useState('');
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [uploadResult, setUploadResult] = useState<Record<string, unknown> | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
-  const columns = [
-    {
-      key: 'docType',
-      header: 'Document Type',
-      render: (s: OcrScan) => (
-        <span className="text-xs font-medium px-2 py-1 rounded-md bg-white/6 text-zinc-300">
-          {DOC_TYPE_LABELS[s.documentType] ?? s.documentType}
-        </span>
-      ),
-      width: '140px',
-    },
-    {
-      key: 'plate',
-      header: 'Extracted Plate',
-      render: (s: OcrScan) => (
-        <span className="font-mono text-zinc-200">{s.extractedPlate ?? '—'}</span>
-      ),
-      width: '140px',
-    },
-    {
-      key: 'vin',
-      header: 'Extracted VIN',
-      render: (s: OcrScan) => (
-        <span className="font-mono text-xs text-zinc-400">{s.extractedVin ?? '—'}</span>
-      ),
-    },
-    {
-      key: 'confidence',
-      header: 'Confidence',
-      render: (s: OcrScan) => {
-        const pct = s.confidence != null ? Math.round(s.confidence * 100) : null;
-        const color = pct == null ? 'text-zinc-500' : pct >= 80 ? 'text-emerald-400' : pct >= 50 ? 'text-amber-400' : 'text-red-400';
-        return <span className={`text-sm font-semibold ${color}`}>{pct != null ? `${pct}%` : '—'}</span>;
-      },
-      width: '110px',
-    },
-    {
-      key: 'source',
-      header: 'Source',
-      render: (s: OcrScan) => (
-        <span className="text-xs text-zinc-500 capitalize">{s.source.replace(/_/g, ' ')}</span>
-      ),
-      width: '140px',
-    },
-    {
-      key: 'user',
-      header: 'User',
-      render: (s: OcrScan) => (
-        <span className="text-sm text-zinc-400">{s.user?.email ?? 'Anonymous'}</span>
-      ),
-    },
-    {
-      key: 'createdAt',
-      header: 'Scanned',
-      render: (s: OcrScan) => (
-        <span className="text-sm text-zinc-500">{new Date(s.createdAt).toLocaleString()}</span>
-      ),
-      width: '170px',
-    },
-  ];
+  async function fetchLastRecord() {
+    if (!vin.trim()) return;
+    setLoading(true);
+    setError(null);
+    setRecord(null);
+    try {
+      const data = await api.get(`/ocr/ntsa-cor/last/${vin.trim().toUpperCase()}`);
+      setRecord(data);
+    } catch (e: any) {
+      setError(e?.message ?? 'Failed to fetch record');
+    } finally {
+      setLoading(false);
+    }
+  }
 
-  const ntsaCount = scans.filter((s) => s.source === 'ntsa_cor_auto').length;
-  const avgConf =
-    scans.length > 0
-      ? Math.round((scans.reduce((a, s) => a + (s.confidence ?? 0), 0) / scans.length) * 100)
-      : 0;
+  async function uploadCor() {
+    if (!pdfFile || (!pdfVin.trim() && !pdfPlate.trim())) return;
+    setUploading(true);
+    setUploadError(null);
+    setUploadResult(null);
+
+    const form = new FormData();
+    form.append('pdf', pdfFile);
+    if (pdfVin.trim()) form.append('vin', pdfVin.trim().toUpperCase());
+    if (pdfPlate.trim()) form.append('plate', pdfPlate.trim().toUpperCase());
+
+    try {
+      const data = await api.postForm('/ocr/ntsa-cor', form);
+      setUploadResult(data);
+    } catch (e: any) {
+      setUploadError(e?.message ?? 'Upload failed');
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  const conf = record ? Math.round(record.confidence * 100) : null;
+  const confColour =
+    conf === null ? 'gray' : conf >= 80 ? 'green' : conf >= 50 ? 'yellow' : 'red';
 
   return (
-    <div>
+    <div className="p-6 space-y-8">
       <PageHeader
-        title="OCR Scans"
-        description="All document scans processed through the OCR pipeline"
+        title="Official Record OCR"
+        description="Parse and view Certificate of Registration (COR) data extracted from official PDFs."
       />
 
-      {/* Quick stats */}
-      <div className="flex gap-4 mb-6">
-        {[
-          { label: 'Total Scans', value: scans.length },
-          { label: 'NTSA COR Auto-Fetches', value: ntsaCount },
-          { label: 'Avg Confidence', value: `${avgConf}%` },
-        ].map(({ label, value }) => (
-          <div
-            key={label}
-            className="px-5 py-3 rounded-xl border border-white/8 bg-[#141414] flex items-center gap-3"
+      {/* ── Lookup last parse ── */}
+      <section className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-6 space-y-4">
+        <h2 className="font-semibold text-gray-800 dark:text-gray-100 text-sm uppercase tracking-wide">
+          Last Parse Result
+        </h2>
+
+        <div className="flex gap-3">
+          <input
+            type="text"
+            value={vin}
+            onChange={(e) => setVin(e.target.value)}
+            placeholder="Enter VIN"
+            className="flex-1 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            onKeyDown={(e) => e.key === 'Enter' && fetchLastRecord()}
+          />
+          <button
+            onClick={fetchLastRecord}
+            disabled={loading || !vin.trim()}
+            className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50 transition"
           >
-            <span className="text-xs text-zinc-500">{label}</span>
-            <span className="text-lg font-bold text-zinc-100">{value}</span>
-          </div>
-        ))}
-      </div>
+            {loading ? 'Loading…' : 'Fetch'}
+          </button>
+        </div>
 
-      <DataTable
-        columns={columns as any}
-        data={scans as any}
-        loading={loading}
-        emptyMessage="No OCR scans yet."
-      />
+        {error && (
+          <p className="text-sm text-red-500">{error}</p>
+        )}
+
+        {record && (
+          <div className="space-y-3 pt-2">
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-gray-500">Confidence</span>
+              <StatusBadge status={confColour as any} label={`${conf}%`} />
+              <span className="text-xs text-gray-400 ml-auto">
+                Parsed {new Date(record.createdAt).toLocaleString()}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {Object.entries(record.normalisedData ?? {}).map(([key, val]) => (
+                <div
+                  key={key}
+                  className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 text-xs space-y-1"
+                >
+                  <p className="text-gray-400 uppercase tracking-wide">{key}</p>
+                  <p className="text-gray-800 dark:text-gray-100 font-medium">
+                    {val === null || val === undefined ? '—' : String(val)}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </section>
+
+      {/* ── Upload COR PDF ── */}
+      <section className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-6 space-y-4">
+        <h2 className="font-semibold text-gray-800 dark:text-gray-100 text-sm uppercase tracking-wide">
+          Upload COR PDF
+        </h2>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <input
+            type="text"
+            value={pdfVin}
+            onChange={(e) => setPdfVin(e.target.value)}
+            placeholder="VIN (optional if plate provided)"
+            className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <input
+            type="text"
+            value={pdfPlate}
+            onChange={(e) => setPdfPlate(e.target.value)}
+            placeholder="Plate (optional if VIN provided)"
+            className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+
+        <div className="flex gap-3 items-center">
+          <input
+            type="file"
+            accept="application/pdf"
+            onChange={(e) => setPdfFile(e.target.files?.[0] ?? null)}
+            className="text-sm text-gray-600 dark:text-gray-300 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-sm file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+          />
+          <button
+            onClick={uploadCor}
+            disabled={uploading || !pdfFile || (!pdfVin.trim() && !pdfPlate.trim())}
+            className="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 disabled:opacity-50 transition"
+          >
+            {uploading ? 'Parsing…' : 'Parse & Store'}
+          </button>
+        </div>
+
+        {uploadError && (
+          <p className="text-sm text-red-500">{uploadError}</p>
+        )}
+
+        {uploadResult && (
+          <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 text-sm space-y-2">
+            <p className="text-green-700 dark:text-green-400 font-medium">
+              ✓ Parsed successfully
+            </p>
+            <p className="text-gray-500 text-xs">
+              Record ID: <code className="font-mono">{String(uploadResult.rawRecordId)}</code>
+            </p>
+            <p className="text-gray-500 text-xs">
+              Confidence: {Math.round(Number(uploadResult.confidence) * 100)}%
+            </p>
+            {(uploadResult.warnings as string[])?.length > 0 && (
+              <p className="text-yellow-600 dark:text-yellow-400 text-xs">
+                Warnings: {(uploadResult.warnings as string[]).join(', ')}
+              </p>
+            )}
+          </div>
+        )}
+      </section>
     </div>
   );
 }

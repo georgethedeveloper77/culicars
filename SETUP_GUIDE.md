@@ -2,6 +2,8 @@
 
 ## What's in the zip — 55 files
 
+sudo -u culicars.com_tqzgc0ezfqa bash -c "cd /var/www/vhosts/culicars.com/httpdocs && pnpm install --frozen-lockfile && pnpm --filter @culicars/database exec prisma generate && pnpm --filter @culicars/api build && pnpm --filter @culicars/web build && pnpm --filter @culicars/admin build"
+
 ### Root (6 files)
 - `package.json` — pnpm workspaces + Turborepo
 - `pnpm-workspace.yaml` — workspace config

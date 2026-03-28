@@ -1,177 +1,190 @@
-// ============================================================
-// CuliCars — Thread 4: NTSA COR Parser Tests
-// ============================================================
+// apps/api/src/tests/ntsaCorParser.test.ts
 
 import { describe, it, expect } from 'vitest';
-import { parseCorText } from '../services/ntsaCorParser';
+import { ntsaCorParser } from '../services/ntsaCorParser';
 
-// Simulated OCR text from a typical NTSA COR PDF
-const SAMPLE_COR_TEXT = `
+const FULL_COR_TEXT = `
 REPUBLIC OF KENYA
 NATIONAL TRANSPORT AND SAFETY AUTHORITY
 CERTIFICATE OF REGISTRATION
 
-Registration Number: KCA 123A
-Chassis Number: JTDBR32E540012345
+Registration Number: KCB 123A
+Chassis No: JTMHE3FJ90K012345
+Engine No: 2GD4567890
 Make: TOYOTA
-Model: FIELDER
-Body Type: STATION WAGON
-Colour: SILVER
-Year of Manufacture: 2014
-Engine Capacity: 1500 CC
-Fuel Type: PETROL
-Date of Registration: 15/03/2015
-Inspection Status: PASSED
-Date of Inspection: 10/01/2024
-Caveat: NO CAVEAT
-Logbook Number: LBK-2015-034567
-Number of Transfers: 2
-Last Transfer Date: 22/06/2022
+Model: HILUX
+Year of Manufacture: 2019
+Colour: WHITE
+Body Type: PICKUP
+Fuel Type: DIESEL
+Date of First Registration: 15/03/2019
+Expiry Date: 14/03/2026
+Tare Weight: 1820
+Gross Vehicle Weight: 3100
 
-Owner Name: JOHN KAMAU MWANGI
-ID Number: 12345678
-Address: P.O. Box 12345, Nairobi
-Phone: 0712345678
+Owner Details (DISCARDED BY SYSTEM)
+Name: JOHN DOE
+ID: 12345678
+Address: 123 NAIROBI ROAD
+`;
+
+const MINIMAL_COR_TEXT = `
+Registration Number: KDB 456B
+JTFDE3FJ90K099999
+Engine: 1TR5678901
+TOYOTA
+LAND CRUISER
+2015
+`;
+
+const POOR_COR_TEXT = `
+Some random text that doesn't match COR format.
+Nothing useful here.
 `;
 
 describe('ntsaCorParser', () => {
-  describe('parseCorText', () => {
-    it('extracts plate and normalizes it', () => {
-      const result = parseCorText(SAMPLE_COR_TEXT);
-      expect(result.plate).toBe('KCA123A');
-      expect(result.plateDisplay).toBe('KCA 123A');
+  describe('parse() — full COR', () => {
+    it('extracts plate correctly', () => {
+      const { fields } = ntsaCorParser.parse(FULL_COR_TEXT);
+      expect(fields.plate).toBe('KCB123A');
     });
 
-    it('extracts VIN/chassis', () => {
-      const result = parseCorText(SAMPLE_COR_TEXT);
-      expect(result.vin).toBe('JTDBR32E540012345');
+    it('extracts VIN from chassis field', () => {
+      const { fields } = ntsaCorParser.parse(FULL_COR_TEXT);
+      expect(fields.vin).toBe('JTMHE3FJ90K012345');
+    });
+
+    it('extracts engine number', () => {
+      const { fields } = ntsaCorParser.parse(FULL_COR_TEXT);
+      expect(fields.engineNumber).toBe('2GD4567890');
     });
 
     it('extracts make and model', () => {
-      const result = parseCorText(SAMPLE_COR_TEXT);
-      expect(result.make).toBe('TOYOTA');
-      expect(result.model).toBe('FIELDER');
-    });
-
-    it('extracts body type and color', () => {
-      const result = parseCorText(SAMPLE_COR_TEXT);
-      expect(result.bodyType).toBe('STATION WAGON');
-      expect(result.color).toBe('SILVER');
+      const { fields } = ntsaCorParser.parse(FULL_COR_TEXT);
+      expect(fields.make).toBe('TOYOTA');
+      expect(fields.model).toMatch(/HILUX/i);
     });
 
     it('extracts year of manufacture', () => {
-      const result = parseCorText(SAMPLE_COR_TEXT);
-      expect(result.yearOfManufacture).toBe(2014);
+      const { fields } = ntsaCorParser.parse(FULL_COR_TEXT);
+      expect(fields.year).toBe(2019);
     });
 
-    it('extracts engine capacity as number', () => {
-      const result = parseCorText(SAMPLE_COR_TEXT);
-      expect(result.engineCapacity).toBe(1500);
+    it('extracts colour', () => {
+      const { fields } = ntsaCorParser.parse(FULL_COR_TEXT);
+      expect(fields.colour).toMatch(/WHITE/i);
     });
 
     it('extracts fuel type', () => {
-      const result = parseCorText(SAMPLE_COR_TEXT);
-      expect(result.fuelType).toBe('PETROL');
+      const { fields } = ntsaCorParser.parse(FULL_COR_TEXT);
+      expect(fields.fuelType).toMatch(/DIESEL/i);
     });
 
-    it('parses registration date (DD/MM/YYYY Kenya format)', () => {
-      const result = parseCorText(SAMPLE_COR_TEXT);
-      expect(result.registrationDate).toBeInstanceOf(Date);
-      expect(result.registrationDate!.getFullYear()).toBe(2015);
-      expect(result.registrationDate!.getMonth()).toBe(2); // March = 2
+    it('parses registration date to ISO format', () => {
+      const { fields } = ntsaCorParser.parse(FULL_COR_TEXT);
+      expect(fields.registrationDate).toBe('2019-03-15');
     });
 
-    it('normalizes inspection status', () => {
-      const result = parseCorText(SAMPLE_COR_TEXT);
-      expect(result.inspectionStatus).toBe('passed');
+    it('parses expiry date to ISO format', () => {
+      const { fields } = ntsaCorParser.parse(FULL_COR_TEXT);
+      expect(fields.expiryDate).toBe('2026-03-14');
     });
 
-    it('parses inspection date', () => {
-      const result = parseCorText(SAMPLE_COR_TEXT);
-      expect(result.inspectionDate).toBeInstanceOf(Date);
-      expect(result.inspectionDate!.getFullYear()).toBe(2024);
+    it('extracts tare weight as number', () => {
+      const { fields } = ntsaCorParser.parse(FULL_COR_TEXT);
+      expect(fields.tare).toBe(1820);
     });
 
-    it('normalizes caveat status to clear', () => {
-      const result = parseCorText(SAMPLE_COR_TEXT);
-      expect(result.caveatStatus).toBe('clear');
+    it('extracts gross weight as number', () => {
+      const { fields } = ntsaCorParser.parse(FULL_COR_TEXT);
+      expect(fields.grossWeight).toBe(3100);
     });
 
-    it('extracts logbook number', () => {
-      const result = parseCorText(SAMPLE_COR_TEXT);
-      expect(result.logbookNumber).toBe('LBK-2015-034567');
+    it('returns high confidence for full COR', () => {
+      const { confidence } = ntsaCorParser.parse(FULL_COR_TEXT);
+      expect(confidence).toBeGreaterThanOrEqual(0.8);
     });
 
-    it('extracts transfer count', () => {
-      const result = parseCorText(SAMPLE_COR_TEXT);
-      expect(result.numberOfTransfers).toBe(2);
-    });
-
-    it('parses last transfer date', () => {
-      const result = parseCorText(SAMPLE_COR_TEXT);
-      expect(result.lastTransferDate).toBeInstanceOf(Date);
-      expect(result.lastTransferDate!.getFullYear()).toBe(2022);
-    });
-
-    it('DOES NOT include owner name in result', () => {
-      const result = parseCorText(SAMPLE_COR_TEXT);
-      const resultStr = JSON.stringify(result);
-      expect(resultStr).not.toContain('JOHN');
-      expect(resultStr).not.toContain('KAMAU');
-      expect(resultStr).not.toContain('MWANGI');
-    });
-
-    it('DOES NOT include owner ID in result', () => {
-      const result = parseCorText(SAMPLE_COR_TEXT);
-      const resultStr = JSON.stringify(result);
-      expect(resultStr).not.toContain('12345678');
-    });
-
-    it('DOES NOT include owner address in result', () => {
-      const result = parseCorText(SAMPLE_COR_TEXT);
-      const resultStr = JSON.stringify(result);
-      expect(resultStr).not.toContain('P.O. Box');
+    it('does NOT include owner PII fields', () => {
+      const { fields } = ntsaCorParser.parse(FULL_COR_TEXT);
+      expect((fields as any).ownerName).toBeUndefined();
+      expect((fields as any).ownerAddress).toBeUndefined();
+      expect((fields as any).ownerId).toBeUndefined();
     });
   });
 
-  describe('edge cases', () => {
-    it('handles caveat present', () => {
-      const text = SAMPLE_COR_TEXT.replace('NO CAVEAT', 'CAVEAT REGISTERED');
-      const result = parseCorText(text);
-      expect(result.caveatStatus).toBe('caveat');
+  describe('parse() — minimal COR', () => {
+    it('still extracts plate from sparse text', () => {
+      const { fields } = ntsaCorParser.parse(MINIMAL_COR_TEXT);
+      expect(fields.plate).toBe('KDB456B');
     });
 
-    it('handles failed inspection', () => {
-      const text = SAMPLE_COR_TEXT.replace(
-        'Inspection Status: PASSED',
-        'Inspection Status: FAILED'
-      );
-      const result = parseCorText(text);
-      expect(result.inspectionStatus).toBe('failed');
+    it('still extracts VIN when not preceded by chassis label', () => {
+      const { fields } = ntsaCorParser.parse(MINIMAL_COR_TEXT);
+      expect(fields.vin).toBe('JTFDE3FJ90K099999');
     });
 
-    it('handles expired inspection', () => {
-      const text = SAMPLE_COR_TEXT.replace(
-        'Inspection Status: PASSED',
-        'Inspection Status: EXPIRED'
-      );
-      const result = parseCorText(text);
-      expect(result.inspectionStatus).toBe('expired');
+    it('returns success=true even with partial data', () => {
+      const result = ntsaCorParser.parse(MINIMAL_COR_TEXT);
+      expect(result.success).toBe(true);
     });
 
-    it('handles missing optional fields gracefully', () => {
-      const minimalText = `
-Registration Number: KCA 456B
-Chassis Number: JTDBR32E550023456
-Make: TOYOTA
-Model: FIELDER
+    it('reports warnings for missing fields', () => {
+      const { warnings } = ntsaCorParser.parse(MINIMAL_COR_TEXT);
+      expect(warnings.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('parse() — poor/empty COR', () => {
+    it('returns success=false for gibberish text', () => {
+      const result = ntsaCorParser.parse(POOR_COR_TEXT);
+      expect(result.success).toBe(false);
+    });
+
+    it('returns empty fields for gibberish text', () => {
+      const { fields } = ntsaCorParser.parse(POOR_COR_TEXT);
+      expect(fields.vin).toBeUndefined();
+      expect(fields.plate).toBeUndefined();
+    });
+
+    it('returns confidence=0 for gibberish', () => {
+      const { confidence } = ntsaCorParser.parse(POOR_COR_TEXT);
+      expect(confidence).toBe(0);
+    });
+
+    it('handles empty string without throwing', () => {
+      expect(() => ntsaCorParser.parse('')).not.toThrow();
+    });
+  });
+
+  describe('date parsing edge cases', () => {
+    it('handles DD-MM-YYYY format', () => {
+      const text = `Date of First Registration: 01-06-2020\nExpiry Date: 31-05-2026\n${FULL_COR_TEXT}`;
+      const { fields } = ntsaCorParser.parse(text);
+      expect(fields.registrationDate).toBe('2020-06-01');
+    });
+
+    it('pads single-digit day and month', () => {
+      const text = `Date of First Registration: 5/3/2021\n${FULL_COR_TEXT}`;
+      const { fields } = ntsaCorParser.parse(text);
+      expect(fields.registrationDate).toBe('2021-03-05');
+    });
+  });
+
+  describe('plate extraction edge cases', () => {
+    it('normalises plate spacing (KCB 123A → KCB123A)', () => {
+      const { fields } = ntsaCorParser.parse(FULL_COR_TEXT);
+      expect(fields.plate).not.toContain(' ');
+    });
+
+    it('picks most frequent plate when multiple candidates', () => {
+      const text = `
+        Registration Number: KCA 001A
+        Vehicle: KCA 001A
+        Plate: KXZ 999Z
       `;
-      const result = parseCorText(minimalText);
-      expect(result.plate).toBe('KCA456B');
-      expect(result.vin).toBe('JTDBR32E550023456');
-      expect(result.yearOfManufacture).toBeNull();
-      expect(result.inspectionStatus).toBe('unknown');
-      expect(result.caveatStatus).toBe('unknown');
+      const { fields } = ntsaCorParser.parse(text);
+      expect(fields.plate).toBe('KCA001A');
     });
   });
 });

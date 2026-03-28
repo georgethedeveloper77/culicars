@@ -1,55 +1,35 @@
-// ============================================================
-// CuliCars — Thread 4: Chassis Extractor Tests
-// ============================================================
+// apps/api/src/tests/chassisExtractor.test.ts
 
 import { describe, it, expect } from 'vitest';
-import { extractChassis } from '../services/chassisExtractor';
+import { chassisExtractor } from '../services/chassisExtractor';
 
 describe('chassisExtractor', () => {
-  describe('Toyota-style chassis', () => {
-    it('extracts NZE141-6012345 format', () => {
-      const result = extractChassis('Chassis Number: NZE141-6012345');
-      expect(result.length).toBeGreaterThanOrEqual(1);
-      expect(result[0].value).toBe('NZE1416012345');
-    });
-
-    it('extracts NCP91-1234567 format', () => {
-      const result = extractChassis('Chassis No: NCP91-1234567');
-      expect(result.length).toBeGreaterThanOrEqual(1);
-    });
+  it('extracts chassis number from labelled line', () => {
+    const text = 'Chassis No: JTMHE3FJ90K012345';
+    expect(chassisExtractor.extract(text)).toBe('JTMHE3FJ90K012345');
   });
 
-  describe('keyword context', () => {
-    it('boosts confidence when near chassis keyword', () => {
-      const withKeyword = extractChassis('Chassis Number: ABC123-4567890');
-      const withoutKeyword = extractChassis('Random ABC123-4567890 text');
-      if (withKeyword.length && withoutKeyword.length) {
-        expect(withKeyword[0].confidence).toBeGreaterThanOrEqual(
-          withoutKeyword[0].confidence
-        );
-      }
-    });
+  it('extracts from "Frame No" label', () => {
+    const text = 'Frame No: ABC1234567DEF5678';
+    const result = chassisExtractor.extract(text);
+    expect(result).toBeTruthy();
   });
 
-  describe('edge cases', () => {
-    it('returns empty for no chassis numbers', () => {
-      expect(extractChassis('No chassis here')).toHaveLength(0);
-    });
+  it('returns null when no chassis label present', () => {
+    expect(chassisExtractor.extract('Hello world')).toBeNull();
+  });
 
-    it('returns empty for empty string', () => {
-      expect(extractChassis('')).toHaveLength(0);
-    });
+  it('handles chassis without colon separator', () => {
+    const text = 'Chassis Number JTMHE3FJ90K012345\nOther info';
+    expect(chassisExtractor.extract(text)).toBe('JTMHE3FJ90K012345');
+  });
 
-    it('rejects pure alphabetic strings', () => {
-      const result = extractChassis('Chassis: ABCDEFGHIJ');
-      const valid = result.filter((r) => /\d/.test(r.value) && /[A-Z]/.test(r.value));
-      // Should only return items with both letters and digits
-      expect(result.every((r) => /\d/.test(r.value) && /[A-Z]/.test(r.value))).toBe(true);
-    });
-
-    it('rejects pure numeric strings', () => {
-      const result = extractChassis('Chassis: 1234567890');
-      expect(result.every((r) => /[A-Z]/.test(r.value))).toBe(true);
-    });
+  it('extracts correct value when multiple lines present', () => {
+    const text = `
+Make: Toyota
+Chassis No: JTMHE3FJ90K012345
+Engine: 2GD4567890
+    `;
+    expect(chassisExtractor.extract(text)).toBe('JTMHE3FJ90K012345');
   });
 });
