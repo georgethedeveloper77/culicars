@@ -87,7 +87,7 @@ describe('plateProcessor', () => {
       (mockPrisma.plateVinMap.findFirst as MockInstance).mockResolvedValue({
         id: 'existing-id',
         confidence: 0.5,
-        verified_at: null,
+        verifiedAt: null,
       });
       (mockPrisma.plateVinMap.update as MockInstance).mockResolvedValue({});
 
@@ -101,7 +101,7 @@ describe('plateProcessor', () => {
       );
     });
 
-    it('sets verified_at for confidence >= 0.9', async () => {
+    it('sets verifiedAt for confidence >= 0.9', async () => {
       (mockPrisma.plateVinMap.findFirst as MockInstance).mockResolvedValue(null);
       (mockPrisma.plateVinMap.create as MockInstance).mockResolvedValue({});
 
@@ -109,12 +109,12 @@ describe('plateProcessor', () => {
 
       expect(mockPrisma.plateVinMap.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: expect.objectContaining({ verified_at: expect.any(Date) }),
+          data: expect.objectContaining({ verifiedAt: expect.any(Date) }),
         })
       );
     });
 
-    it('does not set verified_at for confidence < 0.9', async () => {
+    it('does not set verifiedAt for confidence < 0.9', async () => {
       (mockPrisma.plateVinMap.findFirst as MockInstance).mockResolvedValue(null);
       (mockPrisma.plateVinMap.create as MockInstance).mockResolvedValue({});
 
@@ -122,7 +122,7 @@ describe('plateProcessor', () => {
 
       expect(mockPrisma.plateVinMap.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: expect.objectContaining({ verified_at: null }),
+          data: expect.objectContaining({ verifiedAt: null }),
         })
       );
     });

@@ -156,11 +156,11 @@ router.get(
 
 async function getNtsaFetchEnabled(): Promise<boolean> {
   try {
-    const cfg = await prisma.adminConfig.findUnique({
-      where: { key: 'ntsa_fetch_enabled' },
-    });
-    if (!cfg) return true; // default on
-    return cfg.value === true || cfg.value === 'true';
+    const cfg = await prisma.adminSetting.findUnique({
+  where: { key: 'ntsa_fetch_enabled' },
+});
+if (!cfg) return true;
+return cfg.value === true || cfg.value === 'true';
   } catch {
     return true; // fail open — allow fetch if config table not yet seeded
   }

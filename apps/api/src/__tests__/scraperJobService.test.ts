@@ -35,8 +35,8 @@ const mockJob = {
   items_skipped: 0,
   started_at: null,
   completed_at: null,
-  error_log: null,
-  created_at: new Date('2024-01-01'),
+  errorLog: null,
+  createdAt: new Date('2024-01-01'),
 };
 
 describe('scraperJobService', () => {
@@ -114,7 +114,7 @@ describe('scraperJobService', () => {
 
   describe('failJob', () => {
     it('marks job as failed with error message', async () => {
-      const failed = { ...mockJob, status: 'failed', error_log: 'Network timeout' };
+      const failed = { ...mockJob, status: 'failed', errorLog: 'Network timeout' };
       (mockPrisma.scraperJob.update as MockInstance).mockResolvedValue(failed);
 
       const result = await failJob('job-uuid-1', 'Network timeout');
@@ -123,12 +123,12 @@ describe('scraperJobService', () => {
         expect.objectContaining({
           data: expect.objectContaining({
             status: 'failed',
-            error_log: 'Network timeout',
+            errorLog: 'Network timeout',
           }),
         })
       );
       expect(result.status).toBe('failed');
-      expect(result.error_log).toBe('Network timeout');
+      expect(result.errorLog).toBe('Network timeout');
     });
   });
 
@@ -148,14 +148,14 @@ describe('scraperJobService', () => {
   });
 
   describe('listJobs', () => {
-    it('returns list of jobs ordered by created_at desc', async () => {
+    it('returns list of jobs ordered by createdAt desc', async () => {
       const jobs = [mockJob, { ...mockJob, id: 'job-uuid-2' }];
       (mockPrisma.scraperJob.findMany as MockInstance).mockResolvedValue(jobs);
 
       const result = await listJobs(50);
       expect(result).toHaveLength(2);
       expect(mockPrisma.scraperJob.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({ orderBy: { created_at: 'desc' }, take: 50 })
+        expect.objectContaining({ orderBy: { createdAt: 'desc' }, take: 50 })
       );
     });
   });

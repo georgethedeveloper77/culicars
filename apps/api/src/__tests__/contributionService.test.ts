@@ -51,7 +51,7 @@ const makeContribRow = (overrides = {}) => ({
   admin_note: null,
   reviewed_by: null,
   reviewed_at: null,
-  confidence_score: 0.42,
+  confidenceScore: 0.42,
   created_at: new Date().toISOString(),
   ...overrides,
 });
@@ -101,7 +101,7 @@ describe('submitContribution', () => {
     let capturedData: Record<string, unknown> = {};
     vi.mocked(prisma.contribution.create).mockImplementation(async (args: never) => {
       capturedData = (args as { data: Record<string, unknown> }).data;
-      return makeContribRow({ confidence_score: capturedData['confidence_score'] }) as never;
+      return makeContribRow({ confidenceScore: capturedData['confidenceScore'] }) as never;
     });
 
     await submitContribution(
@@ -116,8 +116,8 @@ describe('submitContribution', () => {
     );
 
     // Auth + photos + docs → higher than bare minimum
-    expect(Number(capturedData['confidence_score'])).toBeGreaterThan(0.42);
-    expect(Number(capturedData['confidence_score'])).toBeLessThanOrEqual(0.65);
+    expect(Number(capturedData['confidenceScore'])).toBeGreaterThan(0.42);
+    expect(Number(capturedData['confidenceScore'])).toBeLessThanOrEqual(0.65);
   });
 });
 

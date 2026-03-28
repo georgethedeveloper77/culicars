@@ -38,13 +38,13 @@ const mockPrisma = prisma as Mocked<typeof prisma>;
 
 const makeRow = (id: string, source: string, extra = {}) => ({
   id,
-  job_id: 'job-abc',
+  jobId: 'job-abc',
   source,
   vin: null,
   plate: null,
   processed: false,
   created_at: new Date(),
-  raw_data: { title: 'Test Vehicle', confidence: 0.5, event_type: 'LISTED_FOR_SALE', ...extra },
+  rawData: { title: 'Test Vehicle', confidence: 0.5, event_type: 'LISTED_FOR_SALE', ...extra },
 });
 
 describe('rawDataProcessor', () => {
@@ -98,7 +98,7 @@ describe('rawDataProcessor', () => {
     expect(mockPrisma.scraperDataRaw.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: 'row-1' },
-        data: expect.objectContaining({ processed: true, processed_at: expect.any(Date) }),
+        data: expect.objectContaining({ processed: true, processedAt: expect.any(Date) }),
       })
     );
     expect(mockPrisma.scraperDataRaw.update).toHaveBeenCalledWith(

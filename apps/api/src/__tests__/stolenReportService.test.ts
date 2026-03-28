@@ -52,7 +52,7 @@ const makeReportRow = (overrides = {}) => ({
   plate: 'KCA123A',
   plate_display: 'KCA 123A',
   vin: null,
-  reporter_user_id: null,
+  reporterUserId: null,
   reporter_type: 'owner',
   date_stolen: new Date('2024-06-15'),
   county_stolen: 'Nairobi',
@@ -126,7 +126,7 @@ describe('submitReport', () => {
     const createArgs = vi.mocked(prisma.stolenReport.create).mock.calls[0][0] as {
       data: Record<string, unknown>;
     };
-    expect(createArgs.data['reporter_user_id']).toBe('user-xyz');
+    expect(createArgs.data['reporterUserId']).toBe('user-xyz');
   });
 });
 
@@ -186,7 +186,7 @@ describe('reviewReport', () => {
     const eventArgs = vi.mocked(prisma.vehicleEvent.create).mock.calls[0][0] as {
       data: Record<string, unknown>;
     };
-    expect(eventArgs.data['event_type']).toBe('STOLEN');
+    expect(eventArgs.data['eventType']).toBe('STOLEN');
   });
 
   it('creates vehicle record if VIN is provided but vehicle not in DB', async () => {
@@ -256,7 +256,7 @@ describe('markRecovered', () => {
     expect(result.status).toBe('recovered');
     expect(prisma.vehicleEvent.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({ event_type: 'RECOVERED' }),
+        data: expect.objectContaining({ eventType: 'RECOVERED' }),
       }),
     );
   });
@@ -277,7 +277,7 @@ describe('markRecovered', () => {
 
   it('throws 403 when a different user tries to mark recovered', async () => {
     vi.mocked(prisma.stolenReport.findUnique).mockResolvedValue(
-      makeReportRow({ status: 'active', reporter_user_id: 'owner-id' }) as never,
+      makeReportRow({ status: 'active', reporterUserId: 'owner-id' }) as never,
     );
 
     await expect(

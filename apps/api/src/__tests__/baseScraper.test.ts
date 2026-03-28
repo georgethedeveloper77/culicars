@@ -60,8 +60,8 @@ describe('BaseScraper', () => {
       expect(count).toBe(2);
       expect(mockPrisma.scraperDataRaw.createMany).toHaveBeenCalledWith({
         data: [
-          expect.objectContaining({ job_id: 'job-123', source: 'TEST', vin: 'VIN1111111111111111', plate: null, processed: false }),
-          expect.objectContaining({ job_id: 'job-123', source: 'TEST', vin: null, plate: 'KCA999Z', processed: false }),
+          expect.objectContaining({ jobId: 'job-123', source: 'TEST', vin: 'VIN1111111111111111', plate: null, processed: false }),
+          expect.objectContaining({ jobId: 'job-123', source: 'TEST', vin: null, plate: 'KCA999Z', processed: false }),
         ],
       });
     });
