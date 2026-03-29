@@ -5,6 +5,7 @@ import { Suspense, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { createBrowserClient } from '@supabase/ssr';
 import { Shield, Eye, EyeOff } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 function AdminLoginForm() {
   const searchParams = useSearchParams();
@@ -16,6 +17,7 @@ function AdminLoginForm() {
   );
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
 
   const supabase = createBrowserClient(
@@ -57,7 +59,7 @@ function AdminLoginForm() {
     }
 
     // AdminAuthGuard will handle role check and redirect
-    window.location.href = '/';
+    router.push("/");
   }
 
   return (
