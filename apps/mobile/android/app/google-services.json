@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "880460554358",
+    "project_id": "culicars",
+    "storage_bucket": "culicars.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:880460554358:android:0d131b8a8499e18982ff57",
+        "android_client_info": {
+          "package_name": "com.mindberzerk.culicars"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "880460554358-vkihsjthi58cqoejq07bb78fc739113o.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC_igf5IXC4n1UWJkqmZWxYYJdGwW6rduY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "880460554358-vkihsjthi58cqoejq07bb78fc739113o.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

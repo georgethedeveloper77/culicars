@@ -1,194 +1,191 @@
-// ============================================================
-// CuliCars — Thread 5: Report Generator
-// Orchestrates all 13 section builders + risk scoring
-// Creates/updates report + report_sections in the DB
-// ============================================================
+// apps/api/src/services/reportGenerator.ts
 
-import prisma from '../lib/prisma';
-import { scoreRisk } from './riskScorer';
-import { FREE_SECTIONS, type SectionType } from '../types/report.types';
+import { PrismaClient } from '@prisma/client';
+import { computeRiskScore } from './riskScorer.js';
+import { buildIdentitySection } from './sectionBuilders/identity.js';
+import { buildStolenAlertsSection } from './sectionBuilders/stolenAlerts.js';
+import { buildOwnershipSection } from './sectionBuilders/ownership.js';
+import { buildDamageSection } from './sectionBuilders/damage.js';
+import { buildOdometerSection } from './sectionBuilders/odometer.js';
+import { buildTimelineSection } from './sectionBuilders/timeline.js';
+import { buildCommunityInsightsSection } from './sectionBuilders/communityInsights.js';
 
-// Section builders
-import { buildIdentitySection } from './sectionBuilders/identitySection';
-import { buildPurposeSection } from './sectionBuilders/purposeSection';
-import { buildTheftSection } from './sectionBuilders/theftSection';
-import { buildOdometerSection } from './sectionBuilders/odometerSection';
-import { buildLegalSection } from './sectionBuilders/legalSection';
-import { buildDamageSection } from './sectionBuilders/damageSection';
-import { buildSpecsEquipmentSection } from './sectionBuilders/specsEquipmentSection';
-import { buildImportSection } from './sectionBuilders/importSection';
-import { buildOwnershipSection } from './sectionBuilders/ownershipSection';
-import { buildServiceSection } from './sectionBuilders/serviceSection';
-import { buildPhotosSection } from './sectionBuilders/photosSection';
-import { buildTimelineSection } from './sectionBuilders/timelineSection';
-import { buildStolenReportsSection } from './sectionBuilders/stolenReportsSection';
-import { buildRecommendationSection } from './sectionBuilders/recommendationSection';
+const prisma = new PrismaClient();
 
-interface SectionResult {
-  sectionType: SectionType;
-  data: unknown;
-  recordCount: number;
-  dataStatus: 'found' | 'not_found' | 'not_checked';
-  isLocked: boolean;
+export type ReportState =
+  | 'verified'
+  | 'partial'
+  | 'low_confidence'
+  | 'pending_enrichment';
+
+export interface GeneratedReport {
+  id: string;
+  vin: string;
+  plate: string | null;
+  state: ReportState;
+  riskScore: number;
+  riskLevel: string;
+  riskFlags: string[];
+  sections: Record<string, any>;
+  generatedAt: string;
 }
 
 /**
- * Generate (or regenerate) a full report for a VIN.
- * 1. Run all 13 section builders in parallel
- * 2. Score risk
- * 3. Build recommendation section from risk result
- * 4. Upsert report + report_sections in a transaction
+ * Generate or refresh the canonical report for a VIN.
+ * isUnlocked controls which sections return full data vs locked shells.
  */
-export async function generateReport(vin: string): Promise<string> {
-  // Verify vehicle exists
-  const vehicle = await prisma.vehicle.findUnique({
+export async function generateReport(
+  vin: string,
+  isUnlocked: boolean
+): Promise<GeneratedReport> {
+  // Load all raw records for this VIN
+  const rawRecords = await (prisma as any).raw_record.findMany({
     where: { vin },
-    select: { vin: true },
+    orderBy: { created_at: 'desc' },
   });
 
-  if (!vehicle) {
-    throw new Error(`Vehicle not found: ${vin}`);
+  // Load approved watch alerts
+  const watchAlerts = await (prisma as any).watch_alert.findMany({
+    where: { vin },
+  });
+
+  // Load approved contributions
+  const contributions = await (prisma as any).contribution.findMany({
+    where: { vin, status: 'approved' },
+  });
+
+  // Load plate from plate_vin_map
+  const plateMap = await (prisma as any).plate_vin_map.findFirst({
+    where: { vin },
+  });
+  const plate: string | null = plateMap?.plate ?? null;
+
+  // --- Build sections ---
+  const identity = buildIdentitySection(rawRecords);
+  const stolenAlerts = buildStolenAlertsSection(watchAlerts);
+  const ownership = buildOwnershipSection(rawRecords, isUnlocked);
+  const damage = buildDamageSection(rawRecords, contributions, isUnlocked);
+  const odometer = buildOdometerSection(rawRecords, contributions, isUnlocked);
+  const timeline = buildTimelineSection(rawRecords, contributions, watchAlerts, isUnlocked);
+  const communityInsights = buildCommunityInsightsSection(
+    watchAlerts,
+    identity.make,
+    identity.model,
+    isUnlocked
+  );
+
+  // --- Risk score ---
+  const risk = computeRiskScore({
+    hasStolen: stolenAlerts.isStolen,
+    hasRecovered: stolenAlerts.isRecovered,
+    watchAlertCount: watchAlerts.filter((a: any) => a.status === 'approved').length,
+    damageCount: damage.recordCount,
+    ownershipConfidence: ownership.confidence,
+    odometerAnomalyDetected: odometer.anomalyDetected,
+    sourceCount: identity.sourceCount,
+  });
+
+  // --- Determine report state ---
+  const state = deriveState(identity, rawRecords);
+
+  const sections = {
+    identity,
+    stolenAlerts,
+    ownership,
+    damage,
+    odometer,
+    timeline,
+    communityInsights,
+  };
+
+  // --- Persist canonical report ---
+  const report = await upsertReport(vin, plate, state, risk, sections);
+
+  return {
+    id: report.id,
+    vin,
+    plate,
+    state,
+    riskScore: risk.score,
+    riskLevel: risk.level,
+    riskFlags: risk.flags,
+    sections,
+    generatedAt: report.updated_at?.toISOString() ?? new Date().toISOString(),
+  };
+}
+
+function deriveState(identity: any, records: any[]): ReportState {
+  if (records.length === 0) return 'pending_enrichment';
+
+  const highConfidence = records.filter((r) => (r.confidence ?? 0) >= 0.8);
+  if (highConfidence.length > 0 && identity.make && identity.vin) return 'verified';
+  if (records.length >= 1 && (identity.make || identity.plate)) return 'partial';
+  if (records.length >= 1) return 'low_confidence';
+  return 'pending_enrichment';
+}
+
+async function upsertReport(
+  vin: string,
+  plate: string | null,
+  state: ReportState,
+  risk: any,
+  sections: Record<string, any>
+): Promise<any> {
+  const existing = await (prisma as any).vehicle_report.findFirst({
+    where: { vin },
+  });
+
+  const data = {
+    vin,
+    plate,
+    state,
+    risk_score: risk.score,
+    risk_level: risk.level,
+    risk_flags: risk.flags,
+    sections_json: sections,
+    updated_at: new Date(),
+  };
+
+  if (existing) {
+    return (prisma as any).vehicle_report.update({
+      where: { id: existing.id },
+      data,
+    });
   }
 
-  // Run all section builders in parallel (except recommendation — needs risk first)
-  const [
-    identity,
-    purpose,
-    theft,
-    odometer,
-    legal,
-    damage,
-    specsEquipment,
-    importData,
-    ownership,
-    service,
-    photos,
-    timeline,
-    stolenReports,
-    riskResult,
-  ] = await Promise.all([
-    buildIdentitySection(vin),
-    buildPurposeSection(vin),
-    buildTheftSection(vin),
-    buildOdometerSection(vin),
-    buildLegalSection(vin),
-    buildDamageSection(vin),
-    buildSpecsEquipmentSection(vin),
-    buildImportSection(vin),
-    buildOwnershipSection(vin),
-    buildServiceSection(vin),
-    buildPhotosSection(vin),
-    buildTimelineSection(vin),
-    buildStolenReportsSection(vin),
-    scoreRisk(vin),
-  ]);
-
-  // Build recommendation from risk result
-  const recommendation = buildRecommendationSection(riskResult);
-
-  // Assemble all sections
-  const sections: SectionResult[] = [
-    { sectionType: 'IDENTITY',        ...identity,      isLocked: false },
-    { sectionType: 'PURPOSE',         ...purpose,       isLocked: true },
-    { sectionType: 'THEFT',           ...theft,         isLocked: true },
-    { sectionType: 'ODOMETER',        ...odometer,      isLocked: true },
-    { sectionType: 'LEGAL',           ...legal,         isLocked: true },
-    { sectionType: 'DAMAGE',          ...damage,        isLocked: true },
-    { sectionType: 'SPECS_EQUIPMENT', ...specsEquipment, isLocked: false },
-    { sectionType: 'IMPORT',          ...importData,    isLocked: true },
-    { sectionType: 'OWNERSHIP',       ...ownership,     isLocked: true },
-    { sectionType: 'SERVICE',         ...service,       isLocked: true },
-    { sectionType: 'PHOTOS',          ...photos,        isLocked: true },
-    { sectionType: 'TIMELINE',        ...timeline,      isLocked: true },
-    { sectionType: 'STOLEN_REPORTS',  ...stolenReports, isLocked: false },
-    { sectionType: 'RECOMMENDATION',  ...recommendation, isLocked: true },
-  ];
-
-  // Count totals
-  const sourcesChecked = sections.filter(
-    (s) => s.dataStatus !== 'not_checked'
-  ).length;
-  const recordsFound = sections.reduce((sum, s) => sum + s.recordCount, 0);
-
-  // Upsert report + sections in a transaction
-  const reportId = await prisma.$transaction(async (tx) => {
-    // Check for existing report
-    const existing = await tx.report.findFirst({
-      where: { vin },
-      select: { id: true },
-    });
-
-    let reportId: string;
-
-    if (existing) {
-      // Update existing report
-      await tx.report.update({
-        where: { id: existing.id },
-        data: {
-          status: 'ready',
-          riskScore: riskResult.score,
-          riskLevel: riskResult.level,
-          recommendation: riskResult.recommendation,
-          sourcesChecked,
-          recordsFound,
-          generatedAt: new Date(),
-          updatedAt: new Date(),
-        },
-      });
-      reportId = existing.id;
-
-      // Delete old sections and recreate
-      await tx.reportSection.deleteMany({
-        where: { reportId },
-      });
-    } else {
-      // Create new report
-      const report = await tx.report.create({
-        data: {
-          vin,
-          status: 'ready',
-          riskScore: riskResult.score,
-          riskLevel: riskResult.level,
-          recommendation: riskResult.recommendation,
-          sourcesChecked,
-          recordsFound,
-          generatedAt: new Date(),
-          updatedAt: new Date(),
-        },
-      });
-      reportId = report.id;
-    }
-
-    // Create all sections
-    await tx.reportSection.createMany({
-      data: sections.map((s) => ({
-        reportId,
-        sectionType: s.sectionType,
-        data: s.data as object,
-        isLocked: s.isLocked,
-        recordCount: s.recordCount,
-        dataStatus: s.dataStatus,
-        updatedAt: new Date(),
-      })),
-    });
-
-    return reportId;
+  return (prisma as any).vehicle_report.create({
+    data: {
+      ...data,
+      created_at: new Date(),
+    },
   });
-
-  return reportId;
 }
 
 /**
- * Regenerate a report that has been marked stale.
- * Called when new data arrives (e.g., NTSA COR, stolen report approved).
+ * Record that a user has accessed (unlocked) a report.
  */
-export async function regenerateStaleReports(vin: string): Promise<void> {
-  const staleReports = await prisma.report.findMany({
-    where: { vin, status: 'stale' },
-    select: { id: true },
+export async function recordReportAccess(
+  reportId: string,
+  userId: string
+): Promise<void> {
+  await (prisma as any).report_access.create({
+    data: {
+      report_id: reportId,
+      user_id: userId,
+      accessed_at: new Date(),
+    },
   });
+}
 
-  if (staleReports.length > 0) {
-    await generateReport(vin);
-  }
+/**
+ * Check whether a user has unlocked a given report.
+ */
+export async function hasUnlockedReport(
+  reportId: string,
+  userId: string
+): Promise<boolean> {
+  const access = await (prisma as any).report_access.findFirst({
+    where: { report_id: reportId, user_id: userId },
+  });
+  return access != null;
 }

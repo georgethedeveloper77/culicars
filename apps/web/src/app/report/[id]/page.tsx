@@ -1,495 +1,453 @@
-'use client';
 // apps/web/src/app/report/[id]/page.tsx
+'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { getReport, Report } from '@/lib/api';
-import { useAuth } from '@/lib/auth-context';
-import { ReportCover } from '@/components/report/ReportCover';
-import { StolenReportBanner } from '@/components/report/StolenReportBanner';
-import { LockedOverlay, UnlockCTA } from '@/components/report/LockedOverlay';
-import { DamageSection } from '@/components/report/DamageSection';
-import { OdometerSection } from '@/components/report/OdometerSection';
-import { PurposeSection } from '@/components/report/PurposeSection';
-import { TheftSection } from '@/components/report/TheftSection';
-import { SpecsEquipment } from '@/components/report/SpecsEquipment';
-import { Timeline } from '@/components/report/Timeline';
-import { PhotoGrid } from '@/components/report/PhotoGrid';
-import { ServiceSection } from '@/components/report/ServiceSection';
-import { NtsaFetchSection } from '@/components/report/NtsaFetchSection';
-import { SECTION_META } from '@/lib/constants';
 
-// ── Section wrapper ────────────────────────────────────────────────────────
-interface SectionWrapperProps {
+const API = process.env.NEXT_PUBLIC_API_URL ?? 'https://api.culicars.com';
+
+type ReportState = 'verified' | 'partial' | 'low_confidence' | 'pending_enrichment';
+
+interface Report {
   id: string;
-  label: string;
-  icon: string;
-  isLocked: boolean;
-  dataStatus: string;
-  recordCount: number;
-  reportId: string;
-  onUnlocked: () => void;
-  children: React.ReactNode;
+  vin: string;
+  plate: string | null;
+  state: ReportState;
+  riskScore: number;
+  riskLevel: string;
+  riskFlags: string[];
+  sections: Record<string, any>;
+  generatedAt: string;
 }
 
-function SectionWrapper({
-  id, label, icon, isLocked, dataStatus, recordCount, reportId, onUnlocked, children,
-}: SectionWrapperProps) {
-  const [open, setOpen] = useState(true);
+// ─── State badge ───────────────────────────────────────────────────────────
 
-  const statusEl = isLocked ? (
-    <span className="cc-pill bg-cc-surface text-cc-faint text-xs">🔒 Locked</span>
-  ) : dataStatus === 'found' ? (
-    <span className="flex items-center gap-1 text-amber-400 text-xs">▲ {recordCount} record{recordCount !== 1 ? 's' : ''} found</span>
-  ) : dataStatus === 'not_found' ? (
-    <span className="flex items-center gap-1 text-emerald-400 text-xs">✓ Clean</span>
-  ) : (
-    <span className="flex items-center gap-1 text-cc-faint text-xs">— Not checked</span>
+const STATE_META: Record<ReportState, { label: string; color: string; icon: string }> = {
+  verified:           { label: 'Verified',           color: 'bg-green-600',   icon: '✓' },
+  partial:            { label: 'Partial',             color: 'bg-yellow-500',  icon: '◑' },
+  low_confidence:     { label: 'Low Confidence',      color: 'bg-orange-500',  icon: '!' },
+  pending_enrichment: { label: 'Pending Enrichment',  color: 'bg-gray-500',    icon: '…' },
+};
+
+function StateBadge({ state }: { state: ReportState }) {
+  const meta = STATE_META[state] ?? STATE_META.pending_enrichment;
+  return (
+    <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-white text-sm font-medium ${meta.color}`}>
+      {meta.icon} {meta.label}
+    </span>
   );
+}
+
+// ─── Risk meter ────────────────────────────────────────────────────────────
+
+function RiskMeter({ score, level, flags }: { score: number; level: string; flags: string[] }) {
+  const color =
+    level === 'critical' ? 'bg-red-600' :
+    level === 'high'     ? 'bg-orange-500' :
+    level === 'medium'   ? 'bg-yellow-500' : 'bg-green-500';
 
   return (
-    <div id={`section-${id}`} className="cc-card scroll-mt-20">
-      {/* Section header */}
-      <button
-        onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center justify-between px-6 py-4 hover:bg-cc-surface-2/50 transition-colors rounded-t-xl"
-      >
-        <div className="flex items-center gap-3">
-          <span className="text-xl">{icon}</span>
-          <span className="font-semibold text-cc-text">{label}</span>
-          {statusEl}
-        </div>
-        <span className={`text-cc-faint text-xs transition-transform ${open ? 'rotate-180' : ''}`}>▼</span>
-      </button>
-
-      {/* Section body */}
-      {open && (
-        <div className="border-t border-cc-border">
-          {isLocked ? (
-            <div>
-              <LockedOverlay reportId={reportId} onUnlocked={onUnlocked} />
-            </div>
-          ) : (
-            children
-          )}
-        </div>
+    <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-5 space-y-3">
+      <div className="flex items-center justify-between">
+        <h3 className="font-semibold text-gray-800 dark:text-gray-100">Risk Assessment</h3>
+        <span className={`text-sm font-bold text-white px-3 py-1 rounded-full capitalize ${color}`}>{level}</span>
+      </div>
+      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
+        <div className={`h-2.5 rounded-full transition-all ${color}`} style={{ width: `${score}%` }} />
+      </div>
+      <p className="text-xs text-gray-500">{score}/100</p>
+      {flags.length > 0 && (
+        <ul className="space-y-1">
+          {flags.map((f, i) => (
+            <li key={i} className="text-sm text-gray-600 dark:text-gray-300 flex items-start gap-2">
+              <span className="text-orange-500 mt-0.5">•</span> {f}
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );
 }
 
-// ── Main report page ──────────────────────────────────────────────────────
+// ─── Section shell (locked) ────────────────────────────────────────────────
+
+function LockedSection({ title }: { title: string }) {
+  return (
+    <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-5 relative overflow-hidden">
+      <div className="blur-sm select-none pointer-events-none">
+        <h3 className="font-semibold text-gray-800 dark:text-gray-100 mb-2">{title}</h3>
+        <div className="space-y-2">
+          <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-3/4" />
+          <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2" />
+          <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-2/3" />
+        </div>
+      </div>
+      <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/60 dark:bg-gray-900/60">
+        <span className="text-2xl mb-1">🔒</span>
+        <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Unlock to view {title}</p>
+      </div>
+    </div>
+  );
+}
+
+// ─── Identity section ──────────────────────────────────────────────────────
+
+function IdentitySection({ data }: { data: any }) {
+  const fields = [
+    { label: 'Plate',        value: data.plate },
+    { label: 'VIN',          value: data.vin },
+    { label: 'Make',         value: data.make },
+    { label: 'Model',        value: data.model },
+    { label: 'Year',         value: data.year },
+    { label: 'Color',        value: data.color },
+    { label: 'Fuel Type',    value: data.fuelType },
+    { label: 'Body Type',    value: data.bodyType },
+    { label: 'Reg. Date',    value: data.registrationDate },
+  ].filter((f) => f.value != null);
+
+  return (
+    <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-5">
+      <h3 className="font-semibold text-gray-800 dark:text-gray-100 mb-3">Vehicle Identity</h3>
+      <dl className="grid grid-cols-2 gap-x-6 gap-y-2">
+        {fields.map((f) => (
+          <div key={f.label}>
+            <dt className="text-xs text-gray-500 uppercase tracking-wide">{f.label}</dt>
+            <dd className="text-sm font-medium text-gray-800 dark:text-gray-200">{String(f.value)}</dd>
+          </div>
+        ))}
+      </dl>
+      <p className="mt-3 text-xs text-gray-400">
+        {data.sourceCount} data source{data.sourceCount !== 1 ? 's' : ''} · Confidence {Math.round(data.confidence * 100)}%
+      </p>
+    </div>
+  );
+}
+
+// ─── Stolen alerts ─────────────────────────────────────────────────────────
+
+function StolenAlertsSection({ data }: { data: any }) {
+  if (!data.isStolen && data.alerts.length === 0) {
+    return (
+      <div className="rounded-xl border border-green-200 bg-green-50 dark:bg-green-900/20 p-5">
+        <h3 className="font-semibold text-green-700 dark:text-green-400">No Theft Alerts</h3>
+        <p className="text-sm text-green-600 dark:text-green-300 mt-1">No stolen vehicle reports found for this vehicle.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`rounded-xl border p-5 ${data.isStolen ? 'border-red-400 bg-red-50 dark:bg-red-900/20' : 'border-gray-200 dark:border-gray-700'}`}>
+      <h3 className={`font-semibold mb-2 ${data.isStolen ? 'text-red-700 dark:text-red-400' : 'text-gray-800 dark:text-gray-100'}`}>
+        {data.isStolen ? '⚠ Theft Alert' : 'Theft Status'}
+      </h3>
+      {data.isStolen && (
+        <p className="text-sm text-red-600 dark:text-red-300 mb-3 font-medium">
+          This vehicle has been reported stolen.
+          {data.isRecovered && ' A recovery report has also been filed.'}
+        </p>
+      )}
+      {data.alerts.map((a: any) => (
+        <div key={a.id} className="text-sm text-gray-700 dark:text-gray-300 border-t border-gray-200 dark:border-gray-700 pt-2 mt-2">
+          <span className="font-medium capitalize">{a.type.replace(/_/g, ' ')}</span>
+          {a.reportedAt && (
+            <span className="text-gray-400 ml-2 text-xs">
+              {new Date(a.reportedAt).toLocaleDateString()}
+            </span>
+          )}
+          {a.description && <p className="text-gray-500 mt-0.5">{a.description}</p>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── Pending enrichment shell ──────────────────────────────────────────────
+
+function PendingShell({ plate, vin }: { plate: string | null; vin: string }) {
+  return (
+    <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-8 text-center space-y-3">
+      <p className="text-4xl">🔍</p>
+      <h3 className="font-semibold text-gray-800 dark:text-gray-100">Searching for records</h3>
+      <p className="text-sm text-gray-500 max-w-sm mx-auto">
+        No records are available for {plate ?? vin} yet. We have logged your search and will notify you
+        when vehicle data becomes available.
+      </p>
+    </div>
+  );
+}
+
+// ─── Main page ─────────────────────────────────────────────────────────────
+
 export default function ReportPage() {
-  const { id } = useParams<{ id: string }>();
-  const { token } = useAuth();
+  const params = useParams();
   const router = useRouter();
+  const id = params?.id as string;
 
   const [report, setReport] = useState<Report | null>(null);
+  const [isUnlocked, setIsUnlocked] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [unlocking, setUnlocking] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
 
-  const fetchReport = () => {
-    if (!id) return;
+  const fetchReport = useCallback(async () => {
     setLoading(true);
-    getReport(id, token || undefined)
-      .then(data => { setReport(data); setLoading(false); })
-      .catch(err => { setError(err.message); setLoading(false); });
-  };
+    setError(null);
+    try {
+      // First try preview (no auth needed for initial load)
+      const res = await fetch(`${API}/reports/${id}/preview`);
+      if (!res.ok) throw new Error('Report not found');
+      const data = await res.json();
+      setReport(data.report);
+      setIsUnlocked(data.isUnlocked);
+    } catch (e: any) {
+      setError(e.message ?? 'Failed to load report');
+    } finally {
+      setLoading(false);
+    }
+  }, [id]);
 
-  useEffect(() => { fetchReport(); }, [id, token]);
+  useEffect(() => {
+    if (id) fetchReport();
+  }, [id, fetchReport]);
 
-  const scrollToSection = (sectionType: string) => {
-    const el = document.getElementById(`section-${sectionType}`);
-    el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const handleUnlock = async () => {
+    setUnlocking(true);
+    try {
+      const res = await fetch(`${API}/reports/${id}/unlock`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      if (res.status === 401) {
+        router.push('/login?next=/report/' + id);
+        return;
+      }
+      if (res.status === 402) {
+        router.push('/pricing?reason=insufficient_credits');
+        return;
+      }
+      if (!res.ok) throw new Error('Unlock failed');
+      const data = await res.json();
+      setReport(data.report);
+      setIsUnlocked(true);
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setUnlocking(false);
+    }
   };
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <div className="w-12 h-12 rounded-full border-2 border-cc-border border-t-cc-accent animate-spin" />
-        <p className="text-cc-muted text-sm">Loading report…</p>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600" />
       </div>
     );
   }
 
   if (error || !report) {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-20 text-center">
-        <p className="text-red-400 font-medium mb-2">Report not found</p>
-        <p className="text-cc-muted text-sm mb-6">{error || 'This report does not exist or has been removed.'}</p>
-        <Link href="/" className="cc-btn-secondary">← Search again</Link>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center space-y-3">
+          <p className="text-4xl">🚗</p>
+          <p className="text-gray-600 dark:text-gray-300">{error ?? 'Report not found'}</p>
+          <button onClick={() => router.push('/')} className="text-blue-600 underline text-sm">
+            Start a new search
+          </button>
+        </div>
       </div>
     );
   }
 
-  const sectionMap = Object.fromEntries(report.sections.map(s => [s.sectionType, s]));
-
-  const stolenSection = sectionMap['STOLEN_REPORTS'];
-  const stolenData = stolenSection?.data as { reports?: Array<{ status: string; date: string; county: string; obNumber?: string }> } | undefined;
-  const activeStolenReport = stolenData?.reports?.find(r => r.status === 'active');
-
-  // Ordered section rendering
-  const SECTION_ORDER = [
-    'PHOTOS', 'PURPOSE', 'THEFT', 'ODOMETER', 'LEGAL', 'DAMAGE',
-    'IMPORT', 'OWNERSHIP', 'SERVICE', 'TIMELINE', 'RECOMMENDATION',
-  ];
+  const s = report.sections;
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-4 fade-in">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-xs text-cc-faint">
-        <Link href="/" className="hover:text-cc-text transition-colors">Home</Link>
-        <span>/</span>
-        <Link href="/search" className="hover:text-cc-text transition-colors">Search</Link>
-        <span>/</span>
-        <span className="text-cc-muted">{report.vehicle.year} {report.vehicle.make} {report.vehicle.model}</span>
-      </div>
+    <main className="min-h-screen bg-gray-50 dark:bg-gray-950 py-8 px-4">
+      <div className="max-w-2xl mx-auto space-y-6">
 
-      {/* Stolen banner — always first if active */}
-      {activeStolenReport && (
-        <StolenReportBanner
-          alert={{
-            active: true,
-            date: activeStolenReport.date,
-            county: activeStolenReport.county,
-            obNumber: activeStolenReport.obNumber,
-          }}
-          plate={report.vehicle.plate}
-        />
-      )}
-
-      {/* Report cover */}
-      <ReportCover report={report} onSectionClick={scrollToSection} />
-
-      {/* Unlock CTA bar if any sections locked */}
-      {report.sections.some(s => s.isLocked) && (
-        <div className="cc-card p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-cc-accent/20">
+        {/* Header */}
+        <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="font-semibold text-cc-text">Unlock the full report</p>
-            <p className="text-cc-muted text-sm mt-0.5">
-              1 credit unlocks all sections — damage, odometer, legal, purpose, and more.
-            </p>
-          </div>
-          <UnlockCTA reportId={id} onUnlocked={fetchReport} className="shrink-0 w-full sm:w-auto" />
-        </div>
-      )}
-
-      {/* FREE: Identity */}
-      {sectionMap['IDENTITY'] && !sectionMap['IDENTITY'].isLocked && (
-        <div id="section-IDENTITY" className="cc-card scroll-mt-20">
-          <div className="px-6 py-4 border-b border-cc-border">
-            <span className="cc-section-heading">🪪 Identity &amp; Specs</span>
-          </div>
-          <div className="p-6">
-            <IdentitySection data={sectionMap['IDENTITY'].data as Record<string, unknown>} vehicle={report.vehicle} vin={report.vin} />
-          </div>
-        </div>
-      )}
-
-      {/* FREE: Specs & Equipment */}
-      {sectionMap['SPECS_EQUIPMENT'] && (
-        <SectionWrapper
-          id="SPECS_EQUIPMENT"
-          label={SECTION_META.SPECS_EQUIPMENT.label}
-          icon={SECTION_META.SPECS_EQUIPMENT.icon}
-          isLocked={sectionMap['SPECS_EQUIPMENT'].isLocked}
-          dataStatus={sectionMap['SPECS_EQUIPMENT'].dataStatus}
-          recordCount={sectionMap['SPECS_EQUIPMENT'].recordCount}
-          reportId={id}
-          onUnlocked={fetchReport}
-        >
-          <SpecsEquipment data={sectionMap['SPECS_EQUIPMENT'].data as Parameters<typeof SpecsEquipment>[0]['data']} />
-        </SectionWrapper>
-      )}
-
-      {/* FREE: Stolen reports */}
-      {sectionMap['STOLEN_REPORTS'] && (
-        <div id="section-STOLEN_REPORTS" className="cc-card scroll-mt-20">
-          <div className="px-6 py-4 border-b border-cc-border flex items-center justify-between">
-            <span className="cc-section-heading">🚨 Stolen Reports</span>
-            <span className="cc-pill bg-emerald-500/10 text-emerald-400 text-xs">Free — always visible</span>
-          </div>
-          <StolenReportsSection data={sectionMap['STOLEN_REPORTS'].data as Record<string, unknown>} plate={report.vehicle.plate} />
-        </div>
-      )}
-
-      {/* Locked/unlocked sections */}
-      {SECTION_ORDER.map(type => {
-        const sec = sectionMap[type];
-        if (!sec) return null;
-        const meta = SECTION_META[type];
-        if (!meta) return null;
-
-        return (
-          <SectionWrapper
-            key={type}
-            id={type}
-            label={meta.label}
-            icon={meta.icon}
-            isLocked={sec.isLocked}
-            dataStatus={sec.dataStatus}
-            recordCount={sec.recordCount}
-            reportId={id}
-            onUnlocked={fetchReport}
-          >
-            {renderSectionContent(type, sec.data as Record<string, unknown>, report)}
-          </SectionWrapper>
-        );
-      })}
-
-      {/* NTSA Fetch section */}
-      <div className="cc-card scroll-mt-20">
-        <div className="px-6 py-4 border-b border-cc-border">
-          <span className="cc-section-heading">🏛️ Official NTSA Record</span>
-        </div>
-        <NtsaFetchSection
-          vin={report.vin}
-          plate={report.vehicle.plate}
-          ntsaVerified={report.vehicle.ntsa_cor_verified}
-          onConsented={fetchReport}
-        />
-      </div>
-
-      {/* Contribute CTA */}
-      <div className="cc-card-2 p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <p className="font-medium text-cc-text text-sm">Know something about this vehicle?</p>
-          <p className="text-cc-muted text-xs mt-0.5">Submit evidence, service records, or photos to improve this report.</p>
-        </div>
-        <Link href={`/contribute/${report.vin}`} className="cc-btn-secondary shrink-0 text-sm">
-          Contribute data →
-        </Link>
-      </div>
-    </div>
-  );
-}
-
-// ── Identity section (inline, no wrapper) ─────────────────────────────────
-function IdentitySection({ data, vehicle, vin }: { data: Record<string, unknown>; vehicle: Report['vehicle']; vin: string }) {
-  const rows = [
-    { label: 'VIN', value: vin, mono: true },
-    { label: 'Plate', value: vehicle.plate, mono: true },
-    { label: 'Make', value: vehicle.make },
-    { label: 'Model', value: vehicle.model },
-    { label: 'Year', value: vehicle.year },
-    { label: 'Body type', value: vehicle.bodyType },
-    { label: 'Engine', value: vehicle.engineCc ? `${vehicle.engineCc}cc` : undefined },
-    { label: 'Fuel', value: vehicle.fuelType },
-    { label: 'Transmission', value: vehicle.transmission },
-    { label: 'Color', value: vehicle.color },
-  ].filter(r => r.value);
-
-  return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-      {rows.map(r => (
-        <div key={r.label} className="cc-card-2 px-3 py-2.5">
-          <p className="text-xs text-cc-muted">{r.label}</p>
-          <p className={`text-sm font-medium text-cc-text mt-0.5 ${r.mono ? 'font-mono' : ''}`}>
-            {String(r.value)}
-          </p>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// ── Stolen reports section (inline) ───────────────────────────────────────
-function StolenReportsSection({ data, plate }: { data: Record<string, unknown>; plate: string }) {
-  const reports = (data?.reports || []) as Array<{
-    id: string; date: string; county: string; obNumber?: string;
-    isObVerified: boolean; status: string; color?: string;
-  }>;
-
-  if (reports.length === 0) {
-    return (
-      <div className="p-6 flex items-center gap-3">
-        <span className="text-2xl">✓</span>
-        <div>
-          <p className="font-medium text-emerald-400">No stolen reports for this vehicle</p>
-          <p className="text-cc-muted text-sm mt-0.5">Not found in our community stolen reports database.</p>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="p-6 space-y-3">
-      {reports.map(rep => (
-        <div key={rep.id} className="cc-card-2 p-4">
-          <div className="flex items-start gap-3">
-            <span className={`cc-pill text-xs ${
-              rep.status === 'active'
-                ? 'bg-red-600/10 text-red-400 border border-red-600/30'
-                : rep.status === 'recovered'
-                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
-                : 'bg-cc-surface text-cc-muted'
-            }`}>
-              {rep.status === 'active' ? '● STOLEN' : rep.status === 'recovered' ? '✓ RECOVERED' : rep.status}
-            </span>
-            {rep.isObVerified && (
-              <span className="cc-pill bg-blue-500/10 text-blue-400 text-xs border border-blue-500/30">🏛️ OB Verified</span>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+              {report.plate ?? report.vin}
+            </h1>
+            {report.plate && (
+              <p className="text-sm text-gray-500 font-mono mt-0.5">{report.vin}</p>
             )}
           </div>
-          <p className="text-sm text-cc-text mt-2">
-            Reported stolen on <strong>{new Date(rep.date).toLocaleDateString('en-KE', { day: 'numeric', month: 'long', year: 'numeric' })}</strong> in <strong>{rep.county}</strong>
-          </p>
-          {rep.obNumber && (
-            <p className="text-xs text-cc-muted mt-1">Police OB: <span className="font-mono">{rep.obNumber}</span></p>
-          )}
+          <StateBadge state={report.state} />
         </div>
-      ))}
-      <Link href={`/report-stolen/${plate}`} className="text-sm text-red-400 hover:text-red-300 transition-colors">
-        Report this vehicle stolen →
-      </Link>
-    </div>
-  );
-}
 
-// ── Section content router ─────────────────────────────────────────────────
-function renderSectionContent(type: string, data: Record<string, unknown>, report: Report) {
-  switch (type) {
-    case 'DAMAGE':
-      return <DamageSection data={data as unknown as Parameters<typeof DamageSection>[0]['data']} />;
-    case 'ODOMETER':
-      return <OdometerSection data={data as unknown as Parameters<typeof OdometerSection>[0]['data']} />;
-    case 'PURPOSE':
-      return <PurposeSection data={data as unknown as Parameters<typeof PurposeSection>[0]['data']} />;
-    case 'THEFT':
-      return <TheftSection data={{ ...(data as unknown as Parameters<typeof TheftSection>[0]['data']), plate: report.vehicle.plate }} />;
-    case 'TIMELINE':
-      return <Timeline data={data as unknown as Parameters<typeof Timeline>[0]['data']} />;
-    case 'PHOTOS':
-      return <PhotoGrid data={data as unknown as Parameters<typeof PhotoGrid>[0]['data']} />;
-    case 'SERVICE':
-      return <ServiceSection data={data as unknown as Parameters<typeof ServiceSection>[0]['data']} />;
-    case 'LEGAL':
-      return <LegalSection data={data} />;
-    case 'OWNERSHIP':
-      return <OwnershipSection data={data} />;
-    case 'IMPORT':
-      return <ImportSection data={data} />;
-    case 'RECOMMENDATION':
-      return <RecommendationSection data={data} riskLevel={report.riskLevel} recommendation={report.recommendation} />;
-    default:
-      return (
-        <div className="p-6">
-          <pre className="text-xs text-cc-muted overflow-auto">{JSON.stringify(data, null, 2)}</pre>
-        </div>
-      );
-  }
-}
+        {/* Pending state */}
+        {report.state === 'pending_enrichment' && (
+          <PendingShell plate={report.plate} vin={report.vin} />
+        )}
 
-// ── Inline section components ──────────────────────────────────────────────
+        {/* Risk meter — always shown when not pending */}
+        {report.state !== 'pending_enrichment' && (
+          <RiskMeter
+            score={report.riskScore}
+            level={report.riskLevel}
+            flags={report.riskFlags}
+          />
+        )}
 
-function LegalSection({ data }: { data: Record<string, unknown> }) {
-  type LegalCheck = { label: string; status: string; detail?: string };
-  const checks = (data?.checks || []) as LegalCheck[];
-  return (
-    <div className="p-6">
-      <div className="grid sm:grid-cols-2 gap-3">
-        {checks.map((check, i) => (
-          <div key={i} className={`rounded-xl border p-4 ${
-            check.status === 'found' ? 'bg-red-950/20 border-red-900/40' : 'cc-card-2'
-          }`}>
-            <p className="text-sm font-medium text-cc-text">{check.label}</p>
-            <span className={`text-xs mt-1 block ${
-              check.status === 'found' ? 'text-red-400' : check.status === 'not_found' ? 'text-emerald-400' : 'text-cc-faint'
-            }`}>
-              {check.status === 'found' ? '⚠ Record found' : check.status === 'not_found' ? '✓ Clear' : '— Not checked'}
-            </span>
-            {check.detail && <p className="text-xs text-cc-muted mt-1">{check.detail}</p>}
+        {/* Identity — always free */}
+        {s.identity && report.state !== 'pending_enrichment' && (
+          <IdentitySection data={s.identity} />
+        )}
+
+        {/* Stolen alerts — always free */}
+        {s.stolenAlerts && report.state !== 'pending_enrichment' && (
+          <StolenAlertsSection data={s.stolenAlerts} />
+        )}
+
+        {/* Unlock CTA */}
+        {!isUnlocked && report.state !== 'pending_enrichment' && (
+          <div className="rounded-xl border border-blue-200 bg-blue-50 dark:bg-blue-900/20 p-6 text-center space-y-3">
+            <p className="font-semibold text-gray-800 dark:text-gray-100">
+              Full report — 1 credit
+            </p>
+            <p className="text-sm text-gray-500">
+              Ownership history, damage records, odometer readings, and timeline.
+            </p>
+            <button
+              onClick={handleUnlock}
+              disabled={unlocking}
+              className="px-6 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium transition disabled:opacity-60"
+            >
+              {unlocking ? 'Unlocking…' : 'Unlock Full Report'}
+            </button>
           </div>
-        ))}
+        )}
+
+        {/* Locked sections */}
+        {!isUnlocked && report.state !== 'pending_enrichment' && (
+          <>
+            <LockedSection title="Ownership History" />
+            <LockedSection title="Damage Records" />
+            <LockedSection title="Odometer Readings" />
+            <LockedSection title="Vehicle Timeline" />
+            <LockedSection title="Community Insights" />
+          </>
+        )}
+
+        {/* Unlocked sections */}
+        {isUnlocked && (
+          <>
+            {/* Ownership */}
+            {s.ownership && (
+              <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-5 space-y-2">
+                <h3 className="font-semibold text-gray-800 dark:text-gray-100">Ownership</h3>
+                {s.ownership.verified ? (
+                  <p className="text-sm text-green-600 dark:text-green-400 font-medium">✓ Officially verified</p>
+                ) : (
+                  <p className="text-sm text-orange-500">Ownership confidence: {Math.round(s.ownership.confidence * 100)}%</p>
+                )}
+                {s.ownership.ownerCount != null && (
+                  <p className="text-sm text-gray-600 dark:text-gray-300">Previous owners: {s.ownership.ownerCount}</p>
+                )}
+                {s.ownership.lastTransferDate && (
+                  <p className="text-sm text-gray-600 dark:text-gray-300">
+                    Last transfer: {new Date(s.ownership.lastTransferDate).toLocaleDateString()}
+                  </p>
+                )}
+                {s.ownership.verificationRequired && (
+                  <a href={`/verify?vin=${report.vin}`} className="text-sm text-blue-600 underline">
+                    Verify official record →
+                  </a>
+                )}
+              </div>
+            )}
+
+            {/* Damage */}
+            {s.damage && (
+              <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-5 space-y-2">
+                <h3 className="font-semibold text-gray-800 dark:text-gray-100">
+                  Damage Records
+                  {s.damage.recordCount > 0 && (
+                    <span className="ml-2 text-sm font-normal text-orange-500">({s.damage.recordCount})</span>
+                  )}
+                </h3>
+                {s.damage.recordCount === 0 ? (
+                  <p className="text-sm text-green-600 dark:text-green-400">No damage records found.</p>
+                ) : (
+                  s.damage.records.map((d: any, i: number) => (
+                    <div key={i} className="text-sm border-t border-gray-100 dark:border-gray-800 pt-2">
+                      {d.date && <span className="text-gray-400 text-xs">{new Date(d.date).toLocaleDateString()} · </span>}
+                      <span className="text-gray-700 dark:text-gray-300">{d.description ?? d.location ?? 'Damage record'}</span>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+
+            {/* Odometer */}
+            {s.odometer && (
+              <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-5 space-y-2">
+                <div className="flex items-center gap-2">
+                  <h3 className="font-semibold text-gray-800 dark:text-gray-100">Odometer</h3>
+                  {s.odometer.anomalyDetected && (
+                    <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full">⚠ Anomaly detected</span>
+                  )}
+                </div>
+                {s.odometer.latestReading ? (
+                  <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                    {s.odometer.latestReading.value.toLocaleString()} {s.odometer.latestReading.unit}
+                  </p>
+                ) : (
+                  <p className="text-sm text-gray-400">No odometer records available.</p>
+                )}
+                {s.odometer.readings.length > 1 && (
+                  <p className="text-xs text-gray-400">{s.odometer.readings.length} readings on record</p>
+                )}
+              </div>
+            )}
+
+            {/* Timeline */}
+            {s.timeline && s.timeline.events.length > 0 && (
+              <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-5">
+                <h3 className="font-semibold text-gray-800 dark:text-gray-100 mb-3">Vehicle Timeline</h3>
+                <ol className="relative border-l border-gray-200 dark:border-gray-700 space-y-4 pl-4">
+                  {s.timeline.events.slice(0, 10).map((e: any, i: number) => (
+                    <li key={i} className="ml-2">
+                      <div className="absolute w-2.5 h-2.5 bg-blue-600 rounded-full -left-1.5 mt-0.5" />
+                      <p className="text-xs text-gray-400">{new Date(e.date).toLocaleDateString()}</p>
+                      <p className="text-sm text-gray-700 dark:text-gray-300">{e.label}</p>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            )}
+
+            {/* Community Insights */}
+            {s.communityInsights && (
+              <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-5 space-y-2">
+                <h3 className="font-semibold text-gray-800 dark:text-gray-100">Community Insights</h3>
+                {!s.communityInsights.available ? (
+                  <p className="text-sm text-gray-400">{s.communityInsights.placeholder}</p>
+                ) : (
+                  s.communityInsights.insights.map((ins: any, i: number) => (
+                    <div
+                      key={i}
+                      className={`text-sm p-2 rounded-lg ${
+                        ins.severity === 'critical' ? 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300' :
+                        ins.severity === 'warning'  ? 'bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-300' :
+                        'bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-400'
+                      }`}
+                    >
+                      <span className="font-medium">{ins.label}: </span>{ins.value}
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </>
+        )}
+
+        <p className="text-xs text-gray-400 text-center">
+          Generated {new Date(report.generatedAt).toLocaleString()} · culicars.com
+        </p>
       </div>
-    </div>
-  );
-}
-
-function OwnershipSection({ data }: { data: Record<string, unknown> }) {
-  const count = (data?.transferCount || 0) as number;
-  const years = (data?.ownershipYears || []) as string[];
-  return (
-    <div className="p-6 space-y-4">
-      <div className="cc-card-2 p-4 flex items-center gap-4">
-        <span className="text-3xl font-bold text-cc-accent">{count}</span>
-        <div>
-          <p className="font-medium text-cc-text">Ownership change{count !== 1 ? 's' : ''}</p>
-          <p className="text-xs text-cc-muted mt-0.5">
-            {count >= 4 ? '▲ High number of ownership changes' : count === 0 ? '✓ Original owner' : 'Normal ownership history'}
-          </p>
-        </div>
-      </div>
-      {years.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {years.map((yr, i) => (
-            <span key={i} className="cc-pill bg-cc-surface text-cc-muted text-xs">{yr}</span>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function ImportSection({ data }: { data: Record<string, unknown> }) {
-  const fields = [
-    { label: 'Origin country', value: data.originCountry },
-    { label: 'Import country', value: data.importCountry },
-    { label: 'KRA clearance', value: data.kraCleared ? 'Cleared ✓' : data.kraCleared === false ? 'Not cleared ⚠' : 'Unknown' },
-    { label: 'Import date', value: data.importDate ? new Date(data.importDate as string).toLocaleDateString('en-KE', { year: 'numeric', month: 'short' }) : undefined },
-    { label: 'Japan auction', value: data.japanAuctionGrade ? `Grade ${data.japanAuctionGrade}` : undefined },
-    { label: 'Auction mileage', value: data.japanAuctionMileage ? `${(data.japanAuctionMileage as number).toLocaleString()} km` : undefined },
-  ].filter(f => f.value);
-
-  return (
-    <div className="p-6 grid grid-cols-2 sm:grid-cols-3 gap-3">
-      {fields.map(f => (
-        <div key={f.label} className="cc-card-2 px-3 py-2.5">
-          <p className="text-xs text-cc-muted">{f.label}</p>
-          <p className="text-sm font-medium text-cc-text mt-0.5">{String(f.value)}</p>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function RecommendationSection({
-  data, riskLevel, recommendation,
-}: {
-  data: Record<string, unknown>;
-  riskLevel: string;
-  recommendation: string;
-}) {
-  const recMeta = {
-    proceed: { label: 'Proceed with confidence', color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/30', icon: '✓' },
-    caution: { label: 'Proceed with caution', color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/30', icon: '▲' },
-    avoid:   { label: 'Avoid this vehicle', color: 'text-red-400', bg: 'bg-red-600/10 border-red-600/30', icon: '✕' },
-  };
-  const meta = recMeta[recommendation as keyof typeof recMeta] || recMeta.caution;
-  const notes = (data?.notes || []) as string[];
-
-  return (
-    <div className="p-6 space-y-4">
-      <div className={`rounded-xl border p-5 flex items-center gap-4 ${meta.bg}`}>
-        <span className={`text-3xl font-bold ${meta.color}`}>{meta.icon}</span>
-        <div>
-          <p className={`text-lg font-bold ${meta.color}`}>{meta.label}</p>
-          <p className="text-sm text-cc-muted mt-0.5">
-            Risk level: <span className="capitalize font-medium">{riskLevel}</span>
-          </p>
-        </div>
-      </div>
-      {notes.length > 0 && (
-        <ul className="space-y-2">
-          {notes.map((note, i) => (
-            <li key={i} className="flex items-start gap-2 text-sm text-cc-muted">
-              <span className="text-cc-faint mt-0.5">·</span>
-              {note}
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
+    </main>
   );
 }

@@ -1,127 +1,67 @@
-// ============================================================
-// CuliCars — Thread 5: Risk Scorer
-// Queries DB for risk factors, delegates scoring to riskCalculator
-// ============================================================
+// apps/api/src/services/riskScorer.ts
 
-import prisma from '../lib/prisma';
-import { calculateRisk, type RiskInput, type RiskResult } from '@culicars/utils/riskCalculator';
+export interface RiskInput {
+  hasStolen: boolean;
+  hasRecovered: boolean;
+  watchAlertCount: number;
+  damageCount: number;
+  ownershipConfidence: number; // 0–1
+  odometerAnomalyDetected: boolean;
+  sourceCount: number;
+}
 
-/**
- * Gather all risk factors for a VIN from the database
- * and compute the risk score.
- */
-export async function scoreRisk(vin: string): Promise<RiskResult> {
-  // Parallel queries for all risk factors
-  const [
-    vehicle,
-    stolenReports,
-    damageEvents,
-    mileageEvents,
-    ownershipEvents,
-    purposeEvents,
-  ] = await Promise.all([
-    prisma.vehicle.findUnique({
-      where: { vin },
-      select: {
-        inspectionStatus: true,
-        caveatStatus: true,
-        psvLicensed: true,
-        japanAuctionGrade: true,
-        ntsaCorVerified: true,
-      },
-    }),
+export interface RiskScore {
+  score: number; // 0–100
+  level: 'low' | 'medium' | 'high' | 'critical';
+  flags: string[];
+}
 
-    // Active stolen reports
-    prisma.stolenReport.count({
-      where: { vin, status: 'active' },
-    }),
+export function computeRiskScore(input: RiskInput): RiskScore {
+  const flags: string[] = [];
+  let score = 0;
 
-    // Damage events (check for severe)
-    prisma.vehicleEvent.findMany({
-      where: {
-        vin,
-        eventType: { in: ['DAMAGED', 'REPAIRED'] },
-      },
-      select: { metadata: true },
-    }),
-
-    // Mileage-related events for rollback check
-    prisma.vehicleEvent.findMany({
-      where: {
-        vin,
-        eventType: { in: ['SERVICED', 'INSPECTED', 'LISTED_FOR_SALE', 'AUCTIONED'] },
-      },
-      select: { eventDate: true, metadata: true },
-      orderBy: { eventDate: 'asc' },
-    }),
-
-    // Ownership changes
-    prisma.vehicleEvent.count({
-      where: { vin, eventType: 'OWNERSHIP_CHANGE' },
-    }),
-
-    // PSV/taxi events
-    prisma.vehicleEvent.count({
-      where: { vin, eventType: 'PSV_LICENSED' },
-    }),
-  ]);
-
-  // Check for severe damage in metadata
-  const hasSevereDamage = damageEvents.some((e) => {
-    const meta = e.metadata as Record<string, unknown> | null;
-    return meta?.severity === 'severe' || meta?.structural === true;
-  });
-
-  // Check for mileage rollback
-  const mileageReadings = mileageEvents
-    .map((e) => {
-      const meta = e.metadata as Record<string, unknown> | null;
-      const mileage = meta?.mileage as number | undefined;
-      return mileage
-        ? { date: e.eventDate.toISOString(), mileage, source: 'event' }
-        : null;
-    })
-    .filter((r): r is { date: string; mileage: number; source: string } => r !== null);
-
-  let hasMileageRollback = false;
-  if (mileageReadings.length >= 2) {
-    let maxSoFar = 0;
-    for (const r of mileageReadings) {
-      if (r.mileage < maxSoFar - 500) {
-        hasMileageRollback = true;
-        break;
-      }
-      if (r.mileage > maxSoFar) maxSoFar = r.mileage;
-    }
+  if (input.hasStolen) {
+    score += 50;
+    flags.push('Vehicle reported stolen');
   }
 
-  // Has finance caveat?
-  const hasFinanceCaveat =
-    vehicle?.caveatStatus === 'caveat';
+  if (input.hasRecovered && input.hasStolen) {
+    // Recovered offsets stolen somewhat
+    score -= 10;
+    flags.push('Vehicle marked as recovered');
+  }
 
-  // Failed/expired inspection?
-  const hasFailedInspection =
-    vehicle?.inspectionStatus === 'failed' ||
-    vehicle?.inspectionStatus === 'expired';
+  if (input.watchAlertCount > 0) {
+    score += Math.min(input.watchAlertCount * 5, 20);
+    flags.push(`${input.watchAlertCount} community watch alert(s)`);
+  }
 
-  // PSV/matatu history
-  const hasPsvHistory =
-    (vehicle?.psvLicensed ?? false) || purposeEvents > 0;
+  if (input.damageCount > 0) {
+    score += Math.min(input.damageCount * 5, 15);
+    flags.push(`${input.damageCount} damage record(s)`);
+  }
 
-  // Has NTSA data?
-  const hasNtsaData = vehicle?.ntsaCorVerified ?? false;
+  if (input.odometerAnomalyDetected) {
+    score += 15;
+    flags.push('Odometer anomaly detected');
+  }
 
-  const input: RiskInput = {
-    hasStolenReport: stolenReports > 0,
-    hasSevereDamage,
-    hasMileageRollback,
-    hasFinanceCaveat,
-    hasFailedInspection,
-    hasPsvHistory,
-    ownershipChanges: ownershipEvents,
-    japanAuctionGrade: vehicle?.japanAuctionGrade ?? null,
-    hasNtsaData,
-  };
+  if (input.ownershipConfidence < 0.5) {
+    score += 10;
+    flags.push('Ownership confidence low');
+  }
 
-  return calculateRisk(input);
+  if (input.sourceCount === 0) {
+    score += 5;
+    flags.push('No verified data sources');
+  }
+
+  score = Math.max(0, Math.min(100, score));
+
+  const level: RiskScore['level'] =
+    score >= 70 ? 'critical' :
+    score >= 40 ? 'high' :
+    score >= 20 ? 'medium' : 'low';
+
+  return { score, level, flags };
 }

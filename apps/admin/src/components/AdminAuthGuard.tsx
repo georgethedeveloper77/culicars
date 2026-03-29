@@ -27,6 +27,7 @@ export function AdminAuthGuard({
       const { data: { session } } = await supabase.auth.getSession();
 
       if (!session) {
+        setStatus('unauthorized');
         router.replace('/login');
         return;
       }

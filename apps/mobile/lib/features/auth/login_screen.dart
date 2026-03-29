@@ -24,7 +24,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _googleSignIn = GoogleSignIn(
     scopes: ['email', 'profile'],
     // serverClientId required for iOS
-    serverClientId: const String.fromEnvironment('GOOGLE_WEB_CLIENT_ID'),
   );
 
   Future<void> _signInWithGoogle() async {
@@ -94,7 +93,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       await _supabase.auth.signInWithIdToken(
         provider: OAuthProvider.apple,
         idToken: credential.identityToken!,
-        nonce: credential.nonce,
+        nonce: credential.userIdentifier,
       );
 
       await _provisionProfile();

@@ -1,0 +1,5 @@
+// apps/api/src/app.ts  — ADD these lines after your existing route registrations
+
+// T8 — Report system
+import reportsRouter from './routes/reports.js';
+app.use('/reports', reportsRouter);
