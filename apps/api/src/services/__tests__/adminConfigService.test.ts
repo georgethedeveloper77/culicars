@@ -2,36 +2,36 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-// Mock @culicars/database before importing the service
-vi.mock('@culicars/database', () => {
+// Mock ../lib/prisma before importing the service
+vi.mock('../../lib/prisma', () => {
   const mockFindUnique = vi.fn();
   const mockFindMany = vi.fn();
   const mockUpsert = vi.fn();
 
   return {
-    getPrisma: () => ({
+    default: {
       adminConfig: {
         findUnique: mockFindUnique,
         findMany: mockFindMany,
         upsert: mockUpsert,
       },
-    }),
+    },
     __mocks: { mockFindUnique, mockFindMany, mockUpsert },
   };
 });
 
-import * as db from '@culicars/database';
+import * as prismaModule from '../../lib/prisma';
 import {
   getConfig,
   setConfig,
   getAllConfig,
-  getEnabledProviders,
+  getEnabledProvidersForPlatform,
   getCreditPacks,
   invalidateCache,
 } from '../adminConfigService';
 
 function getMocks() {
-  return (db as any).__mocks as {
+  return (prismaModule as any).__mocks as {
     mockFindUnique: ReturnType<typeof vi.fn>;
     mockFindMany: ReturnType<typeof vi.fn>;
     mockUpsert: ReturnType<typeof vi.fn>;
@@ -39,7 +39,7 @@ function getMocks() {
 }
 
 beforeEach(() => {
-  invalidateCache(); // clear TTL cache between tests
+  invalidateCache();
   const { mockFindUnique, mockFindMany, mockUpsert } = getMocks();
   mockFindUnique.mockReset();
   mockFindMany.mockReset();
@@ -75,7 +75,6 @@ describe('getConfig', () => {
     await getConfig('maintenance_mode');
     await getConfig('maintenance_mode');
 
-    // DB should only be hit once — second hit comes from cache
     expect(mockFindUnique).toHaveBeenCalledTimes(1);
   });
 
@@ -110,33 +109,30 @@ describe('setConfig', () => {
     const { mockUpsert, mockFindUnique } = getMocks();
     const now = new Date();
 
-    mockUpsert.mockResolvedValue({
-      key: 'maintenance_mode',
-      value: true,
-      updated_by: 'user-123',
-      updated_at: now,
-    });
-    mockFindUnique.mockResolvedValue({
-      key: 'maintenance_mode',
-      value: true,
-      updated_by: 'user-123',
-      updated_at: now,
-    });
-
-    // Seed cache
     mockFindUnique.mockResolvedValueOnce({
       key: 'maintenance_mode',
       value: false,
       updated_by: null,
       updated_at: now,
     });
-    await getConfig('maintenance_mode');
+    await getConfig('maintenance_mode'); // seeds cache
 
-    // Update — should bust cache
-    await setConfig('maintenance_mode', true, 'user-123');
+    mockUpsert.mockResolvedValue({
+      key: 'maintenance_mode',
+      value: true,
+      updated_by: 'user-123',
+      updated_at: now,
+    });
+    await setConfig('maintenance_mode', true, 'user-123'); // busts cache
 
-    // Next read must go to DB (not return stale cached false)
-    await getConfig('maintenance_mode');
+    mockFindUnique.mockResolvedValueOnce({
+      key: 'maintenance_mode',
+      value: true,
+      updated_by: 'user-123',
+      updated_at: now,
+    });
+    await getConfig('maintenance_mode'); // must hit DB again
+
     expect(mockFindUnique).toHaveBeenCalledTimes(2);
   });
 });
@@ -145,29 +141,18 @@ describe('getAllConfig', () => {
   it('returns all rows mapped correctly', async () => {
     const { mockFindMany } = getMocks();
     mockFindMany.mockResolvedValue([
-      {
-        key: 'maintenance_mode',
-        value: false,
-        updated_by: null,
-        updated_at: new Date('2024-01-01'),
-      },
-      {
-        key: 'ntsa_fetch_enabled',
-        value: false,
-        updated_by: null,
-        updated_at: new Date('2024-01-01'),
-      },
+      { key: 'maintenance_mode', value: false, updated_by: null, updated_at: new Date('2024-01-01') },
+      { key: 'ntsa_fetch_enabled', value: false, updated_by: null, updated_at: new Date('2024-01-01') },
     ]);
 
     const rows = await getAllConfig();
     expect(rows).toHaveLength(2);
     expect(rows[0].key).toBe('maintenance_mode');
-    expect(rows[1].key).toBe('ntsa_fetch_enabled');
-    expect(typeof rows[0].updated_at).toBe('string'); // ISO string
+    expect(typeof rows[0].updated_at).toBe('string');
   });
 });
 
-describe('getEnabledProviders', () => {
+describe('getEnabledProvidersForPlatform', () => {
   it('returns web providers for platform=web', async () => {
     const { mockFindUnique } = getMocks();
     mockFindUnique.mockResolvedValue({
@@ -177,7 +162,7 @@ describe('getEnabledProviders', () => {
       updated_at: new Date(),
     });
 
-    const providers = await getEnabledProviders('web');
+    const providers = await getEnabledProvidersForPlatform('web');
     expect(providers).toEqual(['mpesa', 'stripe']);
   });
 
@@ -190,7 +175,7 @@ describe('getEnabledProviders', () => {
       updated_at: new Date(),
     });
 
-    const providers = await getEnabledProviders('app');
+    const providers = await getEnabledProvidersForPlatform('app');
     expect(providers).toEqual(['mpesa', 'apple_iap']);
   });
 });

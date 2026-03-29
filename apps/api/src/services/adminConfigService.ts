@@ -1,6 +1,6 @@
 // apps/api/src/services/adminConfigService.ts
 
-import { getPrisma } from '@culicars/database';
+import prisma from '../lib/prisma';
 import type {
   AdminConfigKey,
   AdminConfigMap,
@@ -45,7 +45,6 @@ export async function getConfig<K extends AdminConfigKey>(
   const cached = cacheGet(key);
   if (cached !== null) return cached;
 
-  const prisma = getPrisma();
   const row = await (prisma as any).adminConfig.findUnique({
     where: { key },
   });
@@ -64,8 +63,6 @@ export async function setConfig<K extends AdminConfigKey>(
   value: AdminConfigMap[K],
   updatedBy: string,
 ): Promise<AdminConfigRow> {
-  const prisma = getPrisma();
-
   const row = await (prisma as any).adminConfig.upsert({
     where: { key },
     update: {
@@ -92,8 +89,6 @@ export async function setConfig<K extends AdminConfigKey>(
 }
 
 export async function getAllConfig(): Promise<AdminConfigRow[]> {
-  const prisma = getPrisma();
-
   const rows = await (prisma as any).adminConfig.findMany({
     orderBy: { key: 'asc' },
   });
@@ -107,7 +102,7 @@ export async function getAllConfig(): Promise<AdminConfigRow[]> {
 }
 
 // Convenience helpers used by payments routes
-export async function getEnabledProviders(
+export async function getEnabledProvidersForPlatform(
   platform: 'web' | 'app',
 ): Promise<string[]> {
   const key =

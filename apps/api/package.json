@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@culicars/database": "workspace:*",
+    "@culicars/types": "workspace:*",
     "@culicars/utils": "workspace:*",
     "@google-cloud/vision": "^5.3.5",
     "@prisma/client": "5.22.0",

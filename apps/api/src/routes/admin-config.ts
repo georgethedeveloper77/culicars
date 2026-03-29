@@ -1,7 +1,8 @@
 // apps/api/src/routes/admin-config.ts
 
 import { Router, Request, Response } from 'express';
-import { requireAuth, requireRole } from '../middleware/auth';
+import { auth } from '../middleware/auth';
+import { requireRole } from '../middleware/requireRole';
 import {
   getAllConfig,
   getConfig,
@@ -9,10 +10,10 @@ import {
 } from '../services/adminConfigService';
 import type { AdminConfigKey } from '@culicars/types';
 
-const router = Router();
+const router: Router = Router();
 
 // All admin-config routes require admin role
-router.use(requireAuth, requireRole('admin'));
+router.use(auth, requireRole('admin'));
 
 // GET /admin/config — full config dump for admin UI
 router.get('/', async (_req: Request, res: Response) => {

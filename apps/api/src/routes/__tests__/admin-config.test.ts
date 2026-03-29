@@ -5,10 +5,13 @@ import request from 'supertest';
 import express from 'express';
 
 vi.mock('../../middleware/auth', () => ({
-  requireAuth: (req: any, _res: any, next: any) => {
+  auth: (req: any, _res: any, next: any) => {
     req.user = { id: 'admin-user-id', role: 'admin' };
     next();
   },
+}));
+
+vi.mock('../../middleware/requireRole', () => ({
   requireRole: (_role: string) => (_req: any, _res: any, next: any) => next(),
 }));
 
@@ -45,10 +48,7 @@ describe('GET /admin/config', () => {
   });
 
   it('returns 500 on service error', async () => {
-    vi.mocked(configService.getAllConfig).mockRejectedValue(
-      new Error('DB error'),
-    );
-
+    vi.mocked(configService.getAllConfig).mockRejectedValue(new Error('DB error'));
     const res = await request(app).get('/admin/config');
     expect(res.status).toBe(500);
   });
@@ -74,10 +74,7 @@ describe('GET /admin/config/:key', () => {
   });
 
   it('returns 500 on unexpected error', async () => {
-    vi.mocked(configService.getConfig).mockRejectedValue(
-      new Error('Unexpected failure'),
-    );
-
+    vi.mocked(configService.getConfig).mockRejectedValue(new Error('Unexpected'));
     const res = await request(app).get('/admin/config/maintenance_mode');
     expect(res.status).toBe(500);
   });
@@ -131,11 +128,9 @@ describe('PATCH /admin/config/:key', () => {
 
   it('returns 500 on service error', async () => {
     vi.mocked(configService.setConfig).mockRejectedValue(new Error('DB error'));
-
     const res = await request(app)
       .patch('/admin/config/maintenance_mode')
       .send({ value: true });
-
     expect(res.status).toBe(500);
   });
 });
