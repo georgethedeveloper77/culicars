@@ -7,7 +7,6 @@ export async function GET(req: NextRequest) {
   const requestUrl = new URL(req.url);
   const code = requestUrl.searchParams.get('code');
 
-  // CRITICAL: never trust requestUrl.origin — Plesk reports localhost
   const appUrl =
     process.env.NEXT_PUBLIC_APP_URL ||
     process.env.NEXT_PUBLIC_SITE_URL ||
