@@ -68,3 +68,5 @@ export interface AdminConfigRow {
   updated_by: string | null;
   updated_at: string;
 }
+
+export * from './config.types';

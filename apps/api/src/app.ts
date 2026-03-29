@@ -21,6 +21,7 @@ import searchRouter from './routes/search';
 import ocrRouter from './routes/ocr';
 import ntsaRouter from './routes/ntsa';
 import reportsRouter from './routes/reports';
+import adminConfigRouter from './routes/admin-config';
 
 // Routes — Thread 6: Credits & Payments
 import paymentsRouter from './routes/payments';
@@ -87,6 +88,7 @@ app.use('/stolen-reports', optionalAuth, stolenRouter);            // Thread 8
 app.use('/webhooks/mpesa', mpesaWebhookRouter);
 app.use('/webhooks/paypal', paypalWebhookRouter);
 app.use('/webhooks/revenuecat', revenuecatWebhookRouter);
+app.use('/admin/config', adminConfigRouter);
 
 // ── 404 Catch-All ─────────────────────────────────
 app.use((_req, res) => {
