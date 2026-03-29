@@ -1,0 +1,7 @@
+// packages/types/src/config.types.ts  — already provided in the zip.
+//
+// ADD this line to your existing packages/types/src/index.ts:
+//
+//   export * from './config.types';
+//
+// That's the only change needed to index.ts — do not replace the whole file.
