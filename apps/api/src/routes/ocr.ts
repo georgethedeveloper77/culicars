@@ -2,7 +2,7 @@
 
 import { Router, Request, Response } from 'express';
 import multer from 'multer';
-import { authMiddleware } from '../middleware/auth';
+import { auth as authMiddleware } from '../middleware/auth';
 import { requireRole } from '../middleware/requireRole';
 import { ocrService } from '../services/ocrService';
 import { corEnrichService } from '../services/corEnrichService';

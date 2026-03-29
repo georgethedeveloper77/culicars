@@ -45,7 +45,7 @@ export async function getConfig<K extends AdminConfigKey>(
   const cached = cacheGet(key);
   if (cached !== null) return cached;
 
-  const row = await (prisma as any).adminConfig.findUnique({
+  const row = await (prisma as any).admin_config.findUnique({
     where: { key },
   });
 
@@ -63,7 +63,7 @@ export async function setConfig<K extends AdminConfigKey>(
   value: AdminConfigMap[K],
   updatedBy: string,
 ): Promise<AdminConfigRow> {
-  const row = await (prisma as any).adminConfig.upsert({
+  const row = await (prisma as any).admin_config.upsert({
     where: { key },
     update: {
       value,
@@ -89,7 +89,7 @@ export async function setConfig<K extends AdminConfigKey>(
 }
 
 export async function getAllConfig(): Promise<AdminConfigRow[]> {
-  const rows = await (prisma as any).adminConfig.findMany({
+  const rows = await (prisma as any).admin_config.findMany({
     orderBy: { key: 'asc' },
   });
 
