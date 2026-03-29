@@ -1,11 +1,11 @@
 // apps/api/src/routes/dataSources.ts
 import { Router, Request, Response } from 'express';
-import { requireAuth, requireRole } from '../middleware/auth';
+import { auth } from '../middleware/auth';
 import * as ds from '../services/dataSourcesService';
 
-const router = Router();
+const router: Router = Router();
 
-router.use(requireAuth, requireRole('admin'));
+router.use(auth, (req: any, res: any, next: any) => { if (req.user?.role !== 'admin') return res.status(403).json({ error: 'Forbidden' }); next(); });
 
 router.get('/', async (_req: Request, res: Response) => {
   try {

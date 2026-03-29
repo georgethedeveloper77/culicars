@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
 
     if (data.session) {
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.culicars.com'\;
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.culicars.com';
 
         await fetch(`${apiUrl}/auth/complete-profile`, {
           method: 'POST',

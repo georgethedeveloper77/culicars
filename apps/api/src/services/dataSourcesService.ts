@@ -33,12 +33,12 @@ function safeProject(source: any) {
 }
 
 export async function listDataSources() {
-  const sources = await prisma.dataSource.findMany({ orderBy: { created_at: 'desc' } });
+  const sources = await prisma.data_sources.findMany({ orderBy: { created_at: 'desc' } });
   return sources.map(safeProject);
 }
 
 export async function getDataSource(id: string) {
-  const source = await prisma.dataSource.findUnique({ where: { id } });
+  const source = await prisma.data_sources.findUnique({ where: { id } });
   if (!source) return null;
   return safeProject(source);
 }
@@ -54,7 +54,7 @@ export interface CreateDataSourceInput {
 
 export async function createDataSource(input: CreateDataSourceInput) {
   const credentials_enc = input.credentials ? encrypt(JSON.stringify(input.credentials)) : null;
-  const source = await prisma.dataSource.create({
+  const source = await prisma.data_sources.create({
     data: {
       name: input.name,
       type: input.type,
@@ -86,7 +86,7 @@ export async function updateDataSource(id: string, input: UpdateDataSourceInput)
   if (input.credentials !== undefined) {
     updateData.credentials_enc = input.credentials ? encrypt(JSON.stringify(input.credentials)) : null;
   }
-  const source = await prisma.dataSource.update({ where: { id }, data: updateData });
+  const source = await prisma.data_sources.update({ where: { id }, data: updateData });
   return safeProject(source);
 }
 
@@ -98,7 +98,7 @@ export interface RunResult {
 }
 
 export async function triggerManualRun(id: string): Promise<RunResult> {
-  const source = await prisma.dataSource.findUnique({ where: { id } });
+  const source = await prisma.data_sources.findUnique({ where: { id } });
   if (!source) throw new Error('Data source not found');
   if (!source.enabled) throw new Error('Data source is disabled');
 
@@ -122,7 +122,7 @@ export async function triggerManualRun(id: string): Promise<RunResult> {
     runError = err?.message ?? 'Unknown error';
   }
 
-  await prisma.dataSource.update({
+  await prisma.data_sources.update({
     where: { id },
     data: {
       last_run_at: ran_at,
@@ -152,5 +152,5 @@ async function resolveAdapter(parserType: string, credentials: Record<string, st
 }
 
 export async function deleteDataSource(id: string) {
-  await prisma.dataSource.delete({ where: { id } });
+  await prisma.data_sources.delete({ where: { id } });
 }
