@@ -6,11 +6,22 @@ import { NextRequest, NextResponse } from 'next/server';
 export async function GET(req: NextRequest) {
   const requestUrl = new URL(req.url);
   const code = requestUrl.searchParams.get('code');
-  const redirect = requestUrl.searchParams.get('redirect') ?? '/';
+
+  // Support both ?redirect= (login page) and ?next= (middleware)
+  const redirect =
+    requestUrl.searchParams.get('redirect') ??
+    requestUrl.searchParams.get('next') ??
+    '/';
+
+  // CRITICAL: Use APP_URL env var — never trust requestUrl.origin in production
+  // Plesk/Passenger can report localhost as the origin in server-side code
+  const appUrl =
+    process.env.NEXT_PUBLIC_APP_URL ||
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    requestUrl.origin;
 
   if (code) {
     const cookieStore = cookies();
-
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -30,7 +41,6 @@ export async function GET(req: NextRequest) {
     const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (!error && data.session) {
-      // Provision profile row with default role=user
       try {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.culicars.com';
         await fetch(`${apiUrl}/auth/complete-profile`, {
@@ -48,5 +58,5 @@ export async function GET(req: NextRequest) {
   }
 
   const safeRedirect = redirect.startsWith('/') ? redirect : '/';
-  return NextResponse.redirect(new URL(safeRedirect, requestUrl.origin));
+  return NextResponse.redirect(new URL(safeRedirect, appUrl));
 }
