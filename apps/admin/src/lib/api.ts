@@ -1,10 +1,10 @@
 // apps/admin/src/lib/api.ts
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { getSupabaseBrowserClient } from '@/lib/supabase';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
 
 async function getToken(): Promise<string | null> {
-  const supabase = createClientComponentClient();
+  const supabase = getSupabaseBrowserClient();
   const { data } = await supabase.auth.getSession();
   return data.session?.access_token ?? null;
 }

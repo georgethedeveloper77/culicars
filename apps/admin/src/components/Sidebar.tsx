@@ -17,7 +17,7 @@ import {
   LogOut,
   Shield,
 } from 'lucide-react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { getSupabaseBrowserClient } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 
 const NAV = [
@@ -36,7 +36,7 @@ const NAV = [
 export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const supabase = createClientComponentClient();
+  const supabase = getSupabaseBrowserClient();
 
   async function handleSignOut() {
     await supabase.auth.signOut();
