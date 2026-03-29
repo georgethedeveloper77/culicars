@@ -377,6 +377,21 @@ model raw_records {
   @@index([vin])
 }
 
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model data_sources {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name            String
+  type            String
+  parser_type     String
+  credentials_enc String?
+  schedule        String?
+  enabled         Boolean   @default(true)
+  last_run_at     DateTime? @db.Timestamptz(6)
+  last_status     String?
+  created_at      DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime  @default(now()) @db.Timestamptz(6)
+}
+
 enum UserRole {
   guest
   user

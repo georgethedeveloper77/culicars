@@ -33,11 +33,13 @@ export async function getOrGenerateByVin(vin: string): Promise<string> {
   });
 
   if (stale) {
-    return generateReport(vin);
+    const r = await generateReport(vin);
+    return r.id;
   }
 
   // No report at all — generate new
-  return generateReport(vin);
+  const r = await generateReport(vin);
+  return r.id;
 }
 
 /**

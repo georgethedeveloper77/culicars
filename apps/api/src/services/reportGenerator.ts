@@ -36,7 +36,7 @@ export interface GeneratedReport {
  */
 export async function generateReport(
   vin: string,
-  isUnlocked: boolean
+  isUnlocked: boolean = false
 ): Promise<GeneratedReport> {
   // Load all raw records for this VIN
   const rawRecords = await (prisma as any).raw_record.findMany({

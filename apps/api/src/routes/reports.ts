@@ -7,16 +7,16 @@ import {
   recordReportAccess,
   hasUnlockedReport,
 } from '../services/reportGenerator.js';
-import { requireAuth } from '../middleware/auth.js';
+import { auth } from '../middleware/auth.js';
 
-const router = Router();
+const router: import("express").Router = Router();
 const prisma = new PrismaClient();
 
 // ─────────────────────────────────────────────
 // GET /reports/by-vin/:vin
 // Returns locked or unlocked canonical report
 // ─────────────────────────────────────────────
-router.get('/by-vin/:vin', requireAuth, async (req: Request, res: Response) => {
+router.get('/by-vin/:vin', auth, async (req: Request, res: Response) => {
   const { vin } = req.params;
   const userId: string = (req as any).user?.id;
 
@@ -73,7 +73,7 @@ router.get('/:id/preview', async (req: Request, res: Response) => {
 // POST /reports/:id/unlock
 // Deduct 1 credit and record access
 // ─────────────────────────────────────────────
-router.post('/:id/unlock', requireAuth, async (req: Request, res: Response) => {
+router.post('/:id/unlock', auth, async (req: Request, res: Response) => {
   const { id } = req.params;
   const userId: string = (req as any).user?.id;
 
@@ -131,7 +131,7 @@ router.post('/:id/unlock', requireAuth, async (req: Request, res: Response) => {
 // GET /reports/saved
 // Reports this user has unlocked (for Profile)
 // ─────────────────────────────────────────────
-router.get('/saved', requireAuth, async (req: Request, res: Response) => {
+router.get('/saved', auth, async (req: Request, res: Response) => {
   const userId: string = (req as any).user?.id;
 
   try {
