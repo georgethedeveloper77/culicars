@@ -1,98 +1,188 @@
 // apps/api/src/processors/rawDataProcessor.ts
-import prisma from '../lib/prisma';
-import { normalizeVin } from './vinNormalizer';
-import { processServiceRecord } from './serviceRecordProcessor';
-import { processListing } from './listingProcessor';
-import { processAuction } from './auctionProcessor';
 
-const LISTING_SOURCES = new Set(['JIJI', 'PIGIAME', 'OLX', 'AUTOCHEK', 'AUTOSKENYA', 'KABA']);
-const AUCTION_SOURCES = new Set(['KRA_IBID', 'GARAM', 'MOGO', 'CAR_DUKA', 'BEFORWARD']);
-const SERVICE_SOURCES = new Set(['AUTO_EXPRESS']);
+import { NormalisedRecord, MergedVehicleRecord, ResultState } from '../types/result.types';
+import { getEnabledAdapters } from '../services/scrapers/adapterRegistry';
 
-export interface ProcessorResult {
-  processed: number;
-  inserted: number;
-  skipped: number;
-  errors: number;
+const log = (msg: string, data?: Record<string, unknown>) =>
+  console.log(JSON.stringify({ msg, ...data }));
+
+const MERGEABLE_FIELDS = [
+  'vin', 'plate', 'make', 'model', 'year',
+  'engineCapacity', 'fuelType', 'color', 'bodyType',
+  'transmissionType', 'registrationDate', 'importDate',
+  'mileage', 'mileageUnit', 'auctionGrade',
+] as const;
+
+type MergeableField = typeof MERGEABLE_FIELDS[number];
+
+const IDENTITY_FIELDS: MergeableField[] = ['make', 'model', 'year'];
+
+function deriveResultState(merged: MergedVehicleRecord, records: NormalisedRecord[]): ResultState {
+  const hasIdentity = IDENTITY_FIELDS.every((f) => merged[f] != null);
+  const maxConfidence = records.reduce((m, r) => Math.max(m, r.confidence), 0);
+
+  if (!hasIdentity && records.length === 0) return 'pending_enrichment';
+  if (!hasIdentity) return 'low_confidence';
+  if (maxConfidence >= 0.85) return 'verified';
+  return 'partial';
 }
 
-/**
- * Processes all unprocessed rows for a given job.
- * Routes each row to the correct sub-processor based on source.
- * Marks rows as processed=true after handling (success or error).
- */
-export async function processJobRawData(jobId: string): Promise<ProcessorResult> {
-  const result: ProcessorResult = { processed: 0, inserted: 0, skipped: 0, errors: 0 };
+function mergeRecords(records: NormalisedRecord[]): MergedVehicleRecord {
+  const sorted = [...records].sort((a, b) => a.confidence - b.confidence);
 
-  const batch = await prisma.scraperDataRaw.findMany({
-    where: { jobId: jobId, processed: false },
-    orderBy: { createdAt: 'asc' },
-  });
+  const mergedFields: Partial<Record<MergeableField, unknown>> = {};
+  const fieldSources: Record<string, string> = {};
+  const sources = records.map((r) => r.sourceName);
 
-  for (const row of batch) {
-    try {
-      const raw = row.rawData as Record<string, unknown>;
-      const resolvedVin = normalizeVin(row.vin ?? (raw.vin as string));
-      const source = (row.source as string).toUpperCase();
+  for (const record of sorted) {
+    for (const field of MERGEABLE_FIELDS) {
+      const value = record[field];
+      if (value == null) continue;
 
-      let wasInserted = false;
-
-      if (SERVICE_SOURCES.has(source)) {
-        wasInserted = await processServiceRecord(raw as never, resolvedVin);
-      } else if (LISTING_SOURCES.has(source)) {
-        wasInserted = await processListing({ ...raw, source } as never, resolvedVin);
-      } else if (AUCTION_SOURCES.has(source)) {
-        wasInserted = await processAuction({ ...raw, source } as never, resolvedVin);
-      } else {
-        // Unknown source — mark processed but skip
-        wasInserted = false;
+      if (field === 'auctionGrade' && record.sourceName !== 'be_forward') {
+        if (fieldSources[field] === 'be_forward') continue;
       }
 
-      if (wasInserted) {
-        result.inserted++;
-      } else {
-        result.skipped++;
-      }
-
-      // Mark as processed regardless of outcome
-      await prisma.scraperDataRaw.update({
-        where: { id: row.id },
-        data: { processed: true, processedAt: new Date() },
-      });
-
-      result.processed++;
-    } catch (err) {
-      result.errors++;
-      console.error(`[rawDataProcessor] Error processing row ${row.id}:`, err);
-
-      // Still mark as processed to avoid infinite retry loops
-      await prisma.scraperDataRaw.update({
-        where: { id: row.id },
-        data: { processed: true, processedAt: new Date() },
-      }).catch(() => {/* ignore secondary error */});
+      mergedFields[field] = value;
+      fieldSources[field] = record.sourceName;
     }
   }
 
-  return result;
+  const maxConfidence = records.reduce((m, r) => Math.max(m, r.confidence), 0);
+
+  return {
+    vin:              (mergedFields.vin              as string)       ?? null,
+    plate:            (mergedFields.plate            as string)       ?? null,
+    make:             (mergedFields.make             as string)       ?? null,
+    model:            (mergedFields.model            as string)       ?? null,
+    year:             (mergedFields.year             as number)       ?? null,
+    engineCapacity:   (mergedFields.engineCapacity   as string)       ?? null,
+    fuelType:         (mergedFields.fuelType         as string)       ?? null,
+    color:            (mergedFields.color            as string)       ?? null,
+    bodyType:         (mergedFields.bodyType         as string)       ?? null,
+    transmissionType: (mergedFields.transmissionType as string)       ?? null,
+    registrationDate: (mergedFields.registrationDate as string)       ?? null,
+    importDate:       (mergedFields.importDate       as string)       ?? null,
+    mileage:          (mergedFields.mileage          as number)       ?? null,
+    mileageUnit:      (mergedFields.mileageUnit      as 'km' | 'mi') ?? null,
+    auctionGrade:     (mergedFields.auctionGrade     as string)       ?? null,
+    resultState: 'pending_enrichment',
+    confidence: maxConfidence,
+    sources,
+    fieldSources,
+  };
 }
 
-/**
- * Processes all unprocessed raw data across all jobs.
- * Used by scheduled tasks or admin triggers.
- */
-export async function processAllPending(): Promise<ProcessorResult> {
-  const result: ProcessorResult = { processed: 0, inserted: 0, skipped: 0, errors: 0 };
+export interface ProcessorInput {
+  vin?: string | null;
+  plate?: string | null;
+}
 
-  const pendingJobs = await prisma.scraperDataRaw
-    .groupBy({ by: ['jobId'], where: { processed: false } });
+export interface ProcessorResult {
+  merged: MergedVehicleRecord;
+  records: NormalisedRecord[];
+  shouldQueue: boolean;
+}
 
-  for (const { jobId } of pendingJobs) {
-    const jobResult = await processJobRawData(jobId);
-    result.processed += jobResult.processed;
-    result.inserted += jobResult.inserted;
-    result.skipped += jobResult.skipped;
-    result.errors += jobResult.errors;
+export async function processVehicleQuery(input: ProcessorInput): Promise<ProcessorResult> {
+  const { vin, plate } = input;
+
+  if (!vin && !plate) {
+    throw new Error('processVehicleQuery: must supply vin or plate');
   }
 
-  return result;
+  const adapters = getEnabledAdapters();
+  const records: NormalisedRecord[] = [];
+
+  await Promise.allSettled(
+    adapters.map(async (adapter) => {
+      try {
+        let record: NormalisedRecord | null = null;
+        if (vin)              record = await adapter.fetchByVin(vin);
+        if (!record && plate) record = await adapter.fetchByPlate(plate);
+        if (record) records.push(record);
+      } catch (err) {
+        log('Adapter threw unexpectedly — skipped', { adapter: adapter.sourceName, err: String(err) });
+      }
+    }),
+  );
+
+  const merged = mergeRecords(records);
+  merged.resultState = deriveResultState(merged, records);
+
+  const shouldQueue =
+    merged.resultState === 'pending_enrichment' ||
+    merged.resultState === 'low_confidence';
+
+  log('rawDataProcessor: query complete', {
+    vin: vin ?? undefined,
+    plate: plate ?? undefined,
+    state: merged.resultState,
+    sources: merged.sources,
+    shouldQueue,
+  });
+
+  return { merged, records, shouldQueue };
+}
+
+
+
+// ─── Original processJobRawData (restored) ───────────────────────────────────
+import prismaClient from '../lib/prisma';
+import { processListing }       from './listingProcessor';
+import { processAuction }       from './auctionProcessor';
+import { processServiceRecord } from './serviceRecordProcessor';
+import { normalizeVin }         from './vinNormalizer';
+
+const LISTING_SOURCES = ['JIJI', 'PIGIAME', 'OLX', 'AUTOCHEK', 'AUTOSKENYA', 'KABA', 'GARAM', 'MOGO', 'CAR_DUKA', 'KRA_IBID'];
+const AUCTION_SOURCES = ['BEFORWARD'];
+const SERVICE_SOURCES = ['AUTO_EXPRESS'];
+
+export interface JobProcessResult {
+  processed: number;
+  inserted:  number;
+  skipped:   number;
+  errors:    number;
+}
+
+export async function processJobRawData(jobId: string): Promise<JobProcessResult> {
+  const rows = await prismaClient.scraperDataRaw.findMany({
+    where: { jobId, processed: false },
+  });
+
+  let inserted = 0;
+  let skipped  = 0;
+  let errors   = 0;
+
+  for (const row of rows) {
+    let wasInserted = false;
+
+    try {
+      const source = row.source as string;
+      const data   = row.rawData as Record<string, unknown>;
+
+      if (row.vin == null && data?.vin) {
+        (row as Record<string, unknown>).vin = normalizeVin(data.vin as string);
+      }
+
+      if (LISTING_SOURCES.includes(source)) {
+        wasInserted = await processListing(row as never, row.vin ?? null);
+      } else if (AUCTION_SOURCES.includes(source)) {
+        wasInserted = await processAuction(row as never, row.vin ?? null);
+      } else if (SERVICE_SOURCES.includes(source)) {
+        wasInserted = await processServiceRecord(row as never, row.vin ?? null);
+      }
+
+      if (wasInserted) inserted++; else skipped++;
+    } catch {
+      errors++;
+    }
+
+    await prismaClient.scraperDataRaw.update({
+      where: { id: row.id },
+      data:  { processed: true, processedAt: new Date() },
+    });
+  }
+
+  return { processed: rows.length, inserted, skipped, errors };
 }

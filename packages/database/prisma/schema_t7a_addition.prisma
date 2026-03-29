@@ -1,0 +1,15 @@
+// packages/database/prisma/schema.prisma — T7a ADDITION
+// Add this model to the existing schema (table already created via SQL migration)
+
+model SearchDemandQueue {
+  id              String    @id @default(uuid())
+  plate           String?
+  vin             String?
+  resultState     String    @default("pending_enrichment") @map("result_state")
+  timesRequested  Int       @default(1)                   @map("times_requested")
+  lastRequestedAt DateTime  @default(now())               @map("last_requested_at")
+  enrichedAt      DateTime?                               @map("enriched_at")
+  createdAt       DateTime  @default(now())               @map("created_at")
+
+  @@map("search_demand_queue")
+}

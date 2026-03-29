@@ -16,6 +16,7 @@ import { optionalAuth } from './middleware/optionalAuth';
 import { auth } from './middleware/auth';
 import { requireRole } from './middleware/requireRole';
 
+
 // Routes — Threads 1-5
 import healthRouter from './routes/health';
 import searchRouter from './routes/search';
@@ -33,7 +34,9 @@ import stripeWebhookRouter from './routes/webhooks/stripe';
 import revenuecatWebhookRouter from './routes/webhooks/revenuecat';
 
 // Routes — Thread 7: Scraping & Data Ingestion
-import scraperRouter from './routes/scraper';
+import scraperRouter     from './routes/scraper';
+import demandQueueRouter from './routes/admin/demandQueue';
+
 
 // Routes — Thread 8: Contributions + Stolen Reports
 import contributionsRouter from './routes/contributions';
@@ -84,6 +87,9 @@ app.use('/credits', auth, creditsRouter);                          // Thread 6
 app.use('/admin/scraper', requireRole('admin'), scraperRouter);    // Thread 7
 app.use('/contributions', optionalAuth, contributionsRouter);      // Thread 8
 app.use('/stolen-reports', optionalAuth, stolenRouter);            // Thread 8
+// inside your route block:
+app.use('/scraper',            scraperRouter);
+app.use('/admin/demand-queue', demandQueueRouter);
 
 // Webhooks — NO auth middleware (providers authenticate differently)
 // Stripe already mounted above (before json parser)
