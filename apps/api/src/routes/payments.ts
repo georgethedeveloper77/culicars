@@ -1,93 +1,173 @@
 // apps/api/src/routes/payments.ts
 
 import { Router, Request, Response } from 'express';
-import { auth } from '../middleware/auth';
-import { requireRole } from '../middleware/requireRole';
-import { optionalAuth } from '../middleware/optionalAuth';
-import {
-  getEnabledProviders,
-  initiatePayment,
-  confirmPayment,
-} from '../services/paymentProviderService';
-import {
-  getEnabledProvidersForPlatform,
-  getCreditPacks,
-} from '../services/adminConfigService';
+import { requireAuth } from '../middleware/auth';
+import { getEnabledProviders, getCreditPacks, getPackById } from '../services/paymentConfigService';
+import { recordPendingPurchase, getBalance, deductForUnlock } from '../services/creditService';
+import { initiateStkPush } from '../services/providers/mpesa';
+import { createPaymentIntent } from '../services/providers/stripe';
+import { PrismaClient } from '@prisma/client';
 
-const router: Router = Router();
+const router = Router();
+const prisma = new PrismaClient();
 
-// ─── Config-driven endpoints (T5) ─────────────────────────────────────────
-
-// GET /payments/providers?platform=web|app
-// Returns the admin-configured provider list for the given platform.
-// Used by web and mobile frontends to know which payment buttons to show.
+// ─── GET /payments/providers?platform=web|app ──────────────────────────────
 router.get('/providers', async (req: Request, res: Response) => {
-  const platform = req.query.platform as string;
-  if (!platform || !['web', 'app'].includes(platform)) {
-    return res.status(400).json({ error: 'platform must be "web" or "app"' });
-  }
-
   try {
-    const providers = await getEnabledProvidersForPlatform(
-      platform as 'web' | 'app',
-    );
-    return res.json({ platform, providers });
-  } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    const platform = (req.query.platform as string) === 'app' ? 'app' : 'web';
+    const providers = await getEnabledProviders(platform);
+    res.json({ providers });
+  } catch (err) {
+    console.error('[payments] providers error', err);
+    res.status(500).json({ error: 'Failed to load payment providers' });
   }
 });
 
-// GET /payments/packs?platform=web|app
-// Returns credit pack options for the given platform.
-// Web packs include price_kes + price_usd. App packs include price_usd only.
+// ─── GET /payments/packs?platform=web|app ──────────────────────────────────
 router.get('/packs', async (req: Request, res: Response) => {
-  const platform = req.query.platform as string;
-  if (!platform || !['web', 'app'].includes(platform)) {
-    return res.status(400).json({ error: 'platform must be "web" or "app"' });
-  }
-
   try {
-    const packs = await getCreditPacks(platform as 'web' | 'app');
-    return res.json({ platform, packs });
-  } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    const platform = (req.query.platform as string) === 'app' ? 'app' : 'web';
+    const packs = await getCreditPacks(platform);
+    res.json({ packs });
+  } catch (err) {
+    console.error('[payments] packs error', err);
+    res.status(500).json({ error: 'Failed to load credit packs' });
   }
 });
 
-// ─── Payment initiation (T6) ──────────────────────────────────────────────
-
-// GET /payments/enabled-providers
-// Returns DB-driven enabled providers with adapter info (used internally).
-router.get('/enabled-providers', optionalAuth, async (_req: Request, res: Response) => {
+// ─── GET /credits/balance ──────────────────────────────────────────────────
+router.get('/balance', requireAuth, async (req: Request, res: Response) => {
   try {
-    const providers = await getEnabledProviders();
-    return res.json({ providers });
-  } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    const userId = (req as any).user.id as string;
+    const balance = await getBalance(userId);
+    res.json({ balance });
+  } catch (err) {
+    console.error('[payments] balance error', err);
+    res.status(500).json({ error: 'Failed to fetch balance' });
   }
 });
 
-// POST /payments/initiate
-// Initiates a payment for a credit pack purchase.
-router.post('/initiate', auth, async (req: Request, res: Response) => {
+// ─── POST /payments/mpesa/stk-push ────────────────────────────────────────
+router.post('/mpesa/stk-push', requireAuth, async (req: Request, res: Response) => {
   try {
-    const userId: string = (req as any).user.id;
-    const { provider, packId, phone } = req.body;
+    const userId = (req as any).user.id as string;
+    const { phone, pack_id, platform } = req.body as {
+      phone: string;
+      pack_id: string;
+      platform: 'web' | 'app';
+    };
 
-    if (!provider || !packId) {
-      return res.status(400).json({ error: 'provider and packId are required' });
+    if (!phone || !pack_id) {
+      return res.status(400).json({ error: 'phone and pack_id are required' });
     }
 
-    const result = await initiatePayment({
+    const pack = await getPackById(pack_id, platform ?? 'web');
+    if (!pack) return res.status(400).json({ error: 'Invalid pack_id' });
+
+    // Record pending before calling provider — prevents lost credits on crash
+    const providerRef = `mpesa_pending_${userId}_${pack_id}_${Date.now()}`;
+    await recordPendingPurchase({
       userId,
-      provider: provider,
-      packId,
-      phone,
+      packId: pack_id,
+      provider: 'mpesa',
+      providerRef,
+      credits: pack.credits,
+      meta: { price_kes: pack.price_kes, phone },
     });
 
-    return res.json(result);
+    const result = await initiateStkPush({
+      phone,
+      amountKes: pack.price_kes,
+      accountRef: `CULICARS-${pack_id.toUpperCase()}`,
+      description: `CuliCars ${pack.label} pack`,
+      providerRef,
+    });
+
+    // Update the pending record with the real checkout_request_id
+    await (prisma as any).credit_transactions.updateMany({
+      where: { provider_ref: providerRef },
+      data: { provider_ref: result.checkoutRequestId },
+    });
+
+    res.json({
+      checkout_request_id: result.checkoutRequestId,
+      message: 'STK push sent — enter your M-Pesa PIN to complete payment.',
+    });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    console.error('[payments] mpesa stk error', err);
+    res.status(500).json({ error: err?.message ?? 'M-Pesa payment failed' });
+  }
+});
+
+// ─── POST /payments/stripe/create-intent ──────────────────────────────────
+router.post('/stripe/create-intent', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user.id as string;
+    const { pack_id, platform } = req.body as { pack_id: string; platform: 'web' | 'app' };
+
+    if (!pack_id) return res.status(400).json({ error: 'pack_id is required' });
+
+    const pack = await getPackById(pack_id, platform ?? 'web');
+    if (!pack) return res.status(400).json({ error: 'Invalid pack_id' });
+
+    const amountCents = pack.price_usd * 100;
+
+    const { clientSecret, intentId } = await createPaymentIntent({
+      amountUsdCents: amountCents,
+      metadata: { userId, packId: pack_id, credits: String(pack.credits) },
+    });
+
+    // Record pending — confirmed via Stripe webhook
+    await recordPendingPurchase({
+      userId,
+      packId: pack_id,
+      provider: 'stripe',
+      providerRef: intentId,
+      credits: pack.credits,
+      meta: { price_usd: pack.price_usd },
+    });
+
+    res.json({ client_secret: clientSecret, amount_usd_cents: amountCents });
+  } catch (err: any) {
+    console.error('[payments] stripe intent error', err);
+    res.status(500).json({ error: err?.message ?? 'Stripe payment failed' });
+  }
+});
+
+// ─── POST /reports/:id/unlock ──────────────────────────────────────────────
+router.post('/reports/:id/unlock', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user.id as string;
+    const reportId = req.params.id;
+
+    // Check if already unlocked (idempotent)
+    const existing = await (prisma as any).report_unlock.findFirst({
+      where: { user_id: userId, report_id: reportId },
+    });
+
+    if (existing) {
+      const balance = await getBalance(userId);
+      return res.json({ unlocked: true, credits_remaining: balance, report_id: reportId });
+    }
+
+    // Deduct 1 credit
+    const { success, newBalance } = await deductForUnlock(userId, reportId, 1);
+
+    if (!success) {
+      return res.status(402).json({ error: 'Insufficient credits', credits_remaining: newBalance });
+    }
+
+    // Record the unlock access
+    await (prisma as any).report_unlock.upsert({
+      where: { user_id_report_id: { user_id: userId, report_id: reportId } },
+      create: { user_id: userId, report_id: reportId },
+      update: {},
+    });
+
+    res.json({ unlocked: true, credits_remaining: newBalance, report_id: reportId });
+  } catch (err) {
+    console.error('[payments] unlock error', err);
+    res.status(500).json({ error: 'Unlock failed' });
   }
 });
 

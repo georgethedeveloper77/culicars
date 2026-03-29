@@ -1,96 +1,144 @@
-# T8 — Report System Upgrade
+# T9 — Payments + Unlock Flow
 
-## What this thread adds
+## Files in this zip
 
-- `riskScorer.ts` — risk score (0–100) + level + flags from raw vehicle data
-- `sectionBuilders/` — 7 section builders: identity, stolenAlerts, ownership, damage, odometer, timeline, communityInsights
-- `reportGenerator.ts` — orchestrates sections, upserts `vehicle_report`, manages `report_access`
-- `routes/reports.ts` — GET /reports/by-vin/:vin, GET /reports/:id/preview, POST /reports/:id/unlock, GET /reports/saved
-- Web: `apps/web/src/app/report/[id]/page.tsx` — full locked/unlocked report UI
-- Mobile: `apps/mobile/lib/features/report/report_full_screen.dart` — full report screen with section cards
-- `T8_migrations.sql` — `vehicle_report` + `report_access` tables
+```
+T9_SQL_MIGRATION.sql
+apps/api/src/
+  services/
+    creditService.ts
+    paymentConfigService.ts
+    providers/
+      mpesa.ts
+      stripe.ts
+  routes/
+    payments.ts
+    webhooks/
+      mpesa.ts
+      stripe.ts
+  services/__tests__/
+    creditService.test.ts
+  app.ts.patch-notes.ts        ← read this, do not deploy it
+packages/types/src/
+  payment.types.ts
+apps/web/src/app/pricing/
+  page.tsx
+```
 
 ---
 
 ## Deployment steps (in order)
 
-### 1. Run SQL migration
+### 1 — Run SQL migration
+Paste `T9_SQL_MIGRATION.sql` into the Supabase SQL Editor and run.  
+Verify: `credit_transactions` and `report_unlock` tables exist with correct columns.
 
-In Supabase SQL Editor, paste and run `T8_migrations.sql`.
+---
 
-### 2. Deploy files
+### 2 — Add env vars in Plesk (api.culicars.com Node.js settings)
 
-```bash
-# On your Mac — unzip straight into monorepo root
-unzip -n culicars-t8.zip -d /Users/karani/Documents/Projects/culicars/
 ```
-
-### 3. Register reports router in app.ts
-
-Add these two lines after your existing route imports in `apps/api/src/app.ts`:
-
-```ts
-import reportsRouter from './routes/reports.js';
-app.use('/reports', reportsRouter);
-```
-
-### 4. Prisma introspect (picks up new tables)
-
-```bash
-DATABASE_URL="postgresql://postgres:[password]@db.pqelsdkisaephcislwbv.supabase.co:5432/postgres" \
-DIRECT_DATABASE_URL="postgresql://postgres:[password]@db.pqelsdkisaephcislwbv.supabase.co:5432/postgres" \
-  pnpm --filter @culicars/database prisma db pull
-```
-
-Then rebuild the database package:
-
-```bash
-pnpm --filter @culicars/database build
-```
-
-### 5. Build and deploy API
-
-```bash
-git add -A && git commit -m "T8: Report system upgrade" && git push
-```
-
-Wait for GitHub Actions → Plesk picks up the build.
-
-### 6. Build web
-
-```bash
-pnpm --filter web build
-```
-
-Or let Plesk/CI handle it after push.
-
-### 7. Build mobile (optional at this stage)
-
-```bash
-cd apps/mobile
-flutter pub get
-flutter build apk --debug
+MPESA_CONSUMER_KEY=
+MPESA_CONSUMER_SECRET=
+MPESA_SHORTCODE=
+MPESA_PASSKEY=
+MPESA_CALLBACK_URL=https://api.culicars.com/webhooks/mpesa
+MPESA_ENV=sandbox          # change to production when going live
+STRIPE_SECRET_KEY=sk_live_...
+STRIPE_WEBHOOK_SECRET=whsec_...
 ```
 
 ---
 
-## Definition of Done verification
+### 3 — Install new npm deps on server
 
-| Check | How to verify |
-|---|---|
-| Partial result renders a premium-looking shell | Search a VIN with only one raw_record — should return state=partial with locked sections visible |
-| Report correctly shows locked sections before unlock | GET /reports/:id/preview — sections other than identity and stolenAlerts should have `locked: true` |
-| Full content shown after unlock | POST /reports/:id/unlock with a user who has credits — all sections should return full data |
-| Community Insights section exists; shows placeholder if no Watch data | Check `sections.communityInsights.available === false` and `placeholder` string present |
-| Unlock records access in DB | After unlock, check `report_access` table in Supabase for the row |
-| No search returns a blank 200 | Any VIN with zero records returns state=pending_enrichment with PendingShell UI |
+```bash
+cd /var/www/vhosts/culicars.com/httpdocs
+pnpm add stripe --filter @culicars/api
+```
 
 ---
 
-## Key rules enforced
+### 4 — Unzip files into monorepo root on Mac
 
-- Owner PII (name, ID, address) **never stored** — ownership section only surfaces owner count + transfer date
-- Credit ledger is **append-only** — unlock writes a `credit_transaction` row, never updates/deletes
-- `report_access` has a UNIQUE constraint on `(report_id, user_id)` — idempotent unlock
-- Community Insights gracefully empty until T12 Watch data is live
-- Language rules: no "no data found", "raw data", "NTSA card" anywhere in UI copy
+```bash
+cd /Users/karani/Documents/Projects/culicars
+unzip -n ~/Downloads/t9.zip
+```
+
+---
+
+### 5 — Patch app.ts to mount Stripe webhook before express.json()
+
+Read `apps/api/src/app.ts.patch-notes.ts` for the exact insertion order, then apply:
+
+```bash
+# Open app.ts and add these imports near the top (after existing imports):
+sed -i '' '/^import.*express/a\
+import stripeWebhook from '"'"'./routes/webhooks/stripe'"'"';\
+import mpesaWebhook from '"'"'./routes/webhooks/mpesa'"'"';\
+import paymentsRouter from '"'"'./routes/payments'"'"';' apps/api/src/app.ts
+```
+
+Then manually add the route mounts in the correct order (see patch-notes for exact positions).  
+**CRITICAL**: `app.use('/webhooks/stripe', express.raw({ type: 'application/json' }), stripeWebhook)` MUST appear before any `app.use(express.json())`.
+
+---
+
+### 6 — Export payment types from packages/types
+
+```bash
+# Append to packages/types/src/index.ts
+echo "export * from './payment.types';" >> packages/types/src/index.ts
+```
+
+---
+
+### 7 — Build and deploy
+
+```bash
+git add -A
+git commit -m "T9: Payments + Unlock Flow"
+git push
+```
+
+Wait for GitHub Actions to build. Passenger restart is automatic.
+
+---
+
+### 8 — Run tests
+
+```bash
+cd /var/www/vhosts/culicars.com/httpdocs
+pnpm --filter @culicars/api test
+```
+
+Expected: all `creditService` tests pass.
+
+---
+
+## Definition of Done checklist
+
+- [ ] `GET /payments/packs?platform=web` returns packs from admin config
+- [ ] `GET /payments/providers?platform=web` returns only enabled providers
+- [ ] M-Pesa STK push initiated → pending transaction recorded in `credit_transactions`
+- [ ] M-Pesa webhook confirms payment → status updated to `confirmed`
+- [ ] Duplicate M-Pesa webhook → no double credit (idempotent via `provider_ref` UNIQUE)
+- [ ] Stripe intent created → `provider_ref = intent_id` recorded as pending
+- [ ] Stripe webhook `payment_intent.succeeded` → status confirmed
+- [ ] `POST /reports/:id/unlock` with 0 credits → 402 Insufficient credits
+- [ ] `POST /reports/:id/unlock` with ≥1 credit → deducted, report_unlock created
+- [ ] Second unlock of same report → returns unlocked:true without deducting again
+- [ ] `GET /credits/balance` returns current sum of confirmed transactions
+- [ ] `/pricing` page loads packs and correct provider buttons
+- [ ] Disabling a provider in admin config → removed from `/payments/providers` response immediately
+
+---
+
+## Notes
+
+- **Credit ledger is append-only.** `status` is the only mutable field (pending → confirmed).
+- **Stripe webhook MUST mount before `express.json()`** — raw Buffer body required for HMAC.
+- **M-Pesa sandbox**: use the Daraja sandbox credentials and test STK push with the simulator at developer.safaricom.co.ke.
+- **PayPal** deferred (does not accept KES; frontend conversion needed — scope a future thread).
+- **iOS IAP / Android Play Billing** deferred to T12 mobile thread.

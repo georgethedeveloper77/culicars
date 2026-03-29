@@ -1,79 +1,45 @@
-// ============================================================
-// CuliCars — Thread 6: M-Pesa Webhook
-// ============================================================
-// POST /webhooks/mpesa — Daraja STK Push callback
-// Called by Safaricom after user confirms/cancels on phone.
-// ResultCode 0 = success, anything else = failure.
-// ============================================================
+// apps/api/src/routes/webhooks/mpesa.ts
 
-import { Router } from 'express';
-import { confirmPayment, failPayment } from '../../services/paymentProviderService';
-import type { MpesaCallbackBody } from '../../types/payment.types';
+import { Router, Request, Response } from 'express';
+import { parseStkCallback } from '../../services/providers/mpesa';
+import { confirmPayment } from '../../services/creditService';
 
-const router: import("express").Router = Router();
+const router = Router();
 
-// M-Pesa sends JSON callbacks — no auth header, we validate by structure
-router.post('/', async (req, res) => {
-  // Always respond 200 to M-Pesa immediately — they retry on non-200
+/**
+ * POST /webhooks/mpesa
+ * Safaricom STK Push callback.
+ * Must be publicly accessible (no auth middleware) and respond quickly.
+ * Mount this BEFORE express.json() is irrelevant for M-Pesa (it sends JSON),
+ * but keep it separate from the Stripe raw-body requirement.
+ */
+router.post('/', async (req: Request, res: Response) => {
+  // Always ACK Safaricom immediately — they retry on non-200
+  res.status(200).json({ ResultCode: 0, ResultDesc: 'Accepted' });
+
   try {
-    const body = req.body as MpesaCallbackBody;
+    const parsed = parseStkCallback(req.body);
 
-    const callback = body?.Body?.stkCallback;
-    if (!callback) {
-      console.warn('[M-Pesa Webhook] Invalid callback body — no stkCallback');
-      return res.json({ ResultCode: 0, ResultDesc: 'Accepted' });
+    if (!parsed.success) {
+      console.warn(`[webhook/mpesa] STK failed: ${parsed.checkoutRequestId}`);
+      return;
     }
 
-    const {
-      CheckoutRequestID: checkoutId,
-      MerchantRequestID: merchantId,
-      ResultCode: resultCode,
-      ResultDesc: resultDesc,
-      CallbackMetadata: metadata,
-    } = callback;
+    const result = await confirmPayment(parsed.checkoutRequestId);
 
-    console.info(
-      `[M-Pesa Webhook] CheckoutID=${checkoutId} Result=${resultCode} Desc=${resultDesc}`
+    if (!result) {
+      console.warn(`[webhook/mpesa] No pending tx for: ${parsed.checkoutRequestId}`);
+      return;
+    }
+
+    console.log(
+      `[webhook/mpesa] Confirmed ${result.credits} credits for user ${result.userId} ` +
+      `(receipt: ${parsed.mpesaReceiptNumber})`
     );
-
-    if (resultCode === 0) {
-      // ── SUCCESS ──
-      // Extract metadata items
-      const metaItems = metadata?.Item ?? [];
-      const metaMap: Record<string, string | number | undefined> = {};
-      for (const item of metaItems) {
-        metaMap[item.Name] = item.Value;
-      }
-
-      await confirmPayment(checkoutId, {
-        merchantRequestId: merchantId,
-        resultCode,
-        resultDesc,
-        mpesaReceiptNumber: metaMap['MpesaReceiptNumber'],
-        amount: metaMap['Amount'],
-        phoneNumber: metaMap['PhoneNumber'],
-        transactionDate: metaMap['TransactionDate'],
-      });
-
-      console.info(
-        `[M-Pesa Webhook] Payment confirmed. Receipt=${metaMap['MpesaReceiptNumber']}`
-      );
-    } else {
-      // ── FAILURE ──
-      // Common codes: 1032=cancelled, 1037=timeout, 1=insufficient balance
-      await failPayment(checkoutId, `ResultCode ${resultCode}: ${resultDesc}`);
-
-      console.info(
-        `[M-Pesa Webhook] Payment failed. Code=${resultCode} Desc=${resultDesc}`
-      );
-    }
   } catch (err) {
-    // Log but still return 200 — don't let M-Pesa retry
-    console.error('[M-Pesa Webhook] Processing error:', err);
+    // Log but never let the webhook handler throw — we already ACK'd
+    console.error('[webhook/mpesa] Handler error:', err);
   }
-
-  // Always respond 200 to Safaricom
-  return res.json({ ResultCode: 0, ResultDesc: 'Accepted' });
 });
 
 export default router;

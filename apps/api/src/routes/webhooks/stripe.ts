@@ -1,122 +1,57 @@
-// ============================================================
-// CuliCars — Thread 6: Stripe Webhook
-// ============================================================
-// POST /webhooks/stripe — Stripe webhook events
-// Key event: payment_intent.succeeded
-// Signature verified via STRIPE_WEBHOOK_SECRET.
-// IMPORTANT: Must use raw body for signature verification.
-// ============================================================
+// apps/api/src/routes/webhooks/stripe.ts
 
-import { Router, raw } from 'express';
-import crypto from 'crypto';
-import { env } from '../../config/env';
-import { confirmPayment, failPayment } from '../../services/paymentProviderService';
-import type { StripeWebhookEvent } from '../../types/payment.types';
+import { Router, Request, Response } from 'express';
+import { parseWebhookEvent } from '../../services/providers/stripe';
+import { confirmPayment } from '../../services/creditService';
 
-const router: import("express").Router = Router();
+const router = Router();
 
 /**
- * Verify Stripe webhook signature using the raw body.
- * Stripe signs: timestamp + '.' + rawBody
+ * POST /webhooks/stripe
+ * CRITICAL: This route must be mounted in app.ts BEFORE express.json()
+ * so the raw Buffer body is preserved for HMAC verification.
+ * Use express.raw({ type: 'application/json' }) on this route only.
  */
-function verifyStripeSignature(
-  rawBody: Buffer,
-  signatureHeader: string,
-  secret: string
-): boolean {
-  try {
-    const parts = signatureHeader.split(',');
-    const timestampPart = parts.find((p) => p.startsWith('t='));
-    const sigPart = parts.find((p) => p.startsWith('v1='));
+router.post('/', async (req: Request, res: Response) => {
+  const sig = req.headers['stripe-signature'] as string;
 
-    if (!timestampPart || !sigPart) return false;
-
-    const timestamp = timestampPart.slice(2);
-    const signature = sigPart.slice(3);
-
-    // Check timestamp is within 5 minutes
-    const timestampAge = Math.abs(Date.now() / 1000 - parseInt(timestamp));
-    if (timestampAge > 300) return false;
-
-    // Compute expected signature
-    const signedPayload = `${timestamp}.${rawBody.toString('utf8')}`;
-    const expected = crypto
-      .createHmac('sha256', secret)
-      .update(signedPayload)
-      .digest('hex');
-
-    return crypto.timingSafeEqual(
-      Buffer.from(signature, 'hex'),
-      Buffer.from(expected, 'hex')
-    );
-  } catch {
-    return false;
+  if (!sig) {
+    return res.status(400).json({ error: 'Missing stripe-signature header' });
   }
-}
 
-// Use raw body parser for this route (signature verification needs raw bytes)
-router.post('/', raw({ type: 'application/json' }), async (req, res) => {
+  let event;
   try {
-    const signature = req.headers['stripe-signature'] as string;
-    if (!signature) {
-      return res.status(400).json({ error: 'Missing stripe-signature header' });
-    }
+    event = parseWebhookEvent(req.body as Buffer, sig);
+  } catch (err: any) {
+    console.error('[webhook/stripe] Signature verification failed:', err.message);
+    return res.status(400).json({ error: `Webhook verification failed: ${err.message}` });
+  }
 
-    // req.body is a Buffer when using raw() parser
-    const rawBody = Buffer.isBuffer(req.body) ? req.body : Buffer.from(JSON.stringify(req.body));
+  // ACK immediately — Stripe retries on non-2xx
+  res.status(200).json({ received: true });
 
-    const valid = verifyStripeSignature(rawBody, signature, env.STRIPE_WEBHOOK_SECRET!);
-    if (!valid) {
-      console.warn('[Stripe Webhook] Invalid signature');
-      return res.status(401).json({ error: 'Invalid signature' });
-    }
+  try {
+    if (event.type === 'payment_intent.succeeded') {
+      const intent = event.data.object as any;
+      const intentId: string = intent.id;
 
-    const event: StripeWebhookEvent = JSON.parse(rawBody.toString('utf8'));
+      const result = await confirmPayment(intentId);
 
-    console.info(`[Stripe Webhook] Event: ${event.type} ID: ${event.id}`);
-
-    switch (event.type) {
-      case 'payment_intent.succeeded': {
-        const intent = event.data.object;
-        const intentId = intent.id; // This is our providerRef
-
-        await confirmPayment(intentId, {
-          stripeEventId: event.id,
-          intentId,
-          amount: intent.amount,
-          currency: intent.currency,
-          metadata: intent.metadata,
-        });
-
-        console.info(`[Stripe Webhook] Payment confirmed. Intent=${intentId}`);
-        break;
+      if (!result) {
+        console.warn(`[webhook/stripe] No pending tx for intent: ${intentId}`);
+        return;
       }
 
-      case 'payment_intent.payment_failed': {
-        const intent = event.data.object;
-        await failPayment(intent.id, `Stripe payment_intent.payment_failed`);
-        console.info(`[Stripe Webhook] Payment failed. Intent=${intent.id}`);
-        break;
-      }
-
-      case 'charge.refunded': {
-        const charge = event.data.object;
-        const intentId = (charge as any).payment_intent;
-        if (intentId) {
-          await failPayment(intentId, 'Stripe charge.refunded');
-          console.info(`[Stripe Webhook] Refund processed. Intent=${intentId}`);
-        }
-        break;
-      }
-
-      default:
-        console.info(`[Stripe Webhook] Unhandled event: ${event.type}`);
+      console.log(
+        `[webhook/stripe] Confirmed ${result.credits} credits for user ${result.userId} ` +
+        `(intent: ${intentId})`
+      );
+    } else {
+      // Log other event types but don't fail
+      console.log(`[webhook/stripe] Unhandled event type: ${event.type}`);
     }
-
-    return res.json({ received: true });
   } catch (err) {
-    console.error('[Stripe Webhook] Processing error:', err);
-    return res.status(500).json({ error: 'Webhook processing failed' });
+    console.error('[webhook/stripe] Handler error:', err);
   }
 });
 
