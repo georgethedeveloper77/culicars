@@ -9,7 +9,7 @@ let _stripe: Stripe | null = null;
 function getStripe(): Stripe {
   if (!_stripe) {
     if (!STRIPE_SECRET_KEY) throw new Error('STRIPE_SECRET_KEY not set');
-    _stripe = new Stripe(STRIPE_SECRET_KEY, { apiVersion: '2024-04-10' });
+    _stripe = new Stripe(STRIPE_SECRET_KEY, { apiVersion: '2026-03-25.dahlia' });
   }
   return _stripe;
 }

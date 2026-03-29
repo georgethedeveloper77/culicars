@@ -1,14 +1,15 @@
+type CreditTransactionType = 'purchase' | 'unlock' | 'refund' | 'admin_grant';
 // apps/api/src/services/creditService.ts
 
 import { PrismaClient } from '@prisma/client';
-import type { CreditTransactionType, PaymentProvider } from '@culicars/types';
+import type { PaymentProvider } from '@culicars/types';
 
 const prisma = new PrismaClient();
 
 interface GrantCreditsParams {
   userId: string;
   amount: number;
-  type: CreditTransactionType;
+  type: string;
   provider?: PaymentProvider;
   providerRef?: string;       // UNIQUE — idempotency guard
   packId?: string;

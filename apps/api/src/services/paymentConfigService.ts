@@ -1,7 +1,7 @@
 // apps/api/src/services/paymentConfigService.ts
 
 import { PrismaClient } from '@prisma/client';
-import type { CreditPack, PaymentProvider } from '@culicars/types';
+import type { WebCreditPack as CreditPack, PaymentProvider } from '@culicars/types';
 
 const prisma = new PrismaClient();
 

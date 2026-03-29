@@ -1,14 +1,14 @@
 // apps/api/src/routes/payments.ts
 
 import { Router, Request, Response } from 'express';
-import { requireAuth } from '../middleware/auth';
+import { auth as requireAuth } from '../middleware/auth';
 import { getEnabledProviders, getCreditPacks, getPackById } from '../services/paymentConfigService';
 import { recordPendingPurchase, getBalance, deductForUnlock } from '../services/creditService';
 import { initiateStkPush } from '../services/providers/mpesa';
 import { createPaymentIntent } from '../services/providers/stripe';
 import { PrismaClient } from '@prisma/client';
 
-const router = Router();
+const router: import("express").Router = Router();
 const prisma = new PrismaClient();
 
 // ─── GET /payments/providers?platform=web|app ──────────────────────────────

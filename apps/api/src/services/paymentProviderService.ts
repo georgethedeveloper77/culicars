@@ -8,7 +8,7 @@
 
 import prisma from '../lib/prisma';
 import { getPackById, getPackPrice, type CreditPack } from '../config/creditPacks';
-import { grantCredits } from './creditService';
+import { appendTransaction as grantCredits } from './creditService';
 import type {
   ProviderSlug,
   PaymentProviderAdapter,
@@ -183,23 +183,18 @@ export async function confirmPayment(
   });
 
   // 5. Grant credits (atomic wallet + ledger)
-  const newBalance = await grantCredits({
+  const grantResult = await grantCredits({
     userId: payment.userId,
-    credits: payment.credits,
+    amount: payment.credits,
     type: 'purchase',
-    source: `${payment.provider}_purchase`,
-    txRef: providerRef,
-    metadata: {
-      paymentId: payment.id,
-      amount: payment.amount,
-      currency: payment.currency,
-    },
+    meta: { source: `${payment.provider}_purchase`, paymentId: payment.id, amount: payment.amount, currency: payment.currency },
+    providerRef: providerRef,
   });
 
   return {
     paymentId: payment.id,
     credits: payment.credits,
-    newBalance,
+    newBalance: grantResult?.newBalance ?? 0,
   };
 }
 

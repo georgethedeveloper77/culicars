@@ -4,7 +4,7 @@ import { Router, Request, Response } from 'express';
 import { parseStkCallback } from '../../services/providers/mpesa';
 import { confirmPayment } from '../../services/creditService';
 
-const router = Router();
+const router: import("express").Router = Router();
 
 /**
  * POST /webhooks/mpesa

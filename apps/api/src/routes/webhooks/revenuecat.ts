@@ -11,7 +11,7 @@ import { Router } from 'express';
 import { env } from '../../config/env';
 import { resolveProductToPack } from '../../services/providers/revenuecatProvider';
 import { confirmPayment, getPaymentByRef } from '../../services/paymentProviderService';
-import { grantCredits } from '../../services/creditService';
+import { appendTransaction as grantCredits } from '../../services/creditService';
 import prisma from '../../lib/prisma';
 import type { RevenuecatWebhookBody } from '../../types/payment.types';
 
@@ -119,11 +119,12 @@ router.post('/', async (req, res) => {
     // 7. Grant credits atomically
     const newBalance = await grantCredits({
       userId,
-      credits: pack.credits,
+      amount: pack.credits,
       type: 'purchase',
-      source: `revenuecat_${event.store.toLowerCase()}_purchase`,
-      txRef,
-      metadata: {
+      providerRef: txRef,
+      provider: 'mpesa',
+      meta: {
+        source: `revenuecat_${event.store.toLowerCase()}_purchase`,
         paymentId: payment.id,
         store: event.store,
         productId: event.product_id,

@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { createClient } from '@/lib/supabase/client';
+import { createClient } from '@/lib/supabase';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'https://api.culicars.com';
 
