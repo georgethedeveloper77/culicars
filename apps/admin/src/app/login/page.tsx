@@ -4,7 +4,7 @@
 import { Suspense, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { createBrowserClient } from '@supabase/ssr';
-import { Shield } from 'lucide-react';
+import { Shield, Eye, EyeOff } from 'lucide-react';
 
 function AdminLoginForm() {
   const searchParams = useSearchParams();
@@ -14,15 +14,18 @@ function AdminLoginForm() {
   const [error, setError] = useState<string | null>(
     isUnauthorized ? 'Access denied. Admin or employee role required.' : null
   );
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
 
   async function handleGoogleLogin() {
     setLoading(true);
     setError(null);
-
-    const supabase = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -38,6 +41,25 @@ function AdminLoginForm() {
     }
   }
 
+  async function handleEmailLogin(e: React.FormEvent) {
+    e.preventDefault();
+    if (!email || !password) return;
+
+    setLoading(true);
+    setError(null);
+
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+
+    if (error) {
+      setError(error.message);
+      setLoading(false);
+      return;
+    }
+
+    // AdminAuthGuard will handle role check and redirect
+    window.location.href = '/';
+  }
+
   return (
     <main className="min-h-screen bg-[#0A0A0A] flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
@@ -51,13 +73,14 @@ function AdminLoginForm() {
           <p className="text-zinc-500 text-sm mt-1">Staff access only</p>
         </div>
 
-        <div className="bg-white/4 border border-white/8 rounded-2xl p-6">
+        <div className="bg-white/4 border border-white/8 rounded-2xl p-6 space-y-4">
           {error && (
-            <div className="bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-3 text-sm text-red-400 mb-4">
+            <div className="bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-3 text-sm text-red-400">
               {error}
             </div>
           )}
 
+          {/* Google */}
           <button
             onClick={handleGoogleLogin}
             disabled={loading}
@@ -68,10 +91,57 @@ function AdminLoginForm() {
             ) : (
               <GoogleIcon />
             )}
-            {loading ? 'Signing in…' : 'Sign in with Google'}
+            Sign in with Google
           </button>
 
-          <p className="text-xs text-zinc-600 text-center mt-4">
+          {/* Divider */}
+          <div className="flex items-center gap-3">
+            <div className="flex-1 h-px bg-white/10" />
+            <span className="text-zinc-600 text-xs">or</span>
+            <div className="flex-1 h-px bg-white/10" />
+          </div>
+
+          {/* Email / password */}
+          <form onSubmit={handleEmailLogin} className="space-y-3">
+            <input
+              type="email"
+              placeholder="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-[#D4A843]/50 transition-colors"
+            />
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 pr-11 text-sm text-white placeholder-zinc-600 focus:outline-none focus:border-[#D4A843]/50 transition-colors"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300"
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+            <button
+              type="submit"
+              disabled={loading || !email || !password}
+              className="w-full bg-[#D4A843] hover:bg-[#c49a38] text-black font-semibold py-3 px-4 rounded-xl transition-colors disabled:opacity-50"
+            >
+              {loading ? (
+                <div className="w-4 h-4 border-2 border-black/40 border-t-transparent rounded-full animate-spin mx-auto" />
+              ) : (
+                'Sign in'
+              )}
+            </button>
+          </form>
+
+          <p className="text-xs text-zinc-600 text-center">
             Only accounts with admin or employee role can access this panel.
           </p>
         </div>
