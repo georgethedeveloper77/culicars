@@ -2,68 +2,80 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { useRouter } from 'next/navigation';
+import { createBrowserClient } from '@supabase/ssr';
 
-export function AdminAuthGuard({ children }: { children: React.ReactNode }) {
+interface AdminAuthGuardProps {
+  children: React.ReactNode;
+  allowedRoles?: string[];
+}
+
+export function AdminAuthGuard({
+  children,
+  allowedRoles = ['admin', 'employee'],
+}: AdminAuthGuardProps) {
   const router = useRouter();
-  const pathname = usePathname();
-  const supabase = createClientComponentClient();
-  const isLoginPage = pathname === '/login';
-  // Don't show spinner on login page
-  const [checking, setChecking] = useState(!isLoginPage);
+  const [status, setStatus] = useState<'loading' | 'authorized' | 'unauthorized'>('loading');
 
   useEffect(() => {
-    if (isLoginPage) return;
+    const supabase = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
 
     async function check() {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session) {
+        router.replace('/login');
+        return;
+      }
+
       try {
-        const { data: sessionData, error } = await supabase.auth.getSession();
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.culicars.com';
+        const res = await fetch(`${apiUrl}/auth/me`, {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        });
 
-        if (error || !sessionData.session) {
-          router.replace('/login');
-          return;
-        }
-
-        const user = sessionData.session.user;
-        console.log('[AdminAuthGuard] app_metadata:', user.app_metadata);
-
-        const role =
-          user.app_metadata?.role ??
-          user.user_metadata?.role ??
-          user.app_metadata?.userrole;
-
-        console.log('[AdminAuthGuard] role:', role);
-
-        if (role !== 'admin') {
+        if (!res.ok) {
           router.replace('/login?error=unauthorized');
           return;
         }
 
-        setChecking(false);
-      } catch (err) {
-        console.error('[AdminAuthGuard] error:', err);
-        router.replace('/login');
+        const profile = await res.json();
+
+        if (!allowedRoles.includes(profile.role)) {
+          router.replace('/login?error=unauthorized');
+          return;
+        }
+
+        setStatus('authorized');
+      } catch {
+        router.replace('/login?error=unauthorized');
       }
     }
 
     check();
-  }, [isLoginPage, router, supabase, pathname]);
 
-  // Login page — no guard needed
-  if (isLoginPage) return <>{children}</>;
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_OUT') router.replace('/login');
+    });
 
-  // Waiting for auth check
-  if (checking) {
+    return () => subscription.unsubscribe();
+  }, [router, allowedRoles]);
+
+  if (status === 'loading') {
     return (
-      <div className="min-h-screen bg-[#0E0E0E] flex items-center justify-center">
-        <div className="flex items-center gap-3 text-zinc-500">
-          <div className="w-5 h-5 border-2 border-[#D4A843] border-t-transparent rounded-full animate-spin" />
-          <span className="text-sm">Verifying admin access…</span>
+      <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-6 h-6 border-2 border-[#D4A843] border-t-transparent rounded-full animate-spin" />
+          <p className="text-zinc-500 text-sm">Verifying access…</p>
         </div>
       </div>
     );
   }
+
+  if (status === 'unauthorized') return null;
 
   return <>{children}</>;
 }

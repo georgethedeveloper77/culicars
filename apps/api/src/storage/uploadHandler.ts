@@ -1,10 +1,11 @@
+type UploadResult = { url: string; path: string; bucket: string };
 // ============================================================
 // CuliCars — Thread 4: Upload Handler (Supabase Storage)
 // ============================================================
 
 import { supabaseAdmin } from '../lib/supabaseAdmin';
 import { randomUUID } from 'crypto';
-import type { UploadResult } from '../types/ocr.types';
+
 
 const BUCKET_NAME = 'ocr-uploads';
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB

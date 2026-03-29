@@ -9,7 +9,8 @@ import { corEnrichService } from '../services/corEnrichService';
 import { prisma } from '../lib/prisma';
 import { env } from '../config/env';
 
-const router = Router();
+import type { Router as RouterType } from 'express';
+const router: RouterType = Router();
 
 // multer: memory storage, 10 MB limit
 const upload = multer({
@@ -128,12 +129,12 @@ router.get(
   async (req: Request, res: Response) => {
     const { vin } = req.params;
 
-    const record = await prisma.rawRecord.findFirst({
+    const record = await prisma.raw_records.findFirst({
       where: {
         vin: vin.toUpperCase(),
         source: 'ntsa_cor',
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { created_at: 'desc' },
     });
 
     if (!record) {
@@ -146,8 +147,8 @@ router.get(
       plate: record.plate,
       source: record.source,
       confidence: record.confidence,
-      normalisedData: record.normalisedJson,
-      createdAt: record.createdAt,
+      normalisedData: record.normalised_json,
+      createdAt: record.created_at,
     });
   },
 );

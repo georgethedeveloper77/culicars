@@ -102,7 +102,7 @@ export async function getReportPreview(
   // Adjust locked status if user has unlocked
   const sectionSummary = (report.sections ?? []).map((s) => ({
     sectionType: s.sectionType as SectionType,
-    isLocked: isUnlocked ? false : s.isLocked,
+    isLocked: isUnlocked ? false : s.isLocked ?? true,
     dataStatus: s.dataStatus as 'found' | 'not_found' | 'not_checked',
     recordCount: s.recordCount ?? 0,
   }));
@@ -173,7 +173,7 @@ export async function getFullReport(
       id: s.id,
       sectionType,
       data: locked ? null : (s.data as ReportSection['data']),
-      isLocked: locked,
+      isLocked: locked ?? true,
       recordCount: s.recordCount ?? 0,
       dataStatus: s.dataStatus as 'found' | 'not_found' | 'not_checked',
     };

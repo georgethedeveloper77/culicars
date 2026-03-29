@@ -27,7 +27,7 @@ export async function resolveByPlate(
     const v = m.vehicle;
     const report = v?.reports?.[0] ?? null;
 
-    const vehicle: VehicleSummary | null = v
+    const vehicle = v
       ? {
           vin: v.vin,
           make: v.make,
@@ -42,7 +42,7 @@ export async function resolveByPlate(
           importCountry: v.importCountry,
           japanAuctionGrade: v.japanAuctionGrade,
           inspectionStatus: v.inspectionStatus,
-          ntsaCorVerified: v.ntsaCorVerified,
+          ntsaCorVerified: v.ntsaCorVerified ?? false,
         }
       : null;
 
@@ -99,7 +99,7 @@ export async function resolveByVin(vin: string): Promise<SearchCandidate[]> {
         importCountry: vehicle.importCountry,
         japanAuctionGrade: vehicle.japanAuctionGrade,
         inspectionStatus: vehicle.inspectionStatus,
-        ntsaCorVerified: vehicle.ntsaCorVerified,
+        ntsaCorVerified: vehicle.ntsaCorVerified ?? false,
       },
       reportId: report?.id ?? null,
       reportStatus: report?.status ?? null,

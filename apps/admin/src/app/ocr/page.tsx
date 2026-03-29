@@ -3,8 +3,8 @@
 
 import { useState } from 'react';
 import { PageHeader } from '@/components/ui/PageHeader';
-import { StatusBadge } from '@/components/ui/StatusBadge';
-import { api } from '@/lib/api';
+import { JobStatusBadge } from '@/components/ui/StatusBadge';
+import { apiGet, apiPost } from '@/lib/api';
 
 interface CorRecord {
   id: string;
@@ -36,7 +36,7 @@ export default function OcrPage() {
     setError(null);
     setRecord(null);
     try {
-      const data = await api.get(`/ocr/ntsa-cor/last/${vin.trim().toUpperCase()}`);
+      const data = await apiGet<CorRecord>(`/ocr/ntsa-cor/last/${vin.trim().toUpperCase()}`);
       setRecord(data);
     } catch (e: any) {
       setError(e?.message ?? 'Failed to fetch record');
@@ -57,7 +57,7 @@ export default function OcrPage() {
     if (pdfPlate.trim()) form.append('plate', pdfPlate.trim().toUpperCase());
 
     try {
-      const data = await api.postForm('/ocr/ntsa-cor', form);
+      const data = await apiPost<Record<string, unknown>>("/ocr/ntsa-cor", form);
       setUploadResult(data);
     } catch (e: any) {
       setUploadError(e?.message ?? 'Upload failed');
@@ -109,7 +109,7 @@ export default function OcrPage() {
           <div className="space-y-3 pt-2">
             <div className="flex items-center gap-3">
               <span className="text-xs text-gray-500">Confidence</span>
-              <StatusBadge status={confColour as any} label={`${conf}%`} />
+              <span className="text-xs font-medium">{conf}%</span>
               <span className="text-xs text-gray-400 ml-auto">
                 Parsed {new Date(record.createdAt).toLocaleString()}
               </span>

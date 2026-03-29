@@ -120,8 +120,8 @@ router.post(
       // ── 3. Parse COR fields ───────────────────────────────────────────────
       const parsed = ntsaCorParser.parse(rawText);
 
-      const extractedVin = parsed.fields?.vin ?? vin ?? null;
-      const extractedPlate = parsed.fields?.plate ?? plate ?? null;
+      const extractedVin = parsed.fields?.chassisNumber ?? vin ?? null;
+      const extractedPlate = parsed.fields?.registrationNumber ?? plate ?? null;
 
       if (!extractedVin && !extractedPlate) {
         return res.status(422).json({
@@ -166,7 +166,7 @@ router.post(
       const responseBody: NtsaCorResponse = {
         success: enrichment.success,
         rawRecordId: enrichment.rawRecordId,
-        fields: (parsed.fields as any),
+        fields: parsed.fields as Record<string, unknown>,
         confidence: parsed.confidence,
         warnings: parsed.warnings,
         error: enrichment.error,

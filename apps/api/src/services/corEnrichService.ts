@@ -77,14 +77,14 @@ async function enrichFromPdf(opts: CorEnrichOptions): Promise<CorEnrichResult> {
   // 5. Upsert into raw_records
   let rawRecord: { id: string };
   try {
-    rawRecord = await prisma.rawRecord.create({
+    rawRecord = await prisma.raw_records.create({
       data: {
         vin: resolvedVin,
         plate: plate ?? parseResult.fields.plate ?? null,
         source: NTSA_COR_SOURCE,
-        sourceId: `cor-${resolvedVin}-${Date.now()}`,
-        rawJson: { text: rawText },
-        normalisedJson: normalisedFields as any,
+        source_id: `cor-${resolvedVin}-${Date.now()}`,
+        raw_json: { text: rawText },
+        normalised_json: normalisedFields as any,
         confidence: parseResult.confidence,
       },
       select: { id: true },

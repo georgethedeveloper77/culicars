@@ -1,72 +1,80 @@
 // apps/api/src/middleware/auth.ts
-// Strict auth — rejects if no valid JWT
-// Looks up user role from DB, attaches to req.user
-
 import { Request, Response, NextFunction } from 'express';
+import { Router } from 'express';
 import { supabaseAdmin } from '../config/supabase';
-import prisma from '../lib/prisma';
+import { prisma } from '../lib/prisma';
 
-export interface AuthUser {
-  id: string;
-  email: string;
-  role: string;
-}
+type Role = 'guest' | 'user' | 'admin' | 'dealer' | 'employee';
 
-// Extend Express Request
 declare global {
   namespace Express {
     interface Request {
-      user?: AuthUser;
+      user?: {
+        id: string;
+        email: string;
+        role: Role;
+      };
     }
   }
 }
 
+/**
+ * Strict auth — validates JWT, looks up role from users table, attaches user.
+ * Returns 401 if no valid token.
+ */
 export async function auth(req: Request, res: Response, next: NextFunction) {
   try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader?.startsWith('Bearer ')) {
-      return res.status(401).json({
-        error: 'UNAUTHORIZED',
-        message: 'Missing or invalid Authorization header',
-        statusCode: 401,
-      });
+    const token = extractToken(req);
+    if (!token) {
+      return res.status(401).json({ error: 'UNAUTHORIZED', message: 'Authentication required' });
     }
 
-    const token = authHeader.split(' ')[1];
-
-    // Verify JWT with Supabase
-    const { data: { user: supaUser }, error } = await supabaseAdmin.auth.getUser(token);
-
-    if (error || !supaUser) {
-      return res.status(401).json({
-        error: 'UNAUTHORIZED',
-        message: 'Invalid or expired token',
-        statusCode: 401,
-      });
+    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
+    if (error || !user) {
+      return res.status(401).json({ error: 'UNAUTHORIZED', message: 'Invalid or expired token' });
     }
 
-    // Look up role from our users table
+    // Role lives on users table, not profiles
     const dbUser = await prisma.user.findUnique({
-      where: { id: supaUser.id },
-      select: { id: true, email: true, role: true },
+      where: { id: user.id },
+      select: { role: true },
     });
 
-    if (!dbUser) {
-      return res.status(401).json({
-        error: 'UNAUTHORIZED',
-        message: 'User not found in database',
-        statusCode: 401,
-      });
-    }
+    const role = (dbUser?.role ?? 'user') as Role;
 
-    req.user = {
-      id: dbUser.id,
-      email: dbUser.email,
-      role: dbUser.role,
-    };
-
+    req.user = { id: user.id, email: user.email ?? '', role };
     next();
   } catch (err) {
     next(err);
   }
+}
+
+/**
+ * Optional auth — attaches user if token present, continues silently if not.
+ */
+export async function optionalAuth(req: Request, res: Response, next: NextFunction) {
+  try {
+    const token = extractToken(req);
+    if (!token) return next();
+
+    const { data: { user } } = await supabaseAdmin.auth.getUser(token);
+    if (!user) return next();
+
+    const dbUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { role: true },
+    });
+
+    const role = (dbUser?.role ?? 'user') as Role;
+    req.user = { id: user.id, email: user.email ?? '', role };
+    next();
+  } catch {
+    next();
+  }
+}
+
+function extractToken(req: Request): string | null {
+  const authHeader = req.headers.authorization;
+  if (authHeader?.startsWith('Bearer ')) return authHeader.slice(7);
+  return null;
 }

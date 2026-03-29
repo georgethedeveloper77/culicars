@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
 
+import { authRouter } from './routes/auth';
 import express, { type Express } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -19,7 +20,7 @@ import { requireRole } from './middleware/requireRole';
 import healthRouter from './routes/health';
 import searchRouter from './routes/search';
 import ocrRouter from './routes/ocr';
-import ntsaRouter from './routes/ntsa';
+import { ntsaRouter } from './routes/ntsa';
 import reportsRouter from './routes/reports';
 import adminConfigRouter from './routes/admin-config';
 
@@ -71,6 +72,7 @@ app.use(requestLogger);
 app.use(ipRateLimiter);
 
 // ── Routes ────────────────────────────────────────
+app.use('/auth', authRouter); 
 app.use('/health', healthRouter);
 app.use('/search', optionalAuth, searchRouter);                    // Thread 3
 app.use('/ocr', auth, ocrRouter);                                  // Thread 4

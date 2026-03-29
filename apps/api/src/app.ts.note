@@ -1,0 +1,18 @@
+// apps/api/src/app.ts
+// ─── ADD to existing app.ts ───────────────────────────────────────────────────
+// Import the auth router alongside existing imports:
+//   import { authRouter } from './routes/auth';
+//
+// Mount it before other routes (after middleware setup):
+//   app.use('/auth', authRouter);
+//
+// Full routes block after T6:
+//   app.use('/health',  healthRouter);
+//   app.use('/auth',    authRouter);           // ← NEW (T6)
+//   app.use('/search',  optionalAuth, searchRouter);
+//   app.use('/ocr',     auth, ocrRouter);
+//   app.use('/ntsa',    auth, ntsaRouter);
+//   app.use('/reports', optionalAuth, reportsRouter);
+//
+// NOTE: Stripe webhook (T9) must be mounted BEFORE express.json() middleware.
+//       All other routes go after.

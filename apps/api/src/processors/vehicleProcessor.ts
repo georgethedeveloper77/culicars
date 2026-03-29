@@ -41,8 +41,8 @@ export async function processVehicle(data: VehicleData): Promise<void> {
         bodyType: data.body_type ?? null,
         color: data.color ?? null,
         countryOfOrigin: data.country_of_origin ?? null,
-        japanAuctionGrade: data.japanAuctionGrade ?? null,
-        japanAuctionMileage: data.japanAuctionMileage ?? null,
+        japanAuctionGrade: data.japan_auction_grade ?? null,
+        japanAuctionMileage: data.japan_auction_mileage ?? null,
       },
     });
     return;
@@ -73,15 +73,15 @@ export async function processVehicle(data: VehicleData): Promise<void> {
 
   // Japan auction grade: special rule — BE FORWARD (0.85) wins
   // Only update if incoming is valid grade AND (no existing grade OR incoming confidence >= 0.85)
-  if (data.japanAuctionGrade && VALID_JAPAN_GRADES.includes(data.japanAuctionGrade)) {
+  if (data.japan_auction_grade && VALID_JAPAN_GRADES.includes(data.japan_auction_grade)) {
     if (!existing.japanAuctionGrade || data.confidence >= 0.85) {
-      updates.japanAuctionGrade = data.japanAuctionGrade;
+      updates.japan_auction_grade = data.japan_auction_grade;
     }
   }
 
   // Japan auction mileage: only set if not already set (ground truth from auction sheet)
-  if (data.japanAuctionMileage != null && existing.japanAuctionMileage == null) {
-    updates.japanAuctionMileage = data.japanAuctionMileage;
+  if (data.japan_auction_mileage != null && existing.japanAuctionMileage == null) {
+    updates.japan_auction_mileage = data.japan_auction_mileage;
   }
 
   if (Object.keys(updates).length > 0) {

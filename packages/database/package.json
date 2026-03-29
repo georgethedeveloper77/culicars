@@ -12,12 +12,14 @@
     "build": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@prisma/client": "^5.9.1"
+    "@prisma/client": "^5.9.1",
+    "@supabase/supabase-js": "^2.100.1",
+    "dotenv": "^16.6.1"
   },
   "devDependencies": {
+    "@types/node": "^20.11.0",
     "prisma": "^5.9.1",
     "ts-node": "^10.9.2",
-    "typescript": "^5.3.3",
-    "@types/node": "^20.11.0"
+    "typescript": "^5.3.3"
   }
 }

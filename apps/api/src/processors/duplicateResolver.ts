@@ -22,7 +22,7 @@ export async function isDuplicateEvent(candidate: EventCandidate): Promise<boole
   const existing = await prisma.vehicleEvent.findFirst({
     where: {
       vin,
-      eventType: event_type,
+      eventType: event_type as any,
       eventDate: { gte: windowStart, lte: windowEnd },
       ...(source_ref ? { sourceRef: source_ref } : {}),
     },
