@@ -42,7 +42,7 @@ export async function findSimilarPlates(
     prefix = normalizedPlate.substring(0, 2);
   }
 
-  const candidates = await prisma.plateVinMap.findMany({
+  const candidates = await prisma.plate_vin_map.findMany({
     where: { plate: { startsWith: prefix } },
     select: { plate: true, plateDisplay: true, vin: true },
     take: 200,

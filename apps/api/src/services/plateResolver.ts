@@ -6,12 +6,12 @@ export async function resolveByPlate(
   normalizedPlate: string,
   limit: number = 5
 ): Promise<SearchCandidate[]> {
-  const mappings = await prisma.plateVinMap.findMany({
+  const mappings = await prisma.plate_vin_map.findMany({
     where: { plate: normalizedPlate },
     orderBy: { confidence: 'desc' },
     take: limit,
     include: {
-      vehicle: {
+      vehicles: {
         include: {
           reports: {
             where: { status: { in: ['ready', 'stale'] } },
@@ -24,7 +24,7 @@ export async function resolveByPlate(
   });
 
   return mappings.map((m) => {
-    const v = m.vehicle;
+    const v = m.vehicles;
     const report = v?.reports?.[0] ?? null;
 
     const vehicle = v
@@ -59,10 +59,10 @@ export async function resolveByPlate(
 }
 
 export async function resolveByVin(vin: string): Promise<SearchCandidate[]> {
-  const vehicle = await prisma.vehicle.findUnique({
+  const vehicle = await prisma.vehicles.findUnique({
     where: { vin },
     include: {
-      plateVinMaps: {
+      plate_vin_map: {
         orderBy: { confidence: 'desc' },
         take: 1,
       },
@@ -76,7 +76,7 @@ export async function resolveByVin(vin: string): Promise<SearchCandidate[]> {
 
   if (!vehicle) return [];
 
-  const bestPlate = vehicle.plateVinMaps[0] ?? null;
+  const bestPlate = vehicle.plate_vin_map[0] ?? null;
   const report = vehicle.reports[0] ?? null;
 
   return [

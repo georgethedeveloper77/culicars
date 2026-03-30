@@ -1,0 +1,29 @@
+// apps/api/src/app.ts — T12 ADDITIONS
+// Add these imports and mount lines to the existing app.ts file.
+// Do NOT replace the whole file — patch in the new lines at the indicated positions.
+
+// ─── IMPORTS (add near other route imports) ───────────────────────────────────
+import notificationsRouter from './routes/notifications';
+import watchMapRouter from './routes/watchMap';
+import watchInsightsRouter from './routes/watchInsights';
+
+// ─── MOUNT (add after existing watch route mount) ─────────────────────────────
+app.use('/notifications', notificationsRouter);
+app.use('/watch/map', watchMapRouter);
+app.use('/watch/insights', watchInsightsRouter);
+
+// Also wire up the notifyNearbyUsers call inside the watch alert approval flow.
+// In apps/api/src/routes/watch.ts, after status is set to 'approved', add:
+//
+//   import { notifyNearbyUsers } from '../services/notificationService';
+//
+//   if (status === 'approved' && alert.lat && alert.lng) {
+//     await notifyNearbyUsers({
+//       alertId: alert.id,
+//       lat: alert.lat,
+//       lng: alert.lng,
+//       alertType: alert.type,
+//       title: `Watch alert: ${alert.type.replace(/_/g, ' ')}`,
+//       body: alert.description?.slice(0, 100) ?? 'A new alert has been approved near you.',
+//     }).catch(console.warn);
+//   }

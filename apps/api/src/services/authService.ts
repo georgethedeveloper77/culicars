@@ -62,7 +62,7 @@ export const authService = {
         id: true,
         email: true,
         role: true,
-        createdAt: true,
+        created_at: true,
         profile: {
           select: {
             displayName: true,
@@ -86,7 +86,7 @@ export const authService = {
       avatar_url: user.profile?.avatarUrl ?? null,
       county: user.profile?.county ?? null,
       credits: user.wallet?.balance ?? 0,
-      created_at: user.createdAt,
+      created_at: user.created_at,
     };
   },
 
@@ -136,12 +136,12 @@ export const authService = {
         where,
         skip,
         take: limit,
-        orderBy: { createdAt: 'desc' },
+        orderBy: { created_at: 'desc' },
         select: {
           id: true,
           email: true,
           role: true,
-          createdAt: true,
+          created_at: true,
           profile: { select: { displayName: true } },
           wallet: { select: { balance: true } },
         },
@@ -156,7 +156,7 @@ export const authService = {
         role: u.role,
         display_name: u.profile?.displayName ?? null,
         credits: u.wallet?.balance ?? 0,
-        created_at: u.createdAt,
+        created_at: u.created_at,
       })),
       pagination: {
         page,

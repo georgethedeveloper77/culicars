@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import '../../config/theme.dart';
 import '../../core/api/api_client.dart';
-import '../../shared/models/app_user.dart';
 
 class PaymentScreen extends StatefulWidget {
   const PaymentScreen({super.key});

@@ -17,7 +17,7 @@ cd "$REPO"
 
 # ── 2. Install dependencies ───────────────────────────────────────────────────
 echo "📦 Installing dependencies..."
-pnpm install --frozen-lockfile
+pnpm install --no-frozen-lockfile
 echo "✅ Dependencies installed"
 
 # ── 3. Introspect DB → pull any new tables into schema.prisma ─────────────────
