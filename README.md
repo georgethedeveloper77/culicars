@@ -1,144 +1,137 @@
-# T9 — Payments + Unlock Flow
+# T10 — My Vehicles + Watchlist
 
-## Files in this zip
-
-```
-T9_SQL_MIGRATION.sql
-apps/api/src/
-  services/
-    creditService.ts
-    paymentConfigService.ts
-    providers/
-      mpesa.ts
-      stripe.ts
-  routes/
-    payments.ts
-    webhooks/
-      mpesa.ts
-      stripe.ts
-  services/__tests__/
-    creditService.test.ts
-  app.ts.patch-notes.ts        ← read this, do not deploy it
-packages/types/src/
-  payment.types.ts
-apps/web/src/app/pricing/
-  page.tsx
-```
+## Overview
+- `user_vehicles` table with RLS
+- Preferred location columns on `Profile`
+- `GET/POST/PATCH/DELETE /user/vehicles`
+- `GET/POST /user/vehicles/preferred-location`
+- Web dashboard `/dashboard`
+- Flutter `MyVehiclesScreen`
 
 ---
 
-## Deployment steps (in order)
+## Deployment Steps
 
-### 1 — Run SQL migration
-Paste `T9_SQL_MIGRATION.sql` into the Supabase SQL Editor and run.  
-Verify: `credit_transactions` and `report_unlock` tables exist with correct columns.
-
----
-
-### 2 — Add env vars in Plesk (api.culicars.com Node.js settings)
-
-```
-MPESA_CONSUMER_KEY=
-MPESA_CONSUMER_SECRET=
-MPESA_SHORTCODE=
-MPESA_PASSKEY=
-MPESA_CALLBACK_URL=https://api.culicars.com/webhooks/mpesa
-MPESA_ENV=sandbox          # change to production when going live
-STRIPE_SECRET_KEY=sk_live_...
-STRIPE_WEBHOOK_SECRET=whsec_...
-```
+### 1. Run SQL (Supabase SQL Editor)
+Copy-paste `sql/t10_user_vehicles.sql` into the Supabase SQL Editor and run.
 
 ---
 
-### 3 — Install new npm deps on server
+### 2. Upload API files to server
 
 ```bash
+# From monorepo root on Mac:
+scp apps/api/src/services/userVehiclesService.ts \
+    root@culicars.com:/var/www/vhosts/culicars.com/httpdocs/apps/api/src/services/
+
+scp apps/api/src/routes/userVehicles.ts \
+    root@culicars.com:/var/www/vhosts/culicars.com/httpdocs/apps/api/src/routes/
+
+scp apps/api/src/services/__tests__/userVehiclesService.test.ts \
+    root@culicars.com:/var/www/vhosts/culicars.com/httpdocs/apps/api/src/services/__tests__/
+```
+
+---
+
+### 3. Register route in app.ts (on server)
+
+```bash
+# Add import
+sed -i "s|import contributionsRouter|import userVehiclesRouter from './routes/userVehicles';\nimport contributionsRouter|" \
+  /var/www/vhosts/culicars.com/httpdocs/apps/api/src/app.ts
+
+# Add route mount (after contributions or before 404 handler)
+sed -i "s|app.use('/contributions'|app.use('/user/vehicles', userVehiclesRouter);\napp.use('/contributions'|" \
+  /var/www/vhosts/culicars.com/httpdocs/apps/api/src/app.ts
+```
+
+If the `sed` lines don't match exactly (contributions route named differently), manually add to `app.ts`:
+```ts
+import userVehiclesRouter from './routes/userVehicles';
+// ...
+app.use('/user/vehicles', userVehiclesRouter);
+```
+
+---
+
+### 4. Build API
+
+```bash
+ssh root@culicars.com
 cd /var/www/vhosts/culicars.com/httpdocs
-pnpm add stripe --filter @culicars/api
+pnpm --filter @culicars/api build
+# Restart via Plesk Node.js panel or:
+touch apps/api/tmp/restart.txt
 ```
 
 ---
 
-### 4 — Unzip files into monorepo root on Mac
+### 5. Run tests
 
 ```bash
-cd /Users/karani/Documents/Projects/culicars
-unzip -n ~/Downloads/t9.zip
-```
-
----
-
-### 5 — Patch app.ts to mount Stripe webhook before express.json()
-
-Read `apps/api/src/app.ts.patch-notes.ts` for the exact insertion order, then apply:
-
-```bash
-# Open app.ts and add these imports near the top (after existing imports):
-sed -i '' '/^import.*express/a\
-import stripeWebhook from '"'"'./routes/webhooks/stripe'"'"';\
-import mpesaWebhook from '"'"'./routes/webhooks/mpesa'"'"';\
-import paymentsRouter from '"'"'./routes/payments'"'"';' apps/api/src/app.ts
-```
-
-Then manually add the route mounts in the correct order (see patch-notes for exact positions).  
-**CRITICAL**: `app.use('/webhooks/stripe', express.raw({ type: 'application/json' }), stripeWebhook)` MUST appear before any `app.use(express.json())`.
-
----
-
-### 6 — Export payment types from packages/types
-
-```bash
-# Append to packages/types/src/index.ts
-echo "export * from './payment.types';" >> packages/types/src/index.ts
-```
-
----
-
-### 7 — Build and deploy
-
-```bash
-git add -A
-git commit -m "T9: Payments + Unlock Flow"
-git push
-```
-
-Wait for GitHub Actions to build. Passenger restart is automatic.
-
----
-
-### 8 — Run tests
-
-```bash
+ssh root@culicars.com
 cd /var/www/vhosts/culicars.com/httpdocs
-pnpm --filter @culicars/api test
+pnpm --filter @culicars/api test -- --reporter=verbose userVehiclesService
 ```
 
-Expected: all `creditService` tests pass.
+---
+
+### 6. Upload web dashboard
+
+```bash
+scp apps/web/src/app/dashboard/page.tsx \
+    root@culicars.com:/var/www/vhosts/culicars.com/httpdocs/apps/web/src/app/dashboard/
+
+ssh root@culicars.com
+cd /var/www/vhosts/culicars.com/httpdocs
+pnpm --filter @culicars/web build
+```
 
 ---
 
-## Definition of Done checklist
+### 7. Flutter — add MyVehiclesScreen
 
-- [ ] `GET /payments/packs?platform=web` returns packs from admin config
-- [ ] `GET /payments/providers?platform=web` returns only enabled providers
-- [ ] M-Pesa STK push initiated → pending transaction recorded in `credit_transactions`
-- [ ] M-Pesa webhook confirms payment → status updated to `confirmed`
-- [ ] Duplicate M-Pesa webhook → no double credit (idempotent via `provider_ref` UNIQUE)
-- [ ] Stripe intent created → `provider_ref = intent_id` recorded as pending
-- [ ] Stripe webhook `payment_intent.succeeded` → status confirmed
-- [ ] `POST /reports/:id/unlock` with 0 credits → 402 Insufficient credits
-- [ ] `POST /reports/:id/unlock` with ≥1 credit → deducted, report_unlock created
-- [ ] Second unlock of same report → returns unlocked:true without deducting again
-- [ ] `GET /credits/balance` returns current sum of confirmed transactions
-- [ ] `/pricing` page loads packs and correct provider buttons
-- [ ] Disabling a provider in admin config → removed from `/payments/providers` response immediately
+```bash
+scp apps/mobile/lib/features/profile/my_vehicles_screen.dart \
+    [your-mac-path]/apps/mobile/lib/features/profile/
+```
+
+Wire it into your Profile tab navigator. Minimal addition to the Profile tab:
+
+```dart
+// In your profile screen or tab navigator:
+import '../profile/my_vehicles_screen.dart';
+
+// Add a ListTile or button:
+ListTile(
+  leading: const Icon(Icons.directions_car_outlined),
+  title: const Text('My Vehicles'),
+  trailing: const Icon(Icons.chevron_right),
+  onTap: () => context.push('/profile/vehicles'),
+)
+```
+
+Add route in `app_router.dart`:
+```dart
+GoRoute(
+  path: '/profile/vehicles',
+  builder: (_, __) => const MyVehiclesScreen(),
+),
+```
 
 ---
 
-## Notes
+## Definition of Done Checklist
 
-- **Credit ledger is append-only.** `status` is the only mutable field (pending → confirmed).
-- **Stripe webhook MUST mount before `express.json()`** — raw Buffer body required for HMAC.
-- **M-Pesa sandbox**: use the Daraja sandbox credentials and test STK push with the simulator at developer.safaricom.co.ke.
-- **PayPal** deferred (does not accept KES; frontend conversion needed — scope a future thread).
-- **iOS IAP / Android Play Billing** deferred to T12 mobile thread.
+- [ ] SQL ran without errors in Supabase SQL Editor
+- [ ] `GET /user/vehicles` returns `{ vehicles: [] }` for a new user (200)
+- [ ] `POST /user/vehicles` with `{ plate: "KDA 123A", relationshipType: "owner" }` → 201
+- [ ] `DELETE /user/vehicles/:id` removes the vehicle → 200
+- [ ] Duplicate add returns 409
+- [ ] No plate + no VIN returns 400
+- [ ] `POST /user/vehicles/preferred-location` with `{ lat: -1.286, lng: 36.817 }` → 200
+- [ ] Web `/dashboard` renders My Vehicles list and Add Vehicle modal
+- [ ] Flutter Profile tab navigates to MyVehiclesScreen
+- [ ] Add, view, delete all work on Flutter
+- [ ] Unauthenticated requests to all routes return 401
+- [ ] Vitest: all tests pass

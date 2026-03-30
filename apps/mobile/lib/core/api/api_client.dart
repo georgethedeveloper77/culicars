@@ -1,7 +1,15 @@
 // lib/core/api/api_client.dart
+
 import 'package:dio/dio.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../config/env.dart';
+
+// ── Provider ──────────────────────────────────────────────────────────────────
+
+final apiClientProvider = Provider<ApiClient>((ref) => ApiClient());
+
+// ── Client ────────────────────────────────────────────────────────────────────
 
 class ApiClient {
   late final Dio _dio;
@@ -14,7 +22,9 @@ class ApiClient {
       headers: {'Content-Type': 'application/json'},
     ));
     _dio.interceptors.add(_AuthInterceptor());
-    _dio.interceptors.add(LogInterceptor(requestBody: false, responseBody: false, error: true));
+    _dio.interceptors.add(
+      LogInterceptor(requestBody: false, responseBody: false, error: true),
+    );
   }
 
   Future<dynamic> get(String path, {Map<String, dynamic>? params}) async {
@@ -32,6 +42,11 @@ class ApiClient {
     return _unwrap(res.data);
   }
 
+  Future<dynamic> delete(String path, {dynamic body}) async {
+    final res = await _dio.delete(path, data: body);
+    return _unwrap(res.data);
+  }
+
   dynamic _unwrap(dynamic json) {
     if (json is Map<String, dynamic> && json.containsKey('data')) {
       return json['data'];
@@ -39,6 +54,8 @@ class ApiClient {
     return json;
   }
 }
+
+// ── Auth interceptor ──────────────────────────────────────────────────────────
 
 class _AuthInterceptor extends Interceptor {
   @override
@@ -53,8 +70,9 @@ class _AuthInterceptor extends Interceptor {
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) {
     final data = err.response?.data;
-    final message = (data is Map ? data['message'] ?? data['error'] : null)
-        ?? err.message ?? 'Network error';
+    final message = (data is Map ? data['message'] ?? data['error'] : null) ??
+        err.message ??
+        'Network error';
     handler.next(err.copyWith(message: message as String));
   }
 }
