@@ -1,7 +1,7 @@
 // apps/api/src/services/watchAlertService.ts
 import { prisma } from '../lib/prisma';
 import { normalizePlate } from '@culicars/utils';
-import { AppError } from '../lib/errors';
+
 
 export type AlertType =
   | 'stolen_vehicle'
@@ -73,12 +73,12 @@ export const watchAlertService = {
 
     // Vehicle alerts require plate or VIN
     if (category === 'vehicle' && !input.plate && !input.vin) {
-      throw new AppError('Vehicle alerts require a plate or VIN', 400);
+      throw Object.assign(new Error('Vehicle alerts require a plate or VIN'), { statusCode: 400 });
     }
 
     // Area alerts require a location
     if (category === 'area' && input.lat == null && !input.locationName) {
-      throw new AppError('Area alerts require a location', 400);
+      throw Object.assign(new Error('Area alerts require a location'), { statusCode: 400 });
     }
 
     const normalizedPlate = input.plate
@@ -108,7 +108,7 @@ export const watchAlertService = {
       where: { id: input.alertId },
     });
 
-    if (!alert) throw new AppError('Alert not found', 404);
+    if (!alert) throw Object.assign(new Error('Alert not found'), { statusCode: 400 });
 
     // All records immutable — only status transitions, no deletion
     const updated = await (prisma as any).watch_alerts.update({
@@ -183,7 +183,7 @@ export const watchAlertService = {
     const alert = await (prisma as any).watch_alerts.findUnique({
       where: { id },
     });
-    if (!alert) throw new AppError('Alert not found', 404);
+    if (!alert) throw Object.assign(new Error('Alert not found'), { statusCode: 400 });
     return alert;
   },
 

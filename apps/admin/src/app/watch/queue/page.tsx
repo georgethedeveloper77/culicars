@@ -2,7 +2,7 @@
 // apps/admin/src/app/watch/queue/page.tsx
 
 import { useState, useEffect, useCallback } from 'react';
-import { apiClient } from '@/lib/apiClient';
+import { apiGet, apiPatch } from '@/lib/api';
 
 type AlertStatus =
   | 'pending'
@@ -103,7 +103,7 @@ export default function WatchQueuePage() {
       if (filterStatus) params.set('status', filterStatus);
       if (filterType) params.set('type', filterType);
 
-      const res = await apiClient.get(`/watch/admin/queue?${params}`);
+      const res = await apiGet<any>(`/watch/admin/queue?${params}`);
       setData(res.data.data);
     } catch {
       setError('Failed to load alerts');
@@ -114,7 +114,7 @@ export default function WatchQueuePage() {
 
   const fetchPendingCount = async () => {
     try {
-      const res = await apiClient.get('/watch/admin/pending-count');
+      const res = await apiGet<any>('/watch/admin/pending-count'); // typed
       setPendingCount(res.data.data.count);
     } catch {}
   };
@@ -128,7 +128,7 @@ export default function WatchQueuePage() {
     if (!selected) return;
     setModerating(true);
     try {
-      await apiClient.patch(`/watch/alerts/${selected.id}/moderate`, {
+      await apiPatch<any>(`/watch/alerts/${selected.id}/moderate`, {
         status,
         moderationNote: note || undefined,
       });

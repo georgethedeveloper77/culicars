@@ -6,7 +6,7 @@ import { optionalAuth } from '../middleware/optionalAuth';
 import { requireRole } from '../middleware/requireRole';
 import { watchAlertService, AlertType, AlertStatus } from '../services/watchAlertService';
 
-const router = Router();
+const router: Router = Router();
 
 const ALERT_TYPES = [
   'stolen_vehicle',
@@ -109,7 +109,7 @@ router.get(
 router.patch(
   '/alerts/:id/moderate',
   auth,
-  requireRole(['admin', 'employee']),
+  requireRole('admin' as any),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const schema = z.object({
@@ -143,7 +143,7 @@ router.patch(
 router.get(
   '/admin/queue',
   auth,
-  requireRole(['admin', 'employee']),
+  requireRole('admin' as any),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const schema = z.object({
@@ -169,7 +169,7 @@ router.get(
 router.get(
   '/admin/pending-count',
   auth,
-  requireRole(['admin', 'employee']),
+  requireRole('admin' as any),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const count = await watchAlertService.pendingCount();

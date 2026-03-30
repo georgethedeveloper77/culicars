@@ -8,349 +8,31 @@ datasource db {
   directUrl = env("DIRECT_DATABASE_URL")
 }
 
-model User {
-  id               String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  email            String         @unique
-  role             UserRole       @default(user)
-  createdAt        DateTime?      @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt        DateTime?      @updatedAt @map("updated_at") @db.Timestamptz(6)
-  adminSettings    AdminSetting[]
-  reviewedContribs Contribution[] @relation("contributionReviewer")
-  contributions    Contribution[]
-  corConsents      CorConsent[]
-  creditLedger     CreditLedger[]
-  ocrScans         OcrScan[]
-  payments         Payment[]
-  profile          Profile?
-  reportUnlocks    ReportUnlock[]
-  stolenReports    StolenReport[] @relation("stolenReporter")
-  reviewedStolen   StolenReport[] @relation("stolenReviewer")
-  wallet           Wallet?
-
-  @@map("users")
-}
-
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model Profile {
-  userId        String    @id @map("user_id") @db.Uuid
-  displayName   String?   @map("display_name")
-  phone         String?
-  avatarUrl     String?   @map("avatar_url")
-  county        String?
-  preferredLang String?   @default("en") @map("preferred_lang")
-  updatedAt     DateTime? @updatedAt @map("updated_at") @db.Timestamptz(6)
-  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-
-  @@map("profiles")
+  userId                  String    @id @db.Uuid
+  displayName             String?
+  phone                   String?
+  avatarUrl               String?
+  county                  String?
+  preferred_lang          String?   @default("en")
+  preferred_lat           Float?
+  preferred_lng           Float?
+  preferred_location_name String?
+  updated_at              DateTime? @db.Timestamptz(6)
+  User                    User      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
 
-model Vehicle {
-  vin                 String         @id
-  chassisNumber       String?        @map("chassis_number")
-  make                String?
-  model               String?
-  year                Int?
-  engineCc            Int?           @map("engine_cc")
-  fuelType            String?        @map("fuel_type")
-  transmission        String?
-  bodyType            String?        @map("body_type")
-  color               String?
-  countryOfOrigin     String?        @map("country_of_origin")
-  importCountry       String?        @map("import_country")
-  isImported          Boolean?       @default(false) @map("is_imported")
-  japanAuctionGrade   String?        @map("japan_auction_grade")
-  japanAuctionMileage Int?           @map("japan_auction_mileage")
-  kraPin              String?        @map("kra_pin")
-  ntsaId              String?        @map("ntsa_id")
-  inspectionStatus    InspStatus?    @map("inspection_status")
-  lastInspectionDate  DateTime?      @map("last_inspection_date") @db.Date
-  caveatStatus        CaveatSt?      @map("caveat_status")
-  psvLicensed         Boolean?       @default(false) @map("psv_licensed")
-  ntsaCorVerified     Boolean?       @default(false) @map("ntsa_cor_verified")
-  ntsaCorDate         DateTime?      @map("ntsa_cor_date") @db.Timestamptz(6)
-  ntsaCorSource       CorSource?     @map("ntsa_cor_source")
-  createdAt           DateTime?      @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt           DateTime?      @updatedAt @map("updated_at") @db.Timestamptz(6)
-  contributions       Contribution[]
-  plateVinMaps        PlateVinMap[]
-  reports             Report[]
-  stolenReports       StolenReport[]
-  vehicleEvents       VehicleEvent[]
-
-  @@map("vehicles")
-}
-
-model PlateVinMap {
-  id           String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  plate        String
-  plateDisplay String?    @map("plate_display")
-  vin          String
-  confidence   Float?     @default(0.5)
-  source       PvmSource?
-  verifiedAt   DateTime?  @map("verified_at") @db.Timestamptz(6)
-  createdAt    DateTime?  @default(now()) @map("created_at") @db.Timestamptz(6)
-  vehicle      Vehicle    @relation(fields: [vin], references: [vin], onDelete: Cascade, onUpdate: NoAction)
-
-  @@index([plate], map: "idx_pvm_plate")
-  @@index([vin], map: "idx_pvm_vin")
-  @@map("plate_vin_map")
-}
-
-model Report {
-  id             String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  vin            String
-  status         ReportStatus?   @default(draft)
-  riskScore      Int?            @map("risk_score")
-  riskLevel      RiskLevel?      @map("risk_level")
-  recommendation Recommendation?
-  sourcesChecked Int?            @default(0) @map("sources_checked")
-  recordsFound   Int?            @default(0) @map("records_found")
-  generatedAt    DateTime?       @map("generated_at") @db.Timestamptz(6)
-  updatedAt      DateTime?       @updatedAt @map("updated_at") @db.Timestamptz(6)
-  ledgerEntries  CreditLedger[]
-  sections       ReportSection[]
-  unlocks        ReportUnlock[]
-  vehicle        Vehicle         @relation(fields: [vin], references: [vin], onDelete: Cascade, onUpdate: NoAction)
-
-  @@index([vin], map: "idx_reports_vin")
-  @@map("reports")
-}
-
-model ReportSection {
-  id          String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  reportId    String      @map("report_id") @db.Uuid
-  sectionType SectionType @map("section_type")
-  data        Json?
-  isLocked    Boolean?    @default(true) @map("is_locked")
-  recordCount Int?        @default(0) @map("record_count")
-  dataStatus  DataStatus? @default(not_checked) @map("data_status")
-  updatedAt   DateTime?   @updatedAt @map("updated_at") @db.Timestamptz(6)
-  report      Report      @relation(fields: [reportId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-
-  @@map("report_sections")
-}
-
-model ReportUnlock {
-  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId       String    @map("user_id") @db.Uuid
-  reportId     String    @map("report_id") @db.Uuid
-  creditsSpent Int       @map("credits_spent")
-  unlockedAt   DateTime? @default(now()) @map("unlocked_at") @db.Timestamptz(6)
-  report       Report    @relation(fields: [reportId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  user         User      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-
-  @@unique([userId, reportId])
-  @@map("report_unlocks")
-}
-
-model VehicleEvent {
-  id         String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  vin        String
-  eventType  EventType    @map("event_type")
-  eventDate  DateTime     @map("event_date") @db.Date
-  country    String?      @default("KE")
-  county     String?
-  source     EventSource?
-  sourceRef  String?      @map("source_ref")
-  confidence Float?       @default(0.8)
-  metadata   Json?
-  createdAt  DateTime?    @default(now()) @map("created_at") @db.Timestamptz(6)
-  vehicle    Vehicle      @relation(fields: [vin], references: [vin], onDelete: Cascade, onUpdate: NoAction)
-
-  @@index([vin], map: "idx_events_vin")
-  @@index([eventDate], map: "idx_events_date")
-  @@map("vehicle_events")
-}
-
-model StolenReport {
-  id               String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  plate            String
-  plateDisplay     String?       @map("plate_display")
-  vin              String?
-  reporterUserId   String?       @map("reporter_user_id") @db.Uuid
-  reporterType     ReporterType? @map("reporter_type")
-  dateStolen       DateTime      @map("date_stolen") @db.Date
-  countyStolen     String        @map("county_stolen")
-  townStolen       String        @map("town_stolen")
-  policeObNumber   String?       @map("police_ob_number")
-  policeStation    String?       @map("police_station")
-  carColor         String        @map("car_color")
-  identifyingMarks String?       @map("identifying_marks")
-  photoUrls        String[]      @map("photo_urls")
-  contactPhone     String?       @map("contact_phone")
-  contactEmail     String?       @map("contact_email")
-  status           StolenStatus? @default(pending)
-  isObVerified     Boolean?      @default(false) @map("is_ob_verified")
-  adminNote        String?       @map("admin_note")
-  reviewedBy       String?       @map("reviewed_by") @db.Uuid
-  reviewedAt       DateTime?     @map("reviewed_at") @db.Timestamptz(6)
-  recoveryDate     DateTime?     @map("recovery_date") @db.Date
-  recoveryCounty   String?       @map("recovery_county")
-  recoveryNotes    String?       @map("recovery_notes")
-  createdAt        DateTime?     @default(now()) @map("created_at") @db.Timestamptz(6)
-  reporter         User?         @relation("stolenReporter", fields: [reporterUserId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  reviewer         User?         @relation("stolenReviewer", fields: [reviewedBy], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  vehicle          Vehicle?      @relation(fields: [vin], references: [vin], onDelete: NoAction, onUpdate: NoAction)
-
-  @@index([plate], map: "idx_stolen_plate")
-  @@index([vin], map: "idx_stolen_vin")
-  @@index([status], map: "idx_stolen_status")
-  @@map("stolen_reports")
-}
-
-model Wallet {
-  userId    String    @id @map("user_id") @db.Uuid
-  balance   Int       @default(0)
-  updatedAt DateTime? @updatedAt @map("updated_at") @db.Timestamptz(6)
-  user      User      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-
-  @@map("wallets")
-}
-
-model CreditLedger {
-  id            String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId        String     @map("user_id") @db.Uuid
-  type          LedgerType
-  creditsDelta  Int        @map("credits_delta")
-  balanceBefore Int        @map("balance_before")
-  balanceAfter  Int        @map("balance_after")
-  source        String?
-  reportId      String?    @map("report_id") @db.Uuid
-  txRef         String?    @map("tx_ref")
-  metadata      Json?
-  createdAt     DateTime?  @default(now()) @map("created_at") @db.Timestamptz(6)
-  report        Report?    @relation(fields: [reportId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  user          User       @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-
-  @@index([userId], map: "idx_ledger_user")
-  @@map("credit_ledger")
-}
-
-model PaymentProvider {
-  id        String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name      String
-  slug      ProviderSlug @unique
-  isEnabled Boolean?     @default(false) @map("is_enabled")
-  config    Json?
-  updatedAt DateTime?    @updatedAt @map("updated_at") @db.Timestamptz(6)
-
-  @@map("payment_providers")
-}
-
-model Payment {
-  id           String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId       String     @map("user_id") @db.Uuid
-  provider     String
-  amount       Int
-  currency     String?    @default("KES")
-  credits      Int
-  status       PayStatus? @default(pending)
-  providerRef  String?    @unique @map("provider_ref")
-  providerMeta Json?      @map("provider_meta")
-  createdAt    DateTime?  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt    DateTime?  @updatedAt @map("updated_at") @db.Timestamptz(6)
-  user         User       @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-
-  @@map("payments")
-}
-
-model Contribution {
-  id                  String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  vin                 String
-  userId              String?        @map("user_id") @db.Uuid
-  type                ContribType
-  title               String
-  description         String?
-  data                Json?
-  evidenceUrls        String[]       @map("evidence_urls")
-  verificationDocUrls String[]       @map("verification_doc_urls")
-  status              ContribStatus? @default(pending)
-  adminNote           String?        @map("admin_note")
-  reviewedBy          String?        @map("reviewed_by") @db.Uuid
-  reviewedAt          DateTime?      @map("reviewed_at") @db.Timestamptz(6)
-  confidenceScore     Float?         @map("confidence_score")
-  createdAt           DateTime?      @default(now()) @map("created_at") @db.Timestamptz(6)
-  reviewer            User?          @relation("contributionReviewer", fields: [reviewedBy], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  user                User?          @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  vehicle             Vehicle        @relation(fields: [vin], references: [vin], onDelete: NoAction, onUpdate: NoAction)
-
-  @@map("contributions")
-}
-
-model CorConsent {
-  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId       String    @map("user_id") @db.Uuid
-  vin          String
-  plate        String
-  consentedAt  DateTime? @default(now()) @map("consented_at") @db.Timestamptz(6)
-  pdfProcessed Boolean?  @default(false) @map("pdf_processed")
-  processedAt  DateTime? @map("processed_at") @db.Timestamptz(6)
-  user         User      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-
-  @@map("cor_consents")
-}
-
-model OcrScan {
-  id               String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId           String?    @map("user_id") @db.Uuid
-  imageUrl         String     @map("image_url")
-  documentType     DocType?   @map("document_type")
-  rawOcrResult     Json?      @map("raw_ocr_result")
-  extractedPlate   String?    @map("extracted_plate")
-  extractedVin     String?    @map("extracted_vin")
-  extractedChassis String?    @map("extracted_chassis")
-  confidence       Float?
-  confirmedValue   String?    @map("confirmed_value")
-  source           OcrSource?
-  createdAt        DateTime?  @default(now()) @map("created_at") @db.Timestamptz(6)
-  user             User?      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-
-  @@map("ocr_scans")
-}
-
-model ScraperJob {
-  id           String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  source       ScraperSrc
-  status       JobStatus?       @default(queued)
-  trigger      JobTrigger?
-  itemsFound   Int?             @default(0) @map("items_found")
-  itemsStored  Int?             @default(0) @map("items_stored")
-  itemsSkipped Int?             @default(0) @map("items_skipped")
-  startedAt    DateTime?        @map("started_at") @db.Timestamptz(6)
-  completedAt  DateTime?        @map("completed_at") @db.Timestamptz(6)
-  errorLog     String?          @map("error_log")
-  createdAt    DateTime?        @default(now()) @map("created_at") @db.Timestamptz(6)
-  rawData      ScraperDataRaw[]
-
-  @@map("scraper_jobs")
-}
-
-model ScraperDataRaw {
-  id          String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  jobId       String     @map("job_id") @db.Uuid
-  source      String
-  rawData     Json       @map("raw_data")
-  vin         String?
-  plate       String?
-  processed   Boolean?   @default(false)
-  processedAt DateTime?  @map("processed_at") @db.Timestamptz(6)
-  createdAt   DateTime?  @default(now()) @map("created_at") @db.Timestamptz(6)
-  job         ScraperJob @relation(fields: [jobId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-
-  @@index([vin], map: "idx_raw_vin")
-  @@index([plate], map: "idx_raw_plate")
-  @@index([processed], map: "idx_raw_processed")
-  @@map("scraper_data_raw")
-}
-
-model AdminSetting {
-  key         String    @id
-  value       Json
-  description String?
-  updatedBy   String?   @map("updated_by") @db.Uuid
-  updatedAt   DateTime? @updatedAt @map("updated_at") @db.Timestamptz(6)
-  user        User?     @relation(fields: [updatedBy], references: [id], onDelete: NoAction, onUpdate: NoAction)
-
-  @@map("admin_settings")
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model User {
+  id            String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email         String          @unique
+  role          user_role       @default(user)
+  credits       Int             @default(0)
+  created_at    DateTime        @default(now()) @db.Timestamptz(6)
+  updated_at    DateTime?       @db.Timestamptz(6)
+  Profile       Profile?
+  user_vehicles user_vehicles[]
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
@@ -361,20 +43,87 @@ model admin_config {
   updated_at DateTime @default(now()) @db.Timestamptz(6)
 }
 
-model raw_records {
-  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  vin             String?
-  plate           String?
-  source          String
-  source_id       String?
-  raw_json        Json?
-  normalised_json Json?
-  confidence      Decimal?  @default(0) @db.Decimal(3, 2)
-  created_at      DateTime? @default(now()) @db.Timestamptz(6)
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model admin_settings {
+  key         String    @id
+  value       Json
+  description String?
+  updated_by  String?   @db.Uuid
+  updated_at  DateTime? @db.Timestamptz(6)
+  users       users?    @relation(fields: [updated_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
 
-  @@index([plate])
-  @@index([source])
-  @@index([vin])
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model contributions {
+  id                                     String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  vin                                    String
+  user_id                                String?        @db.Uuid
+  type                                   ContribType
+  title                                  String
+  description                            String?
+  data                                   Json?
+  evidence_urls                          String[]
+  verification_doc_urls                  String[]
+  status                                 ContribStatus? @default(pending)
+  admin_note                             String?
+  reviewed_by                            String?        @db.Uuid
+  reviewed_at                            DateTime?      @db.Timestamptz(6)
+  confidence_score                       Float?
+  created_at                             DateTime?      @default(now()) @db.Timestamptz(6)
+  plate                                  String?
+  users_contributions_reviewed_byTousers users?         @relation("contributions_reviewed_byTousers", fields: [reviewed_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users_contributions_user_idTousers     users?         @relation("contributions_user_idTousers", fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  vehicles                               vehicles       @relation(fields: [vin], references: [vin], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model cor_consents {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id       String    @db.Uuid
+  vin           String
+  plate         String
+  consented_at  DateTime? @default(now()) @db.Timestamptz(6)
+  pdf_processed Boolean?  @default(false)
+  processed_at  DateTime? @db.Timestamptz(6)
+  users         users     @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model credit_ledger {
+  id             String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id        String     @db.Uuid
+  type           LedgerType
+  credits_delta  Int
+  balance_before Int
+  balance_after  Int
+  source         String?
+  report_id      String?    @db.Uuid
+  tx_ref         String?
+  metadata       Json?
+  created_at     DateTime?  @default(now()) @db.Timestamptz(6)
+  provider_ref   String?    @unique
+  reports        reports?   @relation(fields: [report_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users          users      @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([user_id], map: "idx_ledger_user")
+}
+
+model credit_transactions {
+  id             String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id        String          @db.Uuid
+  amount         Int
+  type           String
+  provider       String?
+  provider_ref   String?         @unique
+  pack_id        String?
+  report_id      String?         @db.Uuid
+  status         String          @default("pending")
+  meta_json      Json?
+  created_at     DateTime        @default(now()) @db.Timestamptz(6)
+  vehicle_report vehicle_report? @relation(fields: [report_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([status], map: "idx_credit_tx_status")
+  @@index([user_id], map: "idx_credit_tx_user")
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
@@ -392,18 +141,403 @@ model data_sources {
   updated_at      DateTime  @default(now()) @db.Timestamptz(6)
 }
 
-enum UserRole {
-  guest
-  user
-  admin
-  dealer
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model ocr_scans {
+  id                String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id           String?    @db.Uuid
+  image_url         String
+  document_type     DocType?
+  raw_ocr_result    Json?
+  extracted_plate   String?
+  extracted_vin     String?
+  extracted_chassis String?
+  confidence        Float?
+  confirmed_value   String?
+  source            OcrSource?
+  created_at        DateTime?  @default(now()) @db.Timestamptz(6)
+  users             users?     @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }
 
-enum InspStatus {
-  passed
-  failed
-  expired
-  unknown
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model payment_providers {
+  id         String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name       String
+  slug       ProviderSlug @unique
+  is_enabled Boolean?     @default(false)
+  config     Json?
+  updated_at DateTime?    @db.Timestamptz(6)
+  platform   String?      @default("both")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model payments {
+  id            String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id       String     @db.Uuid
+  provider      String
+  amount        Int
+  currency      String?    @default("KES")
+  credits       Int
+  status        PayStatus? @default(pending)
+  provider_ref  String?    @unique
+  provider_meta Json?
+  created_at    DateTime?  @default(now()) @db.Timestamptz(6)
+  updated_at    DateTime?  @db.Timestamptz(6)
+  users         users      @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model plate_vin_map {
+  id            String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  plate         String
+  plate_display String?
+  vin           String
+  confidence    Float?     @default(0.5)
+  source        PvmSource?
+  verified_at   DateTime?  @db.Timestamptz(6)
+  created_at    DateTime?  @default(now()) @db.Timestamptz(6)
+  vehicles      vehicles   @relation(fields: [vin], references: [vin], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([plate], map: "idx_pvm_plate")
+  @@index([vin], map: "idx_pvm_vin")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model profiles {
+  user_id        String    @id @db.Uuid
+  display_name   String?
+  phone          String?
+  avatar_url     String?
+  county         String?
+  preferred_lang String?   @default("en")
+  updated_at     DateTime? @db.Timestamptz(6)
+  users          users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model raw_records {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  vin             String?
+  plate           String?
+  source          String
+  source_id       String?
+  raw_json        Json?
+  normalised_json Json?
+  confidence      Decimal?  @default(0) @db.Decimal(3, 2)
+  created_at      DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@index([plate], map: "idx_raw_records_plate")
+  @@index([vin], map: "idx_raw_records_vin")
+  @@index([plate])
+  @@index([source])
+  @@index([vin])
+}
+
+model report_access {
+  id             String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  report_id      String         @db.Uuid
+  user_id        String         @db.Uuid
+  accessed_at    DateTime       @default(now()) @db.Timestamptz(6)
+  vehicle_report vehicle_report @relation(fields: [report_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users          users          @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([report_id, user_id], map: "uq_report_access_report_user")
+  @@index([report_id, user_id], map: "idx_report_access_report_user")
+  @@index([user_id], map: "idx_report_access_user")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model report_sections {
+  id           String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  report_id    String      @db.Uuid
+  section_type SectionType
+  data         Json?
+  is_locked    Boolean?    @default(true)
+  record_count Int?        @default(0)
+  data_status  DataStatus? @default(not_checked)
+  updated_at   DateTime?   @db.Timestamptz(6)
+  reports      reports     @relation(fields: [report_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model report_unlock {
+  id             String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id        String         @db.Uuid
+  report_id      String         @db.Uuid
+  unlocked_at    DateTime       @default(now()) @db.Timestamptz(6)
+  vehicle_report vehicle_report @relation(fields: [report_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([user_id, report_id])
+  @@index([user_id], map: "idx_report_unlock_user")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model report_unlocks {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id       String    @db.Uuid
+  report_id     String    @db.Uuid
+  credits_spent Int
+  unlocked_at   DateTime? @default(now()) @db.Timestamptz(6)
+  reports       reports   @relation(fields: [report_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users         users     @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([user_id, report_id])
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model reports {
+  id              String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  vin             String
+  status          ReportStatus?     @default(draft)
+  risk_score      Int?
+  risk_level      RiskLevel?
+  recommendation  Recommendation?
+  sources_checked Int?              @default(0)
+  records_found   Int?              @default(0)
+  generated_at    DateTime?         @db.Timestamptz(6)
+  updated_at      DateTime?         @db.Timestamptz(6)
+  result_state    result_state?     @default(pending_enrichment)
+  credit_ledger   credit_ledger[]
+  report_sections report_sections[]
+  report_unlocks  report_unlocks[]
+  vehicles        vehicles          @relation(fields: [vin], references: [vin], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([vin], map: "idx_reports_vin")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model scraper_data_raw {
+  id           String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  job_id       String       @db.Uuid
+  source       String
+  raw_data     Json
+  vin          String?
+  plate        String?
+  processed    Boolean?     @default(false)
+  processed_at DateTime?    @db.Timestamptz(6)
+  created_at   DateTime?    @default(now()) @db.Timestamptz(6)
+  scraper_jobs scraper_jobs @relation(fields: [job_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([plate], map: "idx_raw_plate")
+  @@index([processed], map: "idx_raw_processed")
+  @@index([vin], map: "idx_raw_vin")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model scraper_jobs {
+  id               String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  source           ScraperSrc
+  status           JobStatus?         @default(queued)
+  trigger          JobTrigger?
+  items_found      Int?               @default(0)
+  items_stored     Int?               @default(0)
+  items_skipped    Int?               @default(0)
+  started_at       DateTime?          @db.Timestamptz(6)
+  completed_at     DateTime?          @db.Timestamptz(6)
+  error_log        String?
+  created_at       DateTime?          @default(now()) @db.Timestamptz(6)
+  scraper_data_raw scraper_data_raw[]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model search_demand_queue {
+  id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  plate             String?
+  vin               String?
+  result_state      String    @default("pending_enrichment")
+  times_requested   Int       @default(1)
+  last_requested_at DateTime  @default(now()) @db.Timestamptz(6)
+  enriched_at       DateTime? @db.Timestamptz(6)
+  created_at        DateTime  @default(now()) @db.Timestamptz(6)
+
+  @@index([last_requested_at(sort: Desc)], map: "idx_sdq_last_req")
+  @@index([result_state], map: "idx_sdq_state")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model stolen_reports {
+  id                                           String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  plate                                        String
+  plate_display                                String?
+  vin                                          String?
+  reporter_user_id                             String?       @db.Uuid
+  reporter_type                                ReporterType?
+  date_stolen                                  DateTime      @db.Date
+  county_stolen                                String
+  town_stolen                                  String
+  police_ob_number                             String?
+  police_station                               String?
+  car_color                                    String
+  identifying_marks                            String?
+  photo_urls                                   String[]
+  contact_phone                                String?
+  contact_email                                String?
+  status                                       StolenStatus? @default(pending)
+  is_ob_verified                               Boolean?      @default(false)
+  admin_note                                   String?
+  reviewed_by                                  String?       @db.Uuid
+  reviewed_at                                  DateTime?     @db.Timestamptz(6)
+  recovery_date                                DateTime?     @db.Date
+  recovery_county                              String?
+  recovery_notes                               String?
+  created_at                                   DateTime?     @default(now()) @db.Timestamptz(6)
+  users_stolen_reports_reporter_user_idTousers users?        @relation("stolen_reports_reporter_user_idTousers", fields: [reporter_user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users_stolen_reports_reviewed_byTousers      users?        @relation("stolen_reports_reviewed_byTousers", fields: [reviewed_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  vehicles                                     vehicles?     @relation(fields: [vin], references: [vin], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([plate], map: "idx_stolen_plate")
+  @@index([status], map: "idx_stolen_status")
+  @@index([vin], map: "idx_stolen_vin")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model user_vehicles {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id           String   @db.Uuid
+  plate             String?
+  vin               String?
+  relationship_type String   @default("owner")
+  nickname          String?
+  alert_radius_km   Int?     @default(10)
+  created_at        DateTime @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime @default(now()) @db.Timestamptz(6)
+  User              User     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([user_id, plate, vin], map: "user_vehicles_unique")
+  @@index([plate], map: "idx_user_vehicles_plate")
+  @@index([user_id], map: "idx_user_vehicles_user_id")
+  @@index([vin], map: "idx_user_vehicles_vin")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model users {
+  id                                                    String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email                                                 String           @unique
+  role                                                  UserRole         @default(user)
+  created_at                                            DateTime?        @default(now()) @db.Timestamptz(6)
+  updated_at                                            DateTime?        @db.Timestamptz(6)
+  admin_settings                                        admin_settings[]
+  contributions_contributions_reviewed_byTousers        contributions[]  @relation("contributions_reviewed_byTousers")
+  contributions_contributions_user_idTousers            contributions[]  @relation("contributions_user_idTousers")
+  cor_consents                                          cor_consents[]
+  credit_ledger                                         credit_ledger[]
+  ocr_scans                                             ocr_scans[]
+  payments                                              payments[]
+  profiles                                              profiles?
+  report_access                                         report_access[]
+  report_unlocks                                        report_unlocks[]
+  stolen_reports_stolen_reports_reporter_user_idTousers stolen_reports[] @relation("stolen_reports_reporter_user_idTousers")
+  stolen_reports_stolen_reports_reviewed_byTousers      stolen_reports[] @relation("stolen_reports_reviewed_byTousers")
+  wallets                                               wallets?
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model vehicle_events {
+  id         String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  vin        String
+  event_type EventType
+  event_date DateTime     @db.Date
+  country    String?      @default("KE")
+  county     String?
+  source     EventSource?
+  source_ref String?
+  confidence Float?       @default(0.8)
+  metadata   Json?
+  created_at DateTime?    @default(now()) @db.Timestamptz(6)
+  vehicles   vehicles     @relation(fields: [vin], references: [vin], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([event_date], map: "idx_events_date")
+  @@index([vin], map: "idx_events_vin")
+}
+
+model vehicle_report {
+  id                  String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  vin                 String
+  plate               String?
+  state               String                @default("pending_enrichment")
+  risk_score          Int                   @default(0)
+  risk_level          String                @default("low")
+  risk_flags          Json                  @default("[]")
+  sections_json       Json                  @default("{}")
+  created_at          DateTime              @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime              @default(now()) @db.Timestamptz(6)
+  credit_transactions credit_transactions[]
+  report_access       report_access[]
+  report_unlock       report_unlock[]
+
+  @@index([plate], map: "idx_vehicle_report_plate")
+  @@index([state], map: "idx_vehicle_report_state")
+  @@index([vin], map: "idx_vehicle_report_vin")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model vehicles {
+  vin                   String           @id
+  chassis_number        String?
+  make                  String?
+  model                 String?
+  year                  Int?
+  engine_cc             Int?
+  fuel_type             String?
+  transmission          String?
+  body_type             String?
+  color                 String?
+  country_of_origin     String?
+  import_country        String?
+  is_imported           Boolean?         @default(false)
+  japan_auction_grade   String?
+  japan_auction_mileage Int?
+  kra_pin               String?
+  ntsa_id               String?
+  inspection_status     InspStatus?
+  last_inspection_date  DateTime?        @db.Date
+  caveat_status         CaveatSt?
+  psv_licensed          Boolean?         @default(false)
+  ntsa_cor_verified     Boolean?         @default(false)
+  ntsa_cor_date         DateTime?        @db.Timestamptz(6)
+  ntsa_cor_source       CorSource?
+  created_at            DateTime?        @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime?        @db.Timestamptz(6)
+  contributions         contributions[]
+  plate_vin_map         plate_vin_map[]
+  reports               reports[]
+  stolen_reports        stolen_reports[]
+  vehicle_events        vehicle_events[]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model wallets {
+  user_id    String    @id @db.Uuid
+  balance    Int       @default(0)
+  updated_at DateTime? @db.Timestamptz(6)
+  users      users     @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model watch_alerts {
+  id              String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  plate           String?
+  vin             String?
+  type            watch_alert_type
+  lat             Float?
+  lng             Float?
+  location_name   String?
+  description     String
+  status          watch_alert_status @default(pending)
+  submitted_by    String?            @db.Uuid
+  moderated_by    String?            @db.Uuid
+  moderation_note String?
+  moderated_at    DateTime?          @db.Timestamptz(6)
+  evidence_urls   String[]           @default([])
+  created_at      DateTime           @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime           @default(now()) @db.Timestamptz(6)
+
+  @@index([created_at(sort: Desc)], map: "idx_watch_alerts_created")
+  @@index([plate], map: "idx_watch_alerts_plate")
+  @@index([status], map: "idx_watch_alerts_status")
+  @@index([type], map: "idx_watch_alerts_type")
+  @@index([vin], map: "idx_watch_alerts_vin")
 }
 
 enum CaveatSt {
@@ -412,61 +546,59 @@ enum CaveatSt {
   unknown
 }
 
+enum ContribStatus {
+  pending
+  approved
+  rejected
+  flagged
+}
+
+enum ContribType {
+  MILEAGE_RECORD
+  DAMAGE_REPORT
+  SERVICE_RECORD
+  OWNERSHIP_TRANSFER
+  LISTING_PROOF
+  INSPECTION_RECORD
+  IMPORT_DOCUMENT
+  THEFT_REPORT
+  PHOTO_EVIDENCE
+  GENERAL_NOTE
+}
+
 enum CorSource {
   user_webview
   admin
-}
-
-enum PvmSource {
-  ntsa_cor
-  kra_import
-  scraper
-  contribution
-  ocr
-  admin
-}
-
-enum ReportStatus {
-  draft
-  ready
-  stale
-}
-
-enum RiskLevel {
-  clean
-  low
-  medium
-  high
-  critical
-}
-
-enum Recommendation {
-  proceed
-  caution
-  avoid
-}
-
-enum SectionType {
-  IDENTITY
-  PURPOSE
-  THEFT
-  ODOMETER
-  LEGAL
-  DAMAGE
-  SPECS_EQUIPMENT
-  IMPORT
-  OWNERSHIP
-  SERVICE
-  PHOTOS
-  TIMELINE
-  STOLEN_REPORTS
-  RECOMMENDATION
 }
 
 enum DataStatus {
   found
   not_found
   not_checked
+}
+
+enum DocType {
+  logbook
+  import_doc
+  dashboard
+  plate_photo
+  ntsa_cor
+}
+
+enum EventSource {
+  ntsa_cor
+  kra
+  scraper_jiji
+  scraper_pigiame
+  scraper_olx
+  scraper_autochek
+  scraper_autoexpress
+  scraper_kra_ibid
+  scraper_auction
+  scraper_beforward
+  contribution
+  community_stolen_report
+  admin
 }
 
 enum EventType {
@@ -493,35 +625,23 @@ enum EventType {
   ADMIN_NOTE
 }
 
-enum EventSource {
-  ntsa_cor
-  kra
-  scraper_jiji
-  scraper_pigiame
-  scraper_olx
-  scraper_autochek
-  scraper_autoexpress
-  scraper_kra_ibid
-  scraper_auction
-  scraper_beforward
-  contribution
-  community_stolen_report
-  admin
+enum InspStatus {
+  passed
+  failed
+  expired
+  unknown
 }
 
-enum StolenStatus {
-  pending
-  active
-  recovered
-  rejected
-  duplicate
+enum JobStatus {
+  queued
+  running
+  completed
+  failed
 }
 
-enum ReporterType {
-  owner
-  family
-  witness
-  police
+enum JobTrigger {
+  scheduled
+  manual
 }
 
 enum LedgerType {
@@ -531,6 +651,19 @@ enum LedgerType {
   refund
   admin_grant
   admin_deduct
+}
+
+enum OcrSource {
+  user_upload
+  ntsa_cor_auto
+  admin
+}
+
+enum PayStatus {
+  pending
+  success
+  failed
+  refunded
 }
 
 enum ProviderSlug {
@@ -543,45 +676,40 @@ enum ProviderSlug {
   card
 }
 
-enum PayStatus {
-  pending
-  success
-  failed
-  refunded
-}
-
-enum ContribType {
-  MILEAGE_RECORD
-  DAMAGE_REPORT
-  SERVICE_RECORD
-  OWNERSHIP_TRANSFER
-  LISTING_PROOF
-  INSPECTION_RECORD
-  IMPORT_DOCUMENT
-  THEFT_REPORT
-  PHOTO_EVIDENCE
-  GENERAL_NOTE
-}
-
-enum ContribStatus {
-  pending
-  approved
-  rejected
-  flagged
-}
-
-enum DocType {
-  logbook
-  import_doc
-  dashboard
-  plate_photo
+enum PvmSource {
   ntsa_cor
+  kra_import
+  scraper
+  contribution
+  ocr
+  admin
 }
 
-enum OcrSource {
-  user_upload
-  ntsa_cor_auto
-  admin
+enum Recommendation {
+  proceed
+  caution
+  avoid
+}
+
+enum ReportStatus {
+  draft
+  ready
+  stale
+}
+
+enum ReporterType {
+  owner
+  family
+  witness
+  police
+}
+
+enum RiskLevel {
+  clean
+  low
+  medium
+  high
+  critical
 }
 
 enum ScraperSrc {
@@ -601,22 +729,52 @@ enum ScraperSrc {
   MANUAL_IMPORT
 }
 
-enum JobStatus {
-  queued
-  running
-  completed
-  failed
+enum SectionType {
+  IDENTITY
+  PURPOSE
+  THEFT
+  ODOMETER
+  LEGAL
+  DAMAGE
+  SPECS_EQUIPMENT
+  IMPORT
+  OWNERSHIP
+  SERVICE
+  PHOTOS
+  TIMELINE
+  STOLEN_REPORTS
+  RECOMMENDATION
 }
 
-enum JobTrigger {
-  scheduled
-  manual
+enum StolenStatus {
+  pending
+  active
+  recovered
+  rejected
+  duplicate
+}
+
+enum UserRole {
+  guest
+  user
+  admin
+  dealer
 }
 
 enum caveat_st {
   clear
   caveat
   unknown
+}
+
+enum contrib_st {
+  pending
+  approved
+  rejected
+  flagged
+  disputed
+  needs_more_info
+  archived
 }
 
 enum contrib_status {
@@ -770,6 +928,13 @@ enum report_status {
   stale
 }
 
+enum result_state {
+  verified
+  partial
+  low_confidence
+  pending_enrichment
+}
+
 enum risk_level {
   clean
   low
@@ -817,6 +982,7 @@ enum section_type {
   TIMELINE
   STOLEN_REPORTS
   RECOMMENDATION
+  COMMUNITY_INSIGHTS
 }
 
 enum stolen_st {
@@ -832,4 +998,24 @@ enum user_role {
   user
   admin
   dealer
+  employee
+}
+
+enum watch_alert_status {
+  pending
+  approved
+  rejected
+  disputed
+  needs_more_info
+  archived
+}
+
+enum watch_alert_type {
+  stolen_vehicle
+  recovered_vehicle
+  damage
+  vandalism
+  parts_theft
+  suspicious_activity
+  hijack
 }
