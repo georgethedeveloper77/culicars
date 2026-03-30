@@ -1,137 +1,119 @@
-# T10 — My Vehicles + Watchlist
+# T11 — Watch Phase 1: Alerts + Feed + Moderation
 
-## Overview
-- `user_vehicles` table with RLS
-- Preferred location columns on `Profile`
-- `GET/POST/PATCH/DELETE /user/vehicles`
-- `GET/POST /user/vehicles/preferred-location`
-- Web dashboard `/dashboard`
-- Flutter `MyVehiclesScreen`
+## Files in this zip
+
+```
+sql/
+  T11_watch_alerts.sql          ← Run in Supabase SQL Editor first
+
+api/
+  routes/watch.ts               → apps/api/src/routes/watch.ts
+  services/watchAlertService.ts → apps/api/src/services/watchAlertService.ts
+
+admin/
+  watch/queue/page.tsx          → apps/admin/src/app/watch/queue/page.tsx
+
+web/
+  watch/feed/page.tsx           → apps/web/src/app/watch/feed/page.tsx
+  watch/report/vehicle/page.tsx → apps/web/src/app/watch/report/vehicle/page.tsx
+  watch/report/area/page.tsx    → apps/web/src/app/watch/report/area/page.tsx
+
+mobile/
+  watch_feed_screen.dart        → apps/mobile/lib/features/watch/watch_feed_screen.dart
+  submit_alert_sheet.dart       → apps/mobile/lib/features/watch/submit_alert_sheet.dart
+```
 
 ---
 
-## Deployment Steps
+## Deployment steps (in order)
 
-### 1. Run SQL (Supabase SQL Editor)
-Copy-paste `sql/t10_user_vehicles.sql` into the Supabase SQL Editor and run.
+### 1. Run SQL migration
+Open Supabase SQL Editor → paste `sql/T11_watch_alerts.sql` → Run.
 
----
+### 2. Mount the watch route in app.ts
+Add to `apps/api/src/app.ts`:
 
-### 2. Upload API files to server
+```typescript
+import watchRouter from './routes/watch';
 
+// After the existing routes:
+app.use('/watch', watchRouter);
+```
+
+### 3. Copy API files
+```
+apps/api/src/routes/watch.ts
+apps/api/src/services/watchAlertService.ts
+```
+
+### 4. Copy admin page
+```
+apps/admin/src/app/watch/queue/page.tsx
+```
+Create the directory if it doesn't exist: `apps/admin/src/app/watch/queue/`
+
+### 5. Copy web pages
+```
+apps/web/src/app/watch/feed/page.tsx
+apps/web/src/app/watch/report/vehicle/page.tsx
+apps/web/src/app/watch/report/area/page.tsx
+```
+Create directories as needed.
+
+### 6. Copy Flutter files
+```
+apps/mobile/lib/features/watch/watch_feed_screen.dart
+apps/mobile/lib/features/watch/submit_alert_sheet.dart
+```
+
+### 7. Add watch nav link to admin sidebar
+Add a "Watch Queue" link pointing to `/watch/queue` in your admin sidebar component.
+
+### 8. Build and deploy
 ```bash
-# From monorepo root on Mac:
-scp apps/api/src/services/userVehiclesService.ts \
-    root@culicars.com:/var/www/vhosts/culicars.com/httpdocs/apps/api/src/services/
-
-scp apps/api/src/routes/userVehicles.ts \
-    root@culicars.com:/var/www/vhosts/culicars.com/httpdocs/apps/api/src/routes/
-
-scp apps/api/src/services/__tests__/userVehiclesService.test.ts \
-    root@culicars.com:/var/www/vhosts/culicars.com/httpdocs/apps/api/src/services/__tests__/
+git add -A
+git commit -m "feat: T11 Watch Phase 1 — alerts, feed, moderation queue"
+git push
 ```
 
 ---
 
-### 3. Register route in app.ts (on server)
+## Definition of Done checklist
 
-```bash
-# Add import
-sed -i "s|import contributionsRouter|import userVehiclesRouter from './routes/userVehicles';\nimport contributionsRouter|" \
-  /var/www/vhosts/culicars.com/httpdocs/apps/api/src/app.ts
-
-# Add route mount (after contributions or before 404 handler)
-sed -i "s|app.use('/contributions'|app.use('/user/vehicles', userVehiclesRouter);\napp.use('/contributions'|" \
-  /var/www/vhosts/culicars.com/httpdocs/apps/api/src/app.ts
-```
-
-If the `sed` lines don't match exactly (contributions route named differently), manually add to `app.ts`:
-```ts
-import userVehiclesRouter from './routes/userVehicles';
-// ...
-app.use('/user/vehicles', userVehiclesRouter);
-```
+- [ ] Submit alert on web → appears in admin moderation queue at `/watch/queue`
+- [ ] Admin/employee approves → alert appears in public feed at `/watch/feed`
+- [ ] Admin rejects → alert removed from feed, record retained in DB (status = rejected)
+- [ ] Feed filters by alert type work
+- [ ] Employee can moderate; cannot archive (admin-only action)
+- [ ] Mobile: submit alert via bottom sheet → submitted correctly
+- [ ] Mobile: feed displays approved alerts with filter chips
 
 ---
 
-### 4. Build API
+## Alert types reference
 
-```bash
-ssh root@culicars.com
-cd /var/www/vhosts/culicars.com/httpdocs
-pnpm --filter @culicars/api build
-# Restart via Plesk Node.js panel or:
-touch apps/api/tmp/restart.txt
-```
+| Type | Category | Who submits |
+|------|----------|-------------|
+| stolen_vehicle | vehicle | Anyone |
+| recovered_vehicle | vehicle | Anyone |
+| damage | vehicle | Anyone |
+| vandalism | area | Anyone |
+| parts_theft | area | Anyone |
+| suspicious_activity | area | Anyone |
+| hijack | area | Anyone |
 
----
+## Moderation states
 
-### 5. Run tests
+`pending → approved / rejected / needs_more_info / disputed / archived`
 
-```bash
-ssh root@culicars.com
-cd /var/www/vhosts/culicars.com/httpdocs
-pnpm --filter @culicars/api test -- --reporter=verbose userVehiclesService
-```
-
----
-
-### 6. Upload web dashboard
-
-```bash
-scp apps/web/src/app/dashboard/page.tsx \
-    root@culicars.com:/var/www/vhosts/culicars.com/httpdocs/apps/web/src/app/dashboard/
-
-ssh root@culicars.com
-cd /var/www/vhosts/culicars.com/httpdocs
-pnpm --filter @culicars/web build
-```
+All records are **immutable** — status transitions only, never DELETE.
+Employees cannot archive (admin-only). Rejected records are retained for audit.
 
 ---
 
-### 7. Flutter — add MyVehiclesScreen
+## Notes
 
-```bash
-scp apps/mobile/lib/features/profile/my_vehicles_screen.dart \
-    [your-mac-path]/apps/mobile/lib/features/profile/
-```
-
-Wire it into your Profile tab navigator. Minimal addition to the Profile tab:
-
-```dart
-// In your profile screen or tab navigator:
-import '../profile/my_vehicles_screen.dart';
-
-// Add a ListTile or button:
-ListTile(
-  leading: const Icon(Icons.directions_car_outlined),
-  title: const Text('My Vehicles'),
-  trailing: const Icon(Icons.chevron_right),
-  onTap: () => context.push('/profile/vehicles'),
-)
-```
-
-Add route in `app_router.dart`:
-```dart
-GoRoute(
-  path: '/profile/vehicles',
-  builder: (_, __) => const MyVehiclesScreen(),
-),
-```
-
----
-
-## Definition of Done Checklist
-
-- [ ] SQL ran without errors in Supabase SQL Editor
-- [ ] `GET /user/vehicles` returns `{ vehicles: [] }` for a new user (200)
-- [ ] `POST /user/vehicles` with `{ plate: "KDA 123A", relationshipType: "owner" }` → 201
-- [ ] `DELETE /user/vehicles/:id` removes the vehicle → 200
-- [ ] Duplicate add returns 409
-- [ ] No plate + no VIN returns 400
-- [ ] `POST /user/vehicles/preferred-location` with `{ lat: -1.286, lng: 36.817 }` → 200
-- [ ] Web `/dashboard` renders My Vehicles list and Add Vehicle modal
-- [ ] Flutter Profile tab navigates to MyVehiclesScreen
-- [ ] Add, view, delete all work on Flutter
-- [ ] Unauthenticated requests to all routes return 401
-- [ ] Vitest: all tests pass
+- `normalizePlate()` from `@culicars/utils` returns an object — `?.normalized` is extracted defensively
+- Public feed route (`GET /watch/alerts`) never exposes VIN, submitted_by, or moderation details
+- `GET /watch/admin/queue` is employee+admin only — full details including moderator fields
+- The earth_distance extension is used for the spatial index on lat/lng — if it fails, remove that index for now (it's optional for T11)

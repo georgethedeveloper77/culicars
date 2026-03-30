@@ -20,6 +20,7 @@ import { requireRole } from './middleware/requireRole';
 // Routes — Threads 1-5
 import healthRouter from './routes/health';
 import searchRouter from './routes/search';
+import watchRouter from './routes/watch';
 import ocrRouter from './routes/ocr';
 import { ntsaRouter } from './routes/ntsa';
 import reportsRouter from './routes/reports';
@@ -78,6 +79,7 @@ app.use(ipRateLimiter);
 app.use('/auth', authRouter); 
 app.use('/health', healthRouter);
 app.use('/search', optionalAuth, searchRouter);                    // Thread 3
+app.use('/watch', watchRouter);
 app.use('/ocr', auth, ocrRouter);                                  // Thread 4
 app.use('/ocr', ocrRouter);                                        // Thread 4
 app.use('/ntsa', auth, ntsaRouter);                                // Thread 4
