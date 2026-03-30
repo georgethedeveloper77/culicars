@@ -13,7 +13,7 @@ export type NotificationType =
   | 'payment_confirmed';
 
 export interface CreateNotificationInput {
-  userId: string;
+  user_id: string;
   type: NotificationType;
   title: string;
   body: string;
@@ -94,7 +94,7 @@ export async function notifyNearbyUsers(input: NearbyAlertInput): Promise<void> 
   // Uses Haversine approximation via SQL (1 degree lat ≈ 111 km)
   const degreeOffset = radiusKm / 111;
 
-  const nearbyUsers: { userId: string }[] = await prisma.$queryRaw`
+  const nearbyUsers: { user_id: string }[] = await prisma.$queryRaw`
     SELECT DISTINCT uv.user_id as "userId"
     FROM user_vehicles uv
     WHERE uv.alert_radius_km IS NOT NULL
@@ -107,9 +107,9 @@ export async function notifyNearbyUsers(input: NearbyAlertInput): Promise<void> 
   // For now we use a best-effort approach: notify all users with alert_radius set.
 
   await Promise.allSettled(
-    nearbyUsers.map(({ userId }) =>
+nearbyUsers.map(({ user_id: userId }) =>
       createNotification({
-        userId,
+        user_id: userId,
         type: 'nearby_watch_alert',
         title,
         body,
@@ -125,29 +125,29 @@ export async function notifyNearbyUsers(input: NearbyAlertInput): Promise<void> 
 
 export async function getNotifications(userId: string, limit = 30) {
   return (prisma as any).notification.findMany({
-    where: { userId },
-    orderBy: { createdAt: 'desc' },
+    where: { user_id: userId },
+    orderBy: { created_at: 'desc' },
     take: limit,
   });
 }
 
 export async function markRead(userId: string, notificationId: string) {
   return (prisma as any).notification.updateMany({
-    where: { id: notificationId, userId },
+    where: { id: notificationId, user_id: userId },
     data: { read: true },
   });
 }
 
 export async function markAllRead(userId: string) {
   return (prisma as any).notification.updateMany({
-    where: { userId, read: false },
+    where: { user_id: userId, read: false },
     data: { read: true },
   });
 }
 
 export async function getUnreadCount(userId: string): Promise<number> {
   return (prisma as any).notification.count({
-    where: { userId, read: false },
+    where: { user_id: userId, read: false },
   });
 }
 
@@ -171,9 +171,9 @@ export async function removeDeviceToken(userId: string, token: string): Promise<
 // Convenience senders (called from other services)
 // ---------------------------------------------------------------------------
 
-export async function notifyReportReady(userId: string, plate: string, reportId: string) {
+export async function notifyReportReady(userId: string, plate: string, report_id: string) {
   await createNotification({
-    userId,
+    user_id: userId,
     type: 'report_ready',
     title: 'Vehicle report ready',
     body: `Your report for ${plate} is now available.`,
@@ -181,9 +181,9 @@ export async function notifyReportReady(userId: string, plate: string, reportId:
   });
 }
 
-export async function notifyReportUpdated(userId: string, plate: string, reportId: string) {
+export async function notifyReportUpdated(userId: string, plate: string, report_id: string) {
   await createNotification({
-    userId,
+    user_id: userId,
     type: 'report_updated',
     title: 'Report updated',
     body: `New data is available for ${plate}.`,
@@ -193,7 +193,7 @@ export async function notifyReportUpdated(userId: string, plate: string, reportI
 
 export async function notifyPaymentConfirmed(userId: string, credits: number) {
   await createNotification({
-    userId,
+    user_id: userId,
     type: 'payment_confirmed',
     title: 'Credits added',
     body: `${credits} credit${credits !== 1 ? 's' : ''} have been added to your account.`,
@@ -208,7 +208,7 @@ export async function notifyContributionStatus(userId: string, status: string, p
     needs_more_info: `More information is needed for your contribution on ${plate}.`,
   };
   await createNotification({
-    userId,
+    user_id: userId,
     type: 'contribution_status',
     title: 'Contribution update',
     body: messages[status] ?? `Your contribution status has changed to ${status}.`,

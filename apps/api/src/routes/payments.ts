@@ -67,10 +67,10 @@ router.post('/mpesa/stk-push', requireAuth, async (req: Request, res: Response) 
     // Record pending before calling provider — prevents lost credits on crash
     const providerRef = `mpesa_pending_${userId}_${pack_id}_${Date.now()}`;
     await recordPendingPurchase({
-      userId,
+      user_id: userId,
       packId: pack_id,
       provider: 'mpesa',
-      providerRef,
+      provider_ref: providerRef,
       credits: pack.credits,
       meta: { price_kes: pack.price_kes, phone },
     });
@@ -80,7 +80,7 @@ router.post('/mpesa/stk-push', requireAuth, async (req: Request, res: Response) 
       amountKes: pack.price_kes,
       accountRef: `CULICARS-${pack_id.toUpperCase()}`,
       description: `CuliCars ${pack.label} pack`,
-      providerRef,
+      provider_ref: providerRef,
     });
 
     // Update the pending record with the real checkout_request_id
@@ -119,10 +119,10 @@ router.post('/stripe/create-intent', requireAuth, async (req: Request, res: Resp
 
     // Record pending — confirmed via Stripe webhook
     await recordPendingPurchase({
-      userId,
+      user_id: userId,
       packId: pack_id,
       provider: 'stripe',
-      providerRef: intentId,
+      provider_ref: intentId,
       credits: pack.credits,
       meta: { price_usd: pack.price_usd },
     });

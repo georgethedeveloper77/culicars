@@ -51,7 +51,7 @@ export class AutochekScraper extends BaseScraper {
         mileage_km: car.mileage,
         price_kes: car.marketplacePrice ?? car.sellingPrice,
         vin: car.vin,
-        fuel_type: car.fuelType,
+        fuel_type: car.fuel_type,
         transmission: car.transmission,
         color: car.color,
         image_url: car.imageUrl,

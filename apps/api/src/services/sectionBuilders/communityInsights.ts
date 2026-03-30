@@ -7,7 +7,7 @@ export interface CommunityInsight {
 }
 
 export interface CommunityInsightsSection {
-  sectionType: 'community_insights';
+  section_type: 'community_insights';
   locked: boolean;
   available: boolean; // false until T12 Watch is live with real data
   insights: CommunityInsight[];
@@ -26,7 +26,7 @@ export function buildCommunityInsightsSection(
 
   if (approvedAlerts.length === 0) {
     return {
-      sectionType: 'community_insights',
+      section_type: 'community_insights',
       locked: !isUnlocked,
       available: false,
       insights: [],
@@ -75,7 +75,7 @@ export function buildCommunityInsightsSection(
   }
 
   return {
-    sectionType: 'community_insights',
+    section_type: 'community_insights',
     locked: !isUnlocked,
     available: insights.length > 0,
     insights: isUnlocked ? insights : [],

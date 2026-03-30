@@ -51,8 +51,8 @@ export async function processServiceRecord(
 
   const inserted = await insertEvent({
     vin,
-    eventType: 'SERVICED',
-    eventDate: event_date,
+    event_type: 'SERVICED',
+    event_date: event_date,
     country: 'KE',
     source: 'scraper_autoexpress',
     source_ref: raw.record_id ?? null,

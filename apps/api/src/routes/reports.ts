@@ -155,9 +155,9 @@ router.get('/saved', auth, async (req: Request, res: Response) => {
         vin: r.vin,
         plate: r.plate,
         state: r.state,
-        riskScore: r.risk_score,
-        riskLevel: r.risk_level,
-        updatedAt: r.updated_at,
+        risk_score: r.risk_score,
+        risk_level: r.risk_level,
+        updated_at: r.updated_at,
       }));
 
     return res.json({ reports: sorted });

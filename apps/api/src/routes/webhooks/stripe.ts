@@ -43,7 +43,7 @@ router.post('/', async (req: Request, res: Response) => {
       }
 
       console.log(
-        `[webhook/stripe] Confirmed ${result.credits} credits for user ${result.userId} ` +
+        `[webhook/stripe] Confirmed ${result.credits} credits for user ${result.user_id} ` +
         `(intent: ${intentId})`
       );
     } else {

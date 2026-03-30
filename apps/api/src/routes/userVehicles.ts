@@ -1,7 +1,7 @@
 // apps/api/src/routes/userVehicles.ts
 
 import { Router, Request, Response } from 'express';
-import { requireAuth } from '../middleware/auth';
+import { auth } from '../middleware/auth';
 import {
   getUserVehicles,
   addUserVehicle,
@@ -15,7 +15,7 @@ import {
 const router = Router();
 
 // All routes require auth
-router.use(requireAuth);
+router.use(auth);
 
 // ── GET /user/vehicles ────────────────────────────────────────────────────────
 router.get('/', async (req: Request, res: Response) => {

@@ -1,7 +1,7 @@
 // apps/api/src/services/sectionBuilders/ownership.ts
 
 export interface OwnershipSection {
-  sectionType: 'ownership';
+  section_type: 'ownership';
   locked: boolean;
   verified: boolean;
   confidence: number;
@@ -25,7 +25,7 @@ export function buildOwnershipSection(
   const lastTransferDate = corRecord?.normalised_json?.last_transfer_date ?? null;
 
   return {
-    sectionType: 'ownership',
+    section_type: 'ownership',
     locked: !isUnlocked,
     verified,
     confidence: Math.round(confidence * 100) / 100,

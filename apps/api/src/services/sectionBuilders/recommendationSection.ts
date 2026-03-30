@@ -16,8 +16,8 @@ export function buildRecommendationSection(
   riskResult: RiskResult
 ): {
   data: RecommendationSectionData;
-  recordCount: number;
-  dataStatus: 'found' | 'not_found' | 'not_checked';
+  record_count: number;
+  data_status: 'found' | 'not_found' | 'not_checked';
 } {
   // Generate summary based on level
   const summaries: Record<string, string> = {
@@ -59,8 +59,8 @@ export function buildRecommendationSection(
   return {
     data: {
       recommendation: riskResult.recommendation,
-      riskScore: riskResult.score,
-      riskLevel: riskResult.level,
+      risk_score: riskResult.score,
+      risk_level: riskResult.level,
       summary: summaries[riskResult.level] || summaries.medium,
       keyFindings,
       breakdown: riskResult.factors.map((f) => ({
@@ -69,7 +69,7 @@ export function buildRecommendationSection(
         description: f.description,
       })),
     },
-    recordCount: keyFindings.length,
-    dataStatus: 'found',
+    record_count: keyFindings.length,
+    data_status: 'found',
   };
 }

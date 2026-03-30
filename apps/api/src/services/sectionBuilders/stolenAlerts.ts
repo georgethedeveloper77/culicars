@@ -10,7 +10,7 @@ export interface StolenAlertItem {
 }
 
 export interface StolenAlertsSection {
-  sectionType: 'stolen_alerts';
+  section_type: 'stolen_alerts';
   locked: false;
   isStolen: boolean;
   isRecovered: boolean;
@@ -37,7 +37,7 @@ export function buildStolenAlertsSection(watchAlerts: any[]): StolenAlertsSectio
   }));
 
   return {
-    sectionType: 'stolen_alerts',
+    section_type: 'stolen_alerts',
     locked: false,
     isStolen,
     isRecovered,

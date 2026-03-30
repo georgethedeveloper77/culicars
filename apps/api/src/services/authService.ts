@@ -63,7 +63,7 @@ export const authService = {
         email: true,
         role: true,
         created_at: true,
-        profile: {
+        Profile: {
           select: {
             displayName: true,
             phone: true,
@@ -71,7 +71,7 @@ export const authService = {
             county: true,
           },
         },
-        wallet: { select: { balance: true } },
+        wallets: { select: { balance: true } },
       },
     });
 
@@ -81,11 +81,11 @@ export const authService = {
       id: user.id,
       email: user.email,
       role: user.role,
-      display_name: user.profile?.displayName ?? null,
-      phone: user.profile?.phone ?? null,
-      avatar_url: user.profile?.avatarUrl ?? null,
-      county: user.profile?.county ?? null,
-      credits: user.wallet?.balance ?? 0,
+      display_name: user.Profile?.displayName ?? null,
+      phone: user.Profile?.phone ?? null,
+      avatar_url: user.Profile?.avatarUrl ?? null,
+      county: user.Profile?.county ?? null,
+      credits: (user.wallets as any)?.[0]?.balance ?? 0,
       created_at: user.created_at,
     };
   },
@@ -142,8 +142,8 @@ export const authService = {
           email: true,
           role: true,
           created_at: true,
-          profile: { select: { displayName: true } },
-          wallet: { select: { balance: true } },
+          Profile: { select: { displayName: true } },
+          wallets: { select: { balance: true } },
         },
       }),
       prisma.user.count({ where }),
@@ -154,8 +154,8 @@ export const authService = {
         id: u.id,
         email: u.email,
         role: u.role,
-        display_name: u.profile?.displayName ?? null,
-        credits: u.wallet?.balance ?? 0,
+        display_name: u.Profile?.displayName ?? null,
+        credits: (u.wallets as any)?.[0]?.balance ?? 0,
         created_at: u.created_at,
       })),
       pagination: {

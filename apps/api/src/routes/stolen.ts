@@ -81,7 +81,7 @@ router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
     // Hide contact info from non-admin, non-reporter
     const reqWithUser = req as Request & { user?: { id: string; role: string } };
     const isAdmin = reqWithUser.user?.role === 'admin';
-    const isReporter = reqWithUser.user?.id === report.reporterUserId;
+    const isReporter = reqWithUser.user?.id === report.reporter_user_id;
 
     if (!isAdmin && !isReporter) {
       const { contactPhone: _, contactEmail: __, ...safeReport } = report;

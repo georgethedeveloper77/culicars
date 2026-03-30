@@ -148,7 +148,7 @@ router.get(
       source: record.source,
       confidence: record.confidence,
       normalisedData: record.normalised_json,
-      createdAt: record.created_at,
+      created_at: record.created_at,
     });
   },
 );
@@ -157,7 +157,7 @@ router.get(
 
 async function getNtsaFetchEnabled(): Promise<boolean> {
   try {
-    const cfg = await prisma.adminSetting.findUnique({
+    const cfg = await prisma.admin_settings.findUnique({
   where: { key: 'ntsa_fetch_enabled' },
 });
 if (!cfg) return true;

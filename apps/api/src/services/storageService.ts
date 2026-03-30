@@ -55,11 +55,11 @@ export async function getContributionEvidenceUploadUrl(params: {
  * Generate a signed upload URL for a stolen report photo.
  */
 export async function getStolenReportUploadUrl(params: {
-  reportId: string;
+  report_id: string;
   filename: string;
 }): Promise<UploadResult> {
   const supabase = getStorageClient();
-  const path = `${params.reportId}/${params.filename}`;
+  const path = `${params.report_id}/${params.filename}`;
 
   const { data, error } = await supabase.storage
     .from(STOLEN_BUCKET)

@@ -54,7 +54,7 @@ describe('searchDemandQueueService', () => {
       const mockEntries = [{
         id: '1', plate: 'KCA 123A', vin: null,
         resultState: 'pending_enrichment', timesRequested: 3,
-        lastRequestedAt: new Date(), enrichedAt: null, createdAt: new Date(),
+        lastRequestedAt: new Date(), enrichedAt: null, created_at: new Date(),
       }];
       vi.mocked(prisma.$queryRawUnsafe)
         .mockResolvedValueOnce(mockEntries)

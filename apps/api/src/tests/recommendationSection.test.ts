@@ -17,12 +17,12 @@ describe('recommendationSection', () => {
 
     const result = buildRecommendationSection(riskResult);
     expect(result.data.recommendation).toBe('proceed');
-    expect(result.data.riskScore).toBe(0);
-    expect(result.data.riskLevel).toBe('clean');
+    expect(result.data.risk_score).toBe(0);
+    expect(result.data.risk_level).toBe('clean');
     expect(result.data.summary).toContain('clean history');
     expect(result.data.keyFindings).toHaveLength(1);
     expect(result.data.keyFindings[0].severity).toBe('info');
-    expect(result.dataStatus).toBe('found');
+    expect(result.data_status).toBe('found');
   });
 
   it('builds critical recommendation with stolen report', () => {
@@ -48,7 +48,7 @@ describe('recommendationSection', () => {
 
     const result = buildRecommendationSection(riskResult);
     expect(result.data.recommendation).toBe('avoid');
-    expect(result.data.riskLevel).toBe('critical');
+    expect(result.data.risk_level).toBe('critical');
     expect(result.data.keyFindings).toHaveLength(2);
     expect(result.data.keyFindings[0].severity).toBe('critical'); // 40 pts
     expect(result.data.keyFindings[1].severity).toBe('critical'); // 30 pts

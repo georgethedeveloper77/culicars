@@ -54,19 +54,19 @@ function buildApp(user?: { id: string; role: string }) {
 const mockContrib = {
   id: 'contrib-001',
   vin: 'JTDBR32E540012345',
-  userId: null,
+  user_id: null,
   type: 'SERVICE_RECORD',
   title: 'Oil change',
   description: null,
   data: {},
-  evidenceUrls: [],
+  evidence_urls: [],
   verificationDocUrls: [],
   status: 'pending',
-  adminNote: null,
-  reviewedBy: null,
-  reviewedAt: null,
+  admin_note: null,
+  reviewed_by: null,
+  reviewed_at: null,
   confidenceScore: 0.42,
-  createdAt: new Date().toISOString(),
+  created_at: new Date().toISOString(),
 };
 
 beforeEach(() => vi.clearAllMocks());
@@ -172,7 +172,7 @@ describe('GET /contributions/:id', () => {
     vi.mocked(getContributionById).mockResolvedValue({
       ...mockContrib,
       status: 'pending',
-      userId: 'owner-id',
+      user_id: 'owner-id',
     } as never);
 
     const res = await request(buildApp({ id: 'other-user', role: 'user' }))
@@ -216,7 +216,7 @@ describe('PATCH /contributions/:id/moderate', () => {
     expect(res.body.contribution.status).toBe('approved');
     expect(moderateContribution).toHaveBeenCalledWith(
       'contrib-001',
-      { status: 'approved', adminNote: undefined },
+      { status: 'approved', admin_note: undefined },
       'admin-id',
     );
   });
@@ -225,12 +225,12 @@ describe('PATCH /contributions/:id/moderate', () => {
     vi.mocked(moderateContribution).mockResolvedValue({
       ...mockContrib,
       status: 'rejected',
-      adminNote: 'Duplicate submission',
+      admin_note: 'Duplicate submission',
     } as never);
 
     const res = await request(buildApp({ id: 'admin-id', role: 'admin' }))
       .patch('/contributions/contrib-001/moderate')
-      .send({ status: 'rejected', adminNote: 'Duplicate submission' });
+      .send({ status: 'rejected', admin_note: 'Duplicate submission' });
 
     expect(res.status).toBe(200);
     expect(res.body.contribution.adminNote).toBe('Duplicate submission');

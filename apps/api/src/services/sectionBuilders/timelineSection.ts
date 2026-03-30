@@ -33,38 +33,38 @@ const EVENT_LABELS: Record<string, string> = {
 
 export async function buildTimelineSection(vin: string): Promise<{
   data: TimelineSectionData;
-  recordCount: number;
-  dataStatus: 'found' | 'not_found' | 'not_checked';
+  record_count: number;
+  data_status: 'found' | 'not_found' | 'not_checked';
 }> {
-  const events = await prisma.vehicleEvent.findMany({
+  const events = await prisma.vehicle_events.findMany({
     where: { vin },
     select: {
-      eventType: true,
-      eventDate: true,
+      event_type: true,
+      event_date: true,
       country: true,
       county: true,
       source: true,
-      sourceRef: true,
+      source_ref: true,
       metadata: true,
     },
-    orderBy: { eventDate: 'asc' },
+    orderBy: { event_date: 'asc' },
   });
 
   const timelineEvents: TimelineEvent[] = events.map((event) => {
     const meta = event.metadata as Record<string, unknown> | null;
     const description =
       (meta?.description as string) ||
-      EVENT_LABELS[event.eventType] ||
-      event.eventType;
+      EVENT_LABELS[event.event_type] ||
+      event.event_type;
 
     return {
-      date: event.eventDate.toISOString().split('T')[0],
-      eventType: EVENT_LABELS[event.eventType] || event.eventType,
+      date: event.event_date.toISOString().split('T')[0],
+      event_type: EVENT_LABELS[event.event_type] || event.event_type,
       description,
       county: event.county ?? undefined,
       country: event.country ?? 'KE',
       source: event.source ?? 'unknown',
-      sourceRef: event.sourceRef ?? undefined,
+      source_ref: event.source_ref ?? undefined,
     };
   });
 
@@ -78,7 +78,7 @@ export async function buildTimelineSection(vin: string): Promise<{
           ? timelineEvents[timelineEvents.length - 1].date
           : null,
     },
-    recordCount: timelineEvents.length,
-    dataStatus: timelineEvents.length > 0 ? 'found' : 'not_found',
+    record_count: timelineEvents.length,
+    data_status: timelineEvents.length > 0 ? 'found' : 'not_found',
   };
 }

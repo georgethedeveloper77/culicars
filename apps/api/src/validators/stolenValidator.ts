@@ -54,26 +54,26 @@ export function validateStolenSubmission(
   }
 
   // County
-  if (!body.countyStolen || typeof body.countyStolen !== 'string') {
+  if (!body.county_stolen || typeof body.county_stolen !== 'string') {
     errors.push('countyStolen is required');
-  } else if (!KENYA_COUNTIES.has(body.countyStolen)) {
+  } else if (!KENYA_COUNTIES.has(body.county_stolen)) {
     errors.push('countyStolen must be a valid Kenya county');
   }
 
   // Town
-  if (!body.townStolen || typeof body.townStolen !== 'string' || body.townStolen.trim().length === 0) {
+  if (!body.town_stolen || typeof body.town_stolen !== 'string' || body.town_stolen.trim().length === 0) {
     errors.push('townStolen is required');
   }
 
   // Car color
-  if (!body.carColor || typeof body.carColor !== 'string' || body.carColor.trim().length === 0) {
+  if (!body.car_color || typeof body.car_color !== 'string' || body.car_color.trim().length === 0) {
     errors.push('carColor is required');
   }
 
   // Reporter type
-  if (!body.reporterType) {
+  if (!body.reporter_type) {
     errors.push('reporterType is required');
-  } else if (!VALID_REPORTER_TYPES.includes(body.reporterType as ReporterType)) {
+  } else if (!VALID_REPORTER_TYPES.includes(body.reporter_type as ReporterType)) {
     errors.push(`reporterType must be one of: ${VALID_REPORTER_TYPES.join(', ')}`);
   }
 
@@ -102,10 +102,10 @@ export function validateRecoverySubmission(
 ): ValidationResult {
   const errors: string[] = [];
 
-  if (!body.recoveryDate) {
+  if (!body.recovery_date) {
     errors.push('recoveryDate is required');
   } else {
-    const d = new Date(body.recoveryDate);
+    const d = new Date(body.recovery_date);
     if (isNaN(d.getTime())) {
       errors.push('recoveryDate must be a valid date (YYYY-MM-DD)');
     } else if (d > new Date()) {
@@ -113,9 +113,9 @@ export function validateRecoverySubmission(
     }
   }
 
-  if (!body.recoveryCounty || typeof body.recoveryCounty !== 'string') {
+  if (!body.recovery_county || typeof body.recovery_county !== 'string') {
     errors.push('recoveryCounty is required');
-  } else if (!KENYA_COUNTIES.has(body.recoveryCounty)) {
+  } else if (!KENYA_COUNTIES.has(body.recovery_county)) {
     errors.push('recoveryCounty must be a valid Kenya county');
   }
 

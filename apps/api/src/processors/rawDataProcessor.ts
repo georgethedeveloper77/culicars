@@ -18,7 +18,7 @@ type MergeableField = typeof MERGEABLE_FIELDS[number];
 const IDENTITY_FIELDS: MergeableField[] = ['make', 'model', 'year'];
 
 function deriveResultState(merged: MergedVehicleRecord, records: NormalisedRecord[]): ResultState {
-  const hasIdentity = IDENTITY_FIELDS.every((f) => merged[f] != null);
+  const hasIdentity = IDENTITY_FIELDS.every((f) => (merged as any)[f] != null);
   const maxConfidence = records.reduce((m, r) => Math.max(m, r.confidence), 0);
 
   if (!hasIdentity && records.length === 0) return 'pending_enrichment';
@@ -36,7 +36,7 @@ function mergeRecords(records: NormalisedRecord[]): MergedVehicleRecord {
 
   for (const record of sorted) {
     for (const field of MERGEABLE_FIELDS) {
-      const value = record[field];
+      const value = (record as any)[field];
       if (value == null) continue;
 
       if (field === 'auctionGrade' && record.sourceName !== 'be_forward') {
@@ -57,9 +57,9 @@ function mergeRecords(records: NormalisedRecord[]): MergedVehicleRecord {
     model:            (mergedFields.model            as string)       ?? null,
     year:             (mergedFields.year             as number)       ?? null,
     engineCapacity:   (mergedFields.engineCapacity   as string)       ?? null,
-    fuelType:         (mergedFields.fuelType         as string)       ?? null,
+    fuel_type:         (mergedFields.fuelType         as string)       ?? null,
     color:            (mergedFields.color            as string)       ?? null,
-    bodyType:         (mergedFields.bodyType         as string)       ?? null,
+    body_type:         (mergedFields.bodyType         as string)       ?? null,
     transmissionType: (mergedFields.transmissionType as string)       ?? null,
     registrationDate: (mergedFields.registrationDate as string)       ?? null,
     importDate:       (mergedFields.importDate       as string)       ?? null,
@@ -146,8 +146,8 @@ export interface JobProcessResult {
 }
 
 export async function processJobRawData(jobId: string): Promise<JobProcessResult> {
-  const rows = await prismaClient.scraperDataRaw.findMany({
-    where: { jobId, processed: false },
+  const rows = await prismaClient.scraper_data_raw.findMany({
+    where: { job_id: jobId, processed: false },
   });
 
   let inserted = 0;
@@ -159,7 +159,7 @@ export async function processJobRawData(jobId: string): Promise<JobProcessResult
 
     try {
       const source = row.source as string;
-      const data   = row.rawData as Record<string, unknown>;
+      const data   = row.raw_data as Record<string, unknown>;
 
       if (row.vin == null && data?.vin) {
         (row as Record<string, unknown>).vin = normalizeVin(data.vin as string);
@@ -178,9 +178,9 @@ export async function processJobRawData(jobId: string): Promise<JobProcessResult
       errors++;
     }
 
-    await prismaClient.scraperDataRaw.update({
+    await prismaClient.scraper_data_raw.update({
       where: { id: row.id },
-      data:  { processed: true, processedAt: new Date() },
+      data:  { processed: true, processed_at: new Date() },
     });
   }
 

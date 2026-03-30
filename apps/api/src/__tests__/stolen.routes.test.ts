@@ -61,29 +61,29 @@ function buildApp(user?: { id: string; role: string }) {
 const makeReport = (overrides = {}) => ({
   id: 'sr-001',
   plate: 'KCA123A',
-  plateDisplay: 'KCA 123A',
+  plate_display: 'KCA 123A',
   vin: null,
-  reporterUserId: null,
-  reporterType: 'owner',
+  reporter_user_id: null,
+  reporter_type: 'owner',
   dateStolenIso: '2024-06-15',
-  countyStolen: 'Nairobi',
-  townStolen: 'Westlands',
-  policeObNumber: null,
-  policeStation: null,
-  carColor: 'White',
+  county_stolen: 'Nairobi',
+  town_stolen: 'Westlands',
+  police_ob_number: null,
+  police_station: null,
+  car_color: 'White',
   identifyingMarks: null,
   photoUrls: [],
   contactPhone: '0712345678',
   contactEmail: null,
   status: 'pending',
-  isObVerified: false,
-  adminNote: null,
-  reviewedBy: null,
-  reviewedAt: null,
-  recoveryDate: null,
-  recoveryCounty: null,
-  recoveryNotes: null,
-  createdAt: new Date().toISOString(),
+  is_ob_verified: false,
+  admin_note: null,
+  reviewed_by: null,
+  reviewed_at: null,
+  recovery_date: null,
+  recovery_county: null,
+  recovery_notes: null,
+  created_at: new Date().toISOString(),
   ...overrides,
 });
 
@@ -102,10 +102,10 @@ describe('POST /stolen-reports', () => {
       .send({
         plate: 'KCA123A',
         dateStolenIso: '2024-06-15',
-        countyStolen: 'Nairobi',
-        townStolen: 'Westlands',
-        carColor: 'White',
-        reporterType: 'owner',
+        county_stolen: 'Nairobi',
+        town_stolen: 'Westlands',
+        car_color: 'White',
+        reporter_type: 'owner',
         contactPhone: '0712345678',
       });
 
@@ -226,7 +226,7 @@ describe('GET /stolen-reports/:id', () => {
 
   it('shows contact info to the original reporter', async () => {
     vi.mocked(getById).mockResolvedValue(
-      makeReport({ reporterUserId: 'owner-id', contactPhone: '0712345678' }) as never,
+      makeReport({ reporter_user_id: 'owner-id', contactPhone: '0712345678' }) as never,
     );
 
     const res = await request(buildApp({ id: 'owner-id', role: 'user' }))
@@ -270,30 +270,30 @@ describe('PATCH /stolen-reports/:id/review', () => {
 
   it('approves report as admin', async () => {
     vi.mocked(reviewReport).mockResolvedValue(
-      makeReport({ status: 'active', isObVerified: true }) as never,
+      makeReport({ status: 'active', is_ob_verified: true }) as never,
     );
 
     const res = await request(buildApp({ id: 'admin-id', role: 'admin' }))
       .patch('/stolen-reports/sr-001/review')
-      .send({ status: 'active', isObVerified: true });
+      .send({ status: 'active', is_ob_verified: true });
 
     expect(res.status).toBe(200);
     expect(res.body.report.status).toBe('active');
     expect(reviewReport).toHaveBeenCalledWith(
       'sr-001',
-      { status: 'active', adminNote: undefined, isObVerified: true },
+      { status: 'active', admin_note: undefined, is_ob_verified: true },
       'admin-id',
     );
   });
 
   it('rejects report as admin', async () => {
     vi.mocked(reviewReport).mockResolvedValue(
-      makeReport({ status: 'rejected', adminNote: 'Fake report' }) as never,
+      makeReport({ status: 'rejected', admin_note: 'Fake report' }) as never,
     );
 
     const res = await request(buildApp({ id: 'admin-id', role: 'admin' }))
       .patch('/stolen-reports/sr-001/review')
-      .send({ status: 'rejected', adminNote: 'Fake report' });
+      .send({ status: 'rejected', admin_note: 'Fake report' });
 
     expect(res.status).toBe(200);
     expect(res.body.report.status).toBe('rejected');
@@ -321,7 +321,7 @@ describe('POST /stolen-reports/:id/recovered', () => {
 
     const res = await request(buildApp())
       .post('/stolen-reports/sr-001/recovered')
-      .send({ recoveryDate: '2024-07-01', recoveryCounty: 'Nairobi' });
+      .send({ recovery_date: '2024-07-01', recovery_county: 'Nairobi' });
 
     expect(res.status).toBe(200);
     expect(res.body.report.status).toBe('recovered');
@@ -350,7 +350,7 @@ describe('POST /stolen-reports/:id/recovered', () => {
 
     const res = await request(buildApp({ id: 'wrong-user', role: 'user' }))
       .post('/stolen-reports/sr-001/recovered')
-      .send({ recoveryDate: '2024-07-01', recoveryCounty: 'Nairobi' });
+      .send({ recovery_date: '2024-07-01', recovery_county: 'Nairobi' });
 
     expect(res.status).toBe(403);
   });

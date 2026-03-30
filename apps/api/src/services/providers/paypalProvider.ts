@@ -112,7 +112,7 @@ export const paypalProvider: PaymentProviderAdapter = {
     const approvalUrl = order.links.find((l) => l.rel === 'approve')?.href;
 
     return {
-      providerRef: order.id,
+      provider_ref: order.id,
       providerData: {
         orderId: order.id,
         approvalUrl,
@@ -121,7 +121,7 @@ export const paypalProvider: PaymentProviderAdapter = {
     };
   },
 
-  async verify(providerRef: string) {
+  async verify(provider_ref: string) {
     const token = await getAccessToken();
 
     const res = await fetch(
@@ -142,6 +142,6 @@ export const paypalProvider: PaymentProviderAdapter = {
       status = 'failed';
     }
 
-    return { status, providerMeta: order as unknown as Record<string, unknown> };
+    return { status, provider_meta: order as unknown as Record<string, unknown> };
   },
 };

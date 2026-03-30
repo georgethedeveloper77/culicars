@@ -23,7 +23,7 @@ router.get('/balance', auth, async (req, res, next) => {
       success: true,
       data: {
         balance: wallet.balance,
-        updatedAt: wallet.updatedAt,
+        updated_at: wallet.updated_at,
       },
     });
   } catch (err) {

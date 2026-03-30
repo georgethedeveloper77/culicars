@@ -80,7 +80,7 @@ export abstract class BaseScraper {
       processed: false,
     }));
 
-    const result = await prisma.scraperDataRaw.createMany({ data: data as any });
+    const result = await prisma.scraper_data_raw.createMany({ data: data as any });
     return result.count;
   }
 }

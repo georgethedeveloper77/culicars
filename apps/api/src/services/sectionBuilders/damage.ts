@@ -9,9 +9,9 @@ export interface DamageEntry {
 }
 
 export interface DamageSection {
-  sectionType: 'damage';
+  section_type: 'damage';
   locked: boolean;
-  recordCount: number;
+  record_count: number;
   records: DamageEntry[];
 }
 
@@ -56,9 +56,9 @@ export function buildDamageSection(
   });
 
   return {
-    sectionType: 'damage',
+    section_type: 'damage',
     locked: !isUnlocked,
-    recordCount: damageRecords.length,
+    record_count: damageRecords.length,
     records: isUnlocked ? damageRecords : [],
   };
 }

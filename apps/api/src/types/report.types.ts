@@ -55,17 +55,17 @@ export interface IdentitySectionData {
   make: string | null;
   model: string | null;
   year: number | null;
-  engineCc: number | null;
-  fuelType: string | null;
+  engine_cc: number | null;
+  fuel_type: string | null;
   transmission: string | null;
-  bodyType: string | null;
+  body_type: string | null;
   color: string | null;
-  countryOfOrigin: string | null;
-  chassisNumber: string | null;
-  ntsaCorVerified: boolean;
+  country_of_origin: string | null;
+  chassis_number: string | null;
+  ntsa_cor_verified: boolean;
   plates: Array<{
     plate: string;
-    plateDisplay: string;
+    plate_display: string;
     confidence: number;
     source: string;
   }>;
@@ -97,11 +97,11 @@ export interface TheftSectionData {
   recovered: boolean;
   checks: TheftCheckCard[];
   communityReports: Array<{
-    dateStolen: string;
+    date_stolen: string;
     county: string;
     obNumber: string | null;
     status: string;
-    isObVerified: boolean;
+    is_ob_verified: boolean;
   }>;
 }
 
@@ -176,9 +176,9 @@ export interface SpecsEquipmentSectionData {
   basicSpecs: {
     make: string | null;
     model: string | null;
-    bodyType: string | null;
+    body_type: string | null;
     year: number | null;
-    engineCc: number | null;
+    engine_cc: number | null;
     power: string | null;
     transmission: string | null;
     driveLayout: string | null;
@@ -204,8 +204,8 @@ export interface SpecsEquipmentSectionData {
 
 export interface ImportSectionData {
   originCountry: string | null;
-  importCountry: string | null;
-  isImported: boolean;
+  import_country: string | null;
+  is_imported: boolean;
   japanAuction: {
     grade: string | null;
     mileageAtExport: number | null;
@@ -215,7 +215,7 @@ export interface ImportSectionData {
   kraDetails: {
     clearanceStatus: string | null;
     importDate: string | null;
-    kraPin: string | null;
+    kra_pin: string | null;
   };
   beForwardData: Record<string, unknown> | null;
 }
@@ -264,7 +264,7 @@ export interface PhotosSectionData {
 
 export interface TimelineEvent {
   date: string;
-  eventType: string;
+  event_type: string;
   description: string;
   county?: string;
   country: string;
@@ -280,14 +280,14 @@ export interface TimelineSectionData {
 }
 
 export interface StolenReportEntry {
-  dateStolen: string;
+  date_stolen: string;
   county: string;
   town: string;
   obNumber: string | null;
-  isObVerified: boolean;
+  is_ob_verified: boolean;
   status: string;
-  carColor: string;
-  recoveryDate: string | null;
+  car_color: string;
+  recovery_date: string | null;
   reportedAt: string;
 }
 
@@ -299,8 +299,8 @@ export interface StolenReportsSectionData {
 
 export interface RecommendationSectionData {
   recommendation: Recommendation;
-  riskScore: number;
-  riskLevel: RiskLevel;
+  risk_score: number;
+  risk_level: RiskLevel;
   summary: string;
   keyFindings: Array<{
     category: string;
@@ -331,36 +331,36 @@ export type SectionData =
 
 export interface ReportSection {
   id: string;
-  sectionType: SectionType;
+  section_type: SectionType;
   data: SectionData | null;
-  isLocked: boolean;
-  recordCount: number;
-  dataStatus: 'found' | 'not_found' | 'not_checked';
+  is_locked: boolean;
+  record_count: number;
+  data_status: 'found' | 'not_found' | 'not_checked';
 }
 
 export interface ReportPreview {
   id: string;
   vin: string;
   status: string;
-  riskScore: number | null;
-  riskLevel: RiskLevel | null;
+  risk_score: number | null;
+  risk_level: RiskLevel | null;
   recommendation: Recommendation | null;
-  sourcesChecked: number;
-  recordsFound: number;
-  generatedAt: string | null;
+  sources_checked: number;
+  records_found: number;
+  generated_at: string | null;
   vehicle: {
     make: string | null;
     model: string | null;
     year: number | null;
     color: string | null;
-    bodyType: string | null;
+    body_type: string | null;
   };
-  plates: Array<{ plate: string; plateDisplay: string }>;
+  plates: Array<{ plate: string; plate_display: string }>;
   sectionSummary: Array<{
-    sectionType: SectionType;
-    isLocked: boolean;
-    dataStatus: 'found' | 'not_found' | 'not_checked';
-    recordCount: number;
+    section_type: SectionType;
+    is_locked: boolean;
+    data_status: 'found' | 'not_found' | 'not_checked';
+    record_count: number;
   }>;
   stolenAlert: {
     active: boolean;
@@ -376,5 +376,5 @@ export interface UnlockResult {
   success: boolean;
   creditsSpent: number;
   balanceAfter: number;
-  reportId: string;
+  report_id: string;
 }

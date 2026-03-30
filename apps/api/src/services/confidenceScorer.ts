@@ -46,7 +46,7 @@ export function scoreContribution(factors: ConfidenceFactors): number {
  */
 export function buildFactors(params: {
   contribType: ContribType;
-  evidenceUrls: string[];
+  evidence_urls: string[];
   verificationDocUrls: string[];
   isAuthenticatedUser: boolean;
   dataFields: Record<string, unknown>;
@@ -58,7 +58,7 @@ export function buildFactors(params: {
 
   return {
     contribType: params.contribType,
-    hasPhotos: params.evidenceUrls.length > 0,
+    hasPhotos: params.evidence_urls.length > 0,
     hasVerificationDocs: params.verificationDocUrls.length > 0,
     isAuthenticatedUser: params.isAuthenticatedUser,
     dataCompleteness: totalFields > 0 ? filledFields / totalFields : 0,

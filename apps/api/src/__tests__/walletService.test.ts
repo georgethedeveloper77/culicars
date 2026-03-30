@@ -36,9 +36,9 @@ describe('walletService', () => {
   describe('getOrCreateWallet', () => {
     it('returns existing wallet', async () => {
       mockWallet.upsert.mockResolvedValue({
-        userId: 'user-1',
+        user_id: 'user-1',
         balance: 5,
-        updatedAt: new Date('2025-01-01'),
+        updated_at: new Date('2025-01-01'),
       } as any);
 
       const result = await getOrCreateWallet('user-1');
@@ -48,9 +48,9 @@ describe('walletService', () => {
 
     it('creates wallet with 0 balance if none exists', async () => {
       mockWallet.upsert.mockResolvedValue({
-        userId: 'user-new',
+        user_id: 'user-new',
         balance: 0,
-        updatedAt: null,
+        updated_at: null,
       } as any);
 
       const result = await getOrCreateWallet('user-new');
@@ -84,12 +84,12 @@ describe('walletService', () => {
       expect(newBalance).toBe(15);
       expect(mockTx.wallet.upsert).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { userId: 'user-1' },
+          where: { user_id: 'user-1' },
           update: expect.objectContaining({
             balance: { increment: 5 },
           }),
           create: expect.objectContaining({
-            userId: 'user-1',
+            user_id: 'user-1',
             balance: 5,
           }),
         })
@@ -123,7 +123,7 @@ describe('walletService', () => {
       expect(newBalance).toBe(3);
       expect(mockTx.wallet.update).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { userId: 'user-1' },
+          where: { user_id: 'user-1' },
           data: expect.objectContaining({
             balance: { decrement: 2 },
           }),

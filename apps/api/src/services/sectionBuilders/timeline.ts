@@ -9,7 +9,7 @@ export interface TimelineEvent {
 }
 
 export interface TimelineSection {
-  sectionType: 'timeline';
+  section_type: 'timeline';
   locked: boolean;
   events: TimelineEvent[];
 }
@@ -99,7 +99,7 @@ export function buildTimelineSection(
   events.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   return {
-    sectionType: 'timeline',
+    section_type: 'timeline',
     locked: !isUnlocked,
     events: isUnlocked ? events : [],
   };

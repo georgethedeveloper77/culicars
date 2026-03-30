@@ -8,34 +8,34 @@ import type { ImportSectionData } from '../../types/report.types';
 
 export async function buildImportSection(vin: string): Promise<{
   data: ImportSectionData;
-  recordCount: number;
-  dataStatus: 'found' | 'not_found' | 'not_checked';
+  record_count: number;
+  data_status: 'found' | 'not_found' | 'not_checked';
 }> {
   const [vehicle, importEvents] = await Promise.all([
-    prisma.vehicle.findUnique({
+    prisma.vehicles.findUnique({
       where: { vin },
       select: {
-        countryOfOrigin: true,
-        importCountry: true,
-        isImported: true,
-        japanAuctionGrade: true,
-        japanAuctionMileage: true,
-        kraPin: true,
+        country_of_origin: true,
+        import_country: true,
+        is_imported: true,
+        japan_auction_grade: true,
+        japan_auction_mileage: true,
+        kra_pin: true,
       },
     }),
 
-    prisma.vehicleEvent.findMany({
+    prisma.vehicle_events.findMany({
       where: {
         vin,
-        eventType: { in: ['IMPORTED', 'KRA_CLEARED', 'AUCTIONED', 'EXPORTED'] },
+        event_type: { in: ['IMPORTED', 'KRA_CLEARED', 'AUCTIONED', 'EXPORTED'] },
       },
       select: {
-        eventType: true,
-        eventDate: true,
+        event_type: true,
+        event_date: true,
         source: true,
         metadata: true,
       },
-      orderBy: { eventDate: 'asc' },
+      orderBy: { event_date: 'asc' },
     }),
   ]);
 
@@ -43,23 +43,23 @@ export async function buildImportSection(vin: string): Promise<{
     return {
       data: {
         originCountry: null,
-        importCountry: null,
-        isImported: false,
+        import_country: null,
+        is_imported: false,
         japanAuction: null,
-        kraDetails: { clearanceStatus: null, importDate: null, kraPin: null },
+        kraDetails: { clearanceStatus: null, importDate: null, kra_pin: null },
         beForwardData: null,
       },
-      recordCount: 0,
-      dataStatus: 'not_found',
+      record_count: 0,
+      data_status: 'not_found',
     };
   }
 
   // KRA details from events
-  const kraEvent = importEvents.find((e) => e.eventType === 'KRA_CLEARED');
-  const importEvent = importEvents.find((e) => e.eventType === 'IMPORTED');
+  const kraEvent = importEvents.find((e) => e.event_type === 'KRA_CLEARED');
+  const importEvent = importEvents.find((e) => e.event_type === 'IMPORTED');
 
   // Japan auction data from events
-  const auctionEvent = importEvents.find((e) => e.eventType === 'AUCTIONED');
+  const auctionEvent = importEvents.find((e) => e.event_type === 'AUCTIONED');
   const auctionMeta = auctionEvent?.metadata as Record<string, unknown> | null;
 
   // BE FORWARD data from scraper
@@ -69,14 +69,14 @@ export async function buildImportSection(vin: string): Promise<{
   const beForwardMeta = beForwardEvent?.metadata as Record<string, unknown> | null;
 
   const data: ImportSectionData = {
-    originCountry: vehicle.countryOfOrigin,
-    importCountry: vehicle.importCountry,
-    isImported: vehicle.isImported ?? false,
+    originCountry: vehicle.country_of_origin,
+    import_country: vehicle.import_country,
+    is_imported: vehicle.is_imported ?? false,
     japanAuction:
-      vehicle.importCountry === 'JP' || vehicle.countryOfOrigin === 'JP'
+      vehicle.import_country === 'JP' || vehicle.country_of_origin === 'JP'
         ? {
-            grade: vehicle.japanAuctionGrade,
-            mileageAtExport: vehicle.japanAuctionMileage,
+            grade: vehicle.japan_auction_grade,
+            mileageAtExport: vehicle.japan_auction_mileage,
             auctionHouse: (auctionMeta?.auctionHouse as string) || null,
             damageMap: (auctionMeta?.damageMap as string) || null,
           }
@@ -84,18 +84,18 @@ export async function buildImportSection(vin: string): Promise<{
     kraDetails: {
       clearanceStatus: kraEvent ? 'cleared' : null,
       importDate: importEvent
-        ? importEvent.eventDate.toISOString().split('T')[0]
+        ? importEvent.event_date.toISOString().split('T')[0]
         : null,
-      kraPin: vehicle.kraPin,
+      kra_pin: vehicle.kra_pin,
     },
     beForwardData: beForwardMeta || null,
   };
 
-  const recordCount = importEvents.length + (vehicle.isImported ? 1 : 0);
+  const recordCount = importEvents.length + (vehicle.is_imported ? 1 : 0);
 
   return {
     data,
     recordCount,
-    dataStatus: recordCount > 0 || vehicle.isImported ? 'found' : 'not_found',
+    data_status: recordCount > 0 || vehicle.is_imported ? 'found' : 'not_found',
   };
 }

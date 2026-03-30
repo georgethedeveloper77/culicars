@@ -40,7 +40,7 @@ export interface StkPushParams {
   amountKes: number;
   accountRef: string;   // e.g. pack id
   description: string;
-  providerRef: string;  // our internal transaction ID
+  provider_ref: string;  // our internal transaction ID
 }
 
 export interface StkPushResult {

@@ -45,11 +45,11 @@ describe('vehicleProcessor', () => {
       (mockPrisma.vehicle.findUnique as MockInstance).mockResolvedValue(null);
       (mockPrisma.vehicle.create as MockInstance).mockResolvedValue({});
 
-      await processVehicle({ ...baseVehicle, japanAuctionGrade: '4', confidence: 0.85 });
+      await processVehicle({ ...baseVehicle, japan_auction_grade: '4', confidence: 0.85 });
 
       expect(mockPrisma.vehicle.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: expect.objectContaining({ japanAuctionGrade: '4' }),
+          data: expect.objectContaining({ japan_auction_grade: '4' }),
         })
       );
     });
@@ -67,7 +67,7 @@ describe('vehicleProcessor', () => {
       body_type: null,
       color: null,
       country_of_origin: null,
-      japanAuctionGrade: null,
+      japan_auction_grade: null,
       japan_auction_mileage: null,
     };
 
@@ -110,11 +110,11 @@ describe('vehicleProcessor', () => {
       (mockPrisma.vehicle.findUnique as MockInstance).mockResolvedValue(existingVehicle);
       (mockPrisma.vehicle.update as MockInstance).mockResolvedValue({});
 
-      await processVehicle({ ...baseVehicle, japanAuctionGrade: '4.5', confidence: 0.85 });
+      await processVehicle({ ...baseVehicle, japan_auction_grade: '4.5', confidence: 0.85 });
 
       expect(mockPrisma.vehicle.update).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: expect.objectContaining({ japanAuctionGrade: '4.5' }),
+          data: expect.objectContaining({ japan_auction_grade: '4.5' }),
         })
       );
     });
@@ -122,15 +122,15 @@ describe('vehicleProcessor', () => {
     it('BE FORWARD grade (0.85) overwrites existing lower-source grade', async () => {
       (mockPrisma.vehicle.findUnique as MockInstance).mockResolvedValue({
         ...existingVehicle,
-        japanAuctionGrade: '3',
+        japan_auction_grade: '3',
       });
       (mockPrisma.vehicle.update as MockInstance).mockResolvedValue({});
 
-      await processVehicle({ ...baseVehicle, japanAuctionGrade: '4.5', confidence: 0.85 });
+      await processVehicle({ ...baseVehicle, japan_auction_grade: '4.5', confidence: 0.85 });
 
       expect(mockPrisma.vehicle.update).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: expect.objectContaining({ japanAuctionGrade: '4.5' }),
+          data: expect.objectContaining({ japan_auction_grade: '4.5' }),
         })
       );
     });
@@ -138,15 +138,15 @@ describe('vehicleProcessor', () => {
     it('low confidence source does NOT overwrite existing japanAuctionGrade', async () => {
       (mockPrisma.vehicle.findUnique as MockInstance).mockResolvedValue({
         ...existingVehicle,
-        japanAuctionGrade: '4',
+        japan_auction_grade: '4',
       });
       (mockPrisma.vehicle.update as MockInstance).mockResolvedValue({});
 
-      await processVehicle({ ...baseVehicle, japanAuctionGrade: '2', confidence: 0.5 });
+      await processVehicle({ ...baseVehicle, japan_auction_grade: '2', confidence: 0.5 });
 
       const updateCall = (mockPrisma.vehicle.update as MockInstance).mock.calls[0];
       if (updateCall) {
-        expect(updateCall[0].data.japanAuctionGrade).toBeUndefined();
+        expect(updateCall[0].data.japan_auction_grade).toBeUndefined();
       }
     });
 

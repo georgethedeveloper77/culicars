@@ -100,7 +100,7 @@ router.post('/', async (req, res) => {
             : orderId;
 
         await confirmPayment(providerRef, {
-          eventType: event_type,
+          event_type: event_type,
           resourceId: resource.id,
           status: resource.status,
         });

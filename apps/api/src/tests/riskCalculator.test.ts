@@ -63,7 +63,7 @@ describe('riskCalculator', () => {
       hasFailedInspection: false,
       hasPsvHistory: false,
       ownershipChanges: 1,
-      japanAuctionGrade: '4',
+      japan_auction_grade: '4',
       hasNtsaData: true,
     };
 
@@ -113,12 +113,12 @@ describe('riskCalculator', () => {
     });
 
     it('scores low auction grade at 10 points', () => {
-      const result = calculateRisk({ ...cleanInput, japanAuctionGrade: '2.5' });
+      const result = calculateRisk({ ...cleanInput, japan_auction_grade: '2.5' });
       expect(result.score).toBe(RISK_WEIGHTS.LOW_AUCTION_GRADE);
     });
 
     it('does not penalize auction grade 3+', () => {
-      const result = calculateRisk({ ...cleanInput, japanAuctionGrade: '3' });
+      const result = calculateRisk({ ...cleanInput, japan_auction_grade: '3' });
       expect(result.score).toBe(0);
     });
 
@@ -149,7 +149,7 @@ describe('riskCalculator', () => {
         hasFailedInspection: true,   // +15
         hasPsvHistory: true,         // +10
         ownershipChanges: 5,         // +10
-        japanAuctionGrade: '2',      // +10
+        japan_auction_grade: '2',      // +10
         hasNtsaData: false,          // +5
       });
       // Total would be 165 but capped at 100

@@ -98,7 +98,7 @@ describe('rawDataProcessor', () => {
     expect(mockPrisma.scraperDataRaw.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: 'row-1' },
-        data: expect.objectContaining({ processed: true, processedAt: expect.any(Date) }),
+        data: expect.objectContaining({ processed: true, processed_at: expect.any(Date) }),
       })
     );
     expect(mockPrisma.scraperDataRaw.update).toHaveBeenCalledWith(

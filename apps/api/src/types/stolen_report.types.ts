@@ -7,16 +7,16 @@ export interface StolenReportSubmission {
   plate: string;
   vin?: string;
   dateStolenIso: string; // ISO date string YYYY-MM-DD
-  countyStolen: string;
-  townStolen: string;
+  county_stolen: string;
+  town_stolen: string;
   policeObNumber?: string;
   policeStation?: string;
-  carColor: string;
+  car_color: string;
   identifyingMarks?: string;
   photoUrls?: string[];
   contactPhone?: string;
   contactEmail?: string;
-  reporterType: ReporterType;
+  reporter_type: ReporterType;
 }
 
 export interface StolenReportReview {
@@ -26,37 +26,37 @@ export interface StolenReportReview {
 }
 
 export interface RecoverySubmission {
-  recoveryDate: string; // ISO date YYYY-MM-DD
-  recoveryCounty: string;
+  recovery_date: string; // ISO date YYYY-MM-DD
+  recovery_county: string;
   recoveryNotes?: string;
 }
 
 export interface StolenReportRecord {
   id: string;
   plate: string;
-  plateDisplay: string | null;
+  plate_display: string | null;
   vin: string | null;
-  reporterUserId: string | null;
-  reporterType: ReporterType;
+  reporter_user_id: string | null;
+  reporter_type: ReporterType;
   dateStolenIso: string;
-  countyStolen: string;
-  townStolen: string;
-  policeObNumber: string | null;
-  policeStation: string | null;
-  carColor: string;
+  county_stolen: string;
+  town_stolen: string;
+  police_ob_number: string | null;
+  police_station: string | null;
+  car_color: string;
   identifyingMarks: string | null;
   photoUrls: string[];
   contactPhone: string | null;
   contactEmail: string | null;
   status: StolenStatus;
-  isObVerified: boolean;
-  adminNote: string | null;
-  reviewedBy: string | null;
-  reviewedAt: Date | null;
-  recoveryDate: string | null;
-  recoveryCounty: string | null;
-  recoveryNotes: string | null;
-  createdAt: Date;
+  is_ob_verified: boolean;
+  admin_note: string | null;
+  reviewed_by: string | null;
+  reviewed_at: Date | null;
+  recovery_date: string | null;
+  recovery_county: string | null;
+  recovery_notes: string | null;
+  created_at: Date;
 }
 
 export interface StolenAlertResult {

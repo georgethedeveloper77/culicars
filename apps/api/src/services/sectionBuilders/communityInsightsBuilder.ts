@@ -13,7 +13,7 @@ export interface CommunityInsightsSection {
   recentAlerts: {
     type: string;
     description: string | null;
-    createdAt: string;
+    created_at: string;
   }[];
   summary: string;
 }
@@ -46,15 +46,15 @@ export async function buildCommunityInsightsSection(
     return {
       type: 'communityInsights',
       locked: false,
-      hasAlerts: data.hasAlerts ?? false,
-      alertCount: data.alertCount ?? 0,
-      alertTypes: data.alertTypes ?? [],
-      recentAlerts: (data.recentAlerts ?? []).map((a: any) => ({
+      hasAlerts: (data as any).hasAlerts ?? false,
+      alertCount: (data as any).alertCount ?? 0,
+      alertTypes: (data as any).alertTypes ?? [],
+      recentAlerts: ((data as any).recentAlerts ?? []).map((a: any) => ({
         type: a.type,
         description: a.description ?? null,
-        createdAt: a.createdAt,
+        created_at: a.createdAt,
       })),
-      summary: data.summary ?? empty.summary,
+      summary: (data as any).summary ?? empty.summary,
     };
   } catch (err) {
     console.warn('[communityInsightsBuilder] failed to fetch signals', err);

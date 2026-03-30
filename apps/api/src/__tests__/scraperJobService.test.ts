@@ -36,7 +36,7 @@ const mockJob = {
   started_at: null,
   completed_at: null,
   errorLog: null,
-  createdAt: new Date('2024-01-01'),
+  created_at: new Date('2024-01-01'),
 };
 
 describe('scraperJobService', () => {
@@ -155,7 +155,7 @@ describe('scraperJobService', () => {
       const result = await listJobs(50);
       expect(result).toHaveLength(2);
       expect(mockPrisma.scraperJob.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({ orderBy: { createdAt: 'desc' }, take: 50 })
+        expect.objectContaining({ orderBy: { created_at: 'desc' }, take: 50 })
       );
     });
   });

@@ -37,9 +37,9 @@ router.get('/pins', async (req: Request, res: Response) => {
         lat: true,
         lng: true,
         description: true,
-        createdAt: true,
+        created_at: true,
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { created_at: 'desc' },
       take: 200,
     });
 
@@ -63,7 +63,7 @@ router.get('/pins/:id', async (req: Request, res: Response) => {
         lat: true,
         lng: true,
         description: true,
-        createdAt: true,
+        created_at: true,
       },
     });
     if (!alert) return res.status(404).json({ error: 'Alert not found' });

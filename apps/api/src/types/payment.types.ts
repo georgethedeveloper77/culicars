@@ -13,9 +13,9 @@ export type LedgerType =
   | 'admin_deduct';
 
 export interface LedgerEntry {
-  userId: string;
+  user_id: string;
   type: LedgerType;
-  creditsDelta: number;     // positive = gain, negative = spend
+  credits_delta: number;     // positive = gain, negative = spend
   source: string;
   reportId?: string;
   txRef?: string;
@@ -25,9 +25,9 @@ export interface LedgerEntry {
 // ---- Wallet ----
 
 export interface WalletBalance {
-  userId: string;
+  user_id: string;
   balance: number;
-  updatedAt: Date | null;
+  updated_at: Date | null;
 }
 
 // ---- Payments ----
@@ -42,7 +42,7 @@ export type ProviderSlug =
   | 'card';
 
 export interface InitiatePaymentInput {
-  userId: string;
+  user_id: string;
   packId: string;
   provider: ProviderSlug;
   phone?: string;           // M-Pesa — required for STK push
@@ -61,7 +61,7 @@ export interface InitiatePaymentResult {
 
 export interface ConfirmPaymentInput {
   paymentId: string;
-  providerRef: string;
+  provider_ref: string;
   providerMeta?: Record<string, unknown>;
 }
 
@@ -80,12 +80,12 @@ export interface PaymentProviderAdapter {
     currency: string;
     credits: number;
     packId: string;
-    userId: string;
+    user_id: string;
     phone?: string;
     returnUrl?: string;
     cancelUrl?: string;
   }): Promise<{
-    providerRef: string;
+    provider_ref: string;
     providerData?: Record<string, unknown>;
   }>;
 
@@ -93,7 +93,7 @@ export interface PaymentProviderAdapter {
    * Verify a payment status with the provider (polling fallback).
    * Returns null if the provider doesn't support polling.
    */
-  verify?(providerRef: string): Promise<{
+  verify?(provider_ref: string): Promise<{
     status: PaymentStatus;
     providerMeta?: Record<string, unknown>;
   } | null>;

@@ -19,20 +19,20 @@ type TxClient = Omit<
  * Returns the current balance.
  */
 export async function getOrCreateWallet(userId: string) {
-  const wallet = await prisma.wallet.upsert({
-    where: { userId },
+  const wallet = await prisma.wallets.upsert({
+    where: { user_id: userId },
     update: {},
-    create: { userId, balance: 0 },
+    create: { user_id: userId, balance: 0 },
   });
-  return { userId: wallet.userId, balance: wallet.balance, updatedAt: wallet.updatedAt };
+  return { user_id: wallet.user_id, balance: wallet.balance, updated_at: wallet.updated_at };
 }
 
 /**
  * Get wallet balance. Returns 0 if wallet doesn't exist yet.
  */
 export async function getBalance(userId: string): Promise<number> {
-  const wallet = await prisma.wallet.findUnique({
-    where: { userId },
+  const wallet = await prisma.wallets.findUnique({
+    where: { user_id: userId },
     select: { balance: true },
   });
   return wallet?.balance ?? 0;
@@ -55,16 +55,16 @@ export async function creditWallet(
   if (amount <= 0) throw new Error('Credit amount must be positive');
 
   // Upsert to handle first-time wallet creation inside transaction
-  const wallet = await tx.wallet.upsert({
-    where: { userId },
+  const wallet = await tx.wallets.upsert({
+    where: { user_id: userId },
     update: {
       balance: { increment: amount },
-      updatedAt: new Date(),
+      updated_at: new Date(),
     },
     create: {
-      userId,
+      user_id: userId,
       balance: amount,
-      updatedAt: new Date(),
+      updated_at: new Date(),
     },
   });
 
@@ -89,11 +89,11 @@ export async function debitWallet(
 ): Promise<number> {
   if (amount <= 0) throw new Error('Debit amount must be positive');
 
-  const wallet = await tx.wallet.update({
-    where: { userId },
+  const wallet = await tx.wallets.update({
+    where: { user_id: userId },
     data: {
       balance: { decrement: amount },
-      updatedAt: new Date(),
+      updated_at: new Date(),
     },
   });
 
@@ -110,16 +110,16 @@ export async function setBalance(
 ): Promise<number> {
   if (newBalance < 0) throw new Error('Balance cannot be negative');
 
-  const wallet = await tx.wallet.upsert({
-    where: { userId },
+  const wallet = await tx.wallets.upsert({
+    where: { user_id: userId },
     update: {
       balance: newBalance,
-      updatedAt: new Date(),
+      updated_at: new Date(),
     },
     create: {
-      userId,
+      user_id: userId,
       balance: newBalance,
-      updatedAt: new Date(),
+      updated_at: new Date(),
     },
   });
 

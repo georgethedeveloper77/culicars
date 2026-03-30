@@ -126,7 +126,7 @@ export const mpesaProvider: PaymentProviderAdapter = {
     }
 
     return {
-      providerRef: data.CheckoutRequestID,
+      provider_ref: data.CheckoutRequestID,
       providerData: {
         merchantRequestId: data.MerchantRequestID,
         checkoutRequestId: data.CheckoutRequestID,
@@ -135,7 +135,7 @@ export const mpesaProvider: PaymentProviderAdapter = {
     };
   },
 
-  async verify(providerRef: string) {
+  async verify(provider_ref: string) {
     const token = await getAccessToken();
     const timestamp = new Date()
       .toISOString()
@@ -172,6 +172,6 @@ export const mpesaProvider: PaymentProviderAdapter = {
       status = 'failed';
     }
 
-    return { status, providerMeta: data as unknown as Record<string, unknown> };
+    return { status, provider_meta: data as unknown as Record<string, unknown> };
   },
 };

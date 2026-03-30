@@ -23,11 +23,11 @@ export interface GeneratedReport {
   vin: string;
   plate: string | null;
   state: ReportState;
-  riskScore: number;
-  riskLevel: string;
+  risk_score: number;
+  risk_level: string;
   riskFlags: string[];
   sections: Record<string, any>;
-  generatedAt: string;
+  generated_at: string;
 }
 
 /**
@@ -79,7 +79,7 @@ export async function generateReport(
     hasStolen: stolenAlerts.isStolen,
     hasRecovered: stolenAlerts.isRecovered,
     watchAlertCount: watchAlerts.filter((a: any) => a.status === 'approved').length,
-    damageCount: damage.recordCount,
+    damageCount: damage.record_count,
     ownershipConfidence: ownership.confidence,
     odometerAnomalyDetected: odometer.anomalyDetected,
     sourceCount: identity.sourceCount,
@@ -106,11 +106,11 @@ export async function generateReport(
     vin,
     plate,
     state,
-    riskScore: risk.score,
-    riskLevel: risk.level,
+    risk_score: risk.score,
+    risk_level: risk.level,
     riskFlags: risk.flags,
     sections,
-    generatedAt: report.updated_at?.toISOString() ?? new Date().toISOString(),
+    generated_at: report.updated_at?.toISOString() ?? new Date().toISOString(),
   };
 }
 

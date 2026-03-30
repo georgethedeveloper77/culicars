@@ -16,17 +16,17 @@ import type {
 
 export async function submitContribution(
   submission: ContributionSubmission,
-  userId: string | null,
+  user_id: string | null,
 ): Promise<ContributionRecord> {
   // Ensure vehicle exists
-  const vehicle = await prisma.vehicle.findUnique({ where: { vin: submission.vin } });
+  const vehicle = await prisma.vehicles.findUnique({ where: { vin: submission.vin } });
   if (!vehicle) {
     throw Object.assign(new Error(`Vehicle not found: ${submission.vin}`), { status: 404 });
   }
 
   const factors = buildFactors({
     contribType: submission.type as ContribType,
-    evidenceUrls: submission.evidenceUrls ?? [],
+    evidence_urls: submission.evidenceUrls ?? [],
     verificationDocUrls: submission.verificationDocUrls ?? [],
     isAuthenticatedUser: userId !== null,
     dataFields: (submission.data as Record<string, unknown>) ?? {},
@@ -34,18 +34,18 @@ export async function submitContribution(
 
   const confidenceScore = scoreContribution(factors);
 
-  const record = await prisma.contribution.create({
+  const record = await prisma.contributions.create({
     data: {
       vin: submission.vin,
-      userId: userId,
+      user_id: userId,
       type: submission.type,
       title: submission.title.trim(),
       description: submission.description?.trim() ?? null,
       data: (submission.data ?? {}) as any,
-      evidenceUrls: submission.evidenceUrls ?? [],
+      evidence_urls: submission.evidenceUrls ?? [],
       verificationDocUrls: submission.verificationDocUrls ?? [],
       status: 'pending',
-      confidenceScore: confidenceScore,
+      confidence_score: confidenceScore,
     },
   });
 
@@ -65,9 +65,9 @@ export async function getContributionsByVin(
     where['status'] = 'approved';
   }
 
-  const rows = await prisma.contribution.findMany({
+  const rows = await prisma.contributions.findMany({
     where,
-    orderBy: { createdAt: 'desc' },
+    orderBy: { created_at: 'desc' },
   });
 
   return rows.map(mapContribution);
@@ -82,18 +82,18 @@ export async function moderateContribution(
   moderation: ContributionModeration,
   adminUserId: string,
 ): Promise<ContributionRecord> {
-  const existing = await prisma.contribution.findUnique({ where: { id } });
+  const existing = await prisma.contributions.findUnique({ where: { id } });
   if (!existing) {
     throw Object.assign(new Error('Contribution not found'), { status: 404 });
   }
 
-  const updated = await prisma.contribution.update({
+  const updated = await prisma.contributions.update({
     where: { id },
     data: {
       status: moderation.status,
-      adminNote: moderation.adminNote ?? null,
-      reviewedBy: adminUserId,
-      reviewedAt: new Date(),
+      admin_note: moderation.adminNote ?? null,
+      reviewed_by: adminUserId,
+      reviewed_at: new Date(),
     },
   });
 
@@ -106,8 +106,8 @@ export async function moderateContribution(
       title: updated.title,
       description: updated.description,
       data: updated.data as Record<string, unknown> | null,
-      evidenceUrls: updated.evidenceUrls as string[],
-      confidenceScore: updated.confidenceScore ? Number(updated.confidenceScore) : null,
+      evidence_urls: updated.evidence_urls as string[],
+      confidenceScore: updated.confidence_score ? Number(updated.confidence_score) : null,
     };
     await applyContribution(contributionRow);
   }
@@ -120,7 +120,7 @@ export async function moderateContribution(
 // ---------------------------------------------------------------------------
 
 export async function getContributionById(id: string): Promise<ContributionRecord | null> {
-  const row = await prisma.contribution.findUnique({ where: { id } });
+  const row = await prisma.contributions.findUnique({ where: { id } });
   return row ? mapContribution(row) : null;
 }
 
@@ -132,18 +132,18 @@ function mapContribution(row: Record<string, unknown>): ContributionRecord {
   return {
     id: row['id'] as string,
     vin: row['vin'] as string,
-    userId: (row['user_id'] as string | null) ?? null,
+    user_id: (row['user_id'] as string | null) ?? null,
     type: row['type'] as ContribType,
     title: row['title'] as string,
     description: (row['description'] as string | null) ?? null,
     data: (row['data'] as Record<string, unknown> | null) ?? null,
-    evidenceUrls: (row['evidence_urls'] as string[]) ?? [],
+    evidence_urls: (row['evidence_urls'] as string[]) ?? [],
     verificationDocUrls: (row['verification_doc_urls'] as string[]) ?? [],
     status: row['status'] as 'pending' | 'approved' | 'rejected' | 'flagged',
-    adminNote: (row['admin_note'] as string | null) ?? null,
-    reviewedBy: (row['reviewed_by'] as string | null) ?? null,
-    reviewedAt: row['reviewed_at'] ? new Date(row['reviewed_at'] as string) : null,
+    admin_note: (row['admin_note'] as string | null) ?? null,
+    reviewed_by: (row['reviewed_by'] as string | null) ?? null,
+    reviewed_at: row['reviewed_at'] ? new Date(row['reviewed_at'] as string) : null,
     confidenceScore: row['confidence_score'] ? Number(row['confidence_score']) : null,
-    createdAt: new Date(row['created_at'] as string),
+    created_at: new Date(row['created_at'] as string),
   };
 }

@@ -8,34 +8,34 @@ import type { LegalSectionData, LegalCheckCard } from '../../types/report.types'
 
 export async function buildLegalSection(vin: string): Promise<{
   data: LegalSectionData;
-  recordCount: number;
-  dataStatus: 'found' | 'not_found' | 'not_checked';
+  record_count: number;
+  data_status: 'found' | 'not_found' | 'not_checked';
 }> {
   const [vehicle, legalEvents] = await Promise.all([
-    prisma.vehicle.findUnique({
+    prisma.vehicles.findUnique({
       where: { vin },
       select: {
-        inspectionStatus: true,
-        lastInspectionDate: true,
-        caveatStatus: true,
+        inspection_status: true,
+        last_inspection_date: true,
+        caveat_status: true,
       },
     }),
 
-    prisma.vehicleEvent.findMany({
+    prisma.vehicle_events.findMany({
       where: {
         vin,
-        eventType: {
+        event_type: {
           in: ['INSPECTED', 'INSPECTION_FAILED', 'KRA_CLEARED', 'REGISTERED'],
         },
       },
       select: {
-        eventType: true,
-        eventDate: true,
+        event_type: true,
+        event_date: true,
         county: true,
         source: true,
         metadata: true,
       },
-      orderBy: { eventDate: 'desc' },
+      orderBy: { event_date: 'desc' },
     }),
   ]);
 
@@ -79,7 +79,7 @@ export async function buildLegalSection(vin: string): Promise<{
 
   // Build legal check cards
   const inspectionEvent = legalEvents.find(
-    (e) => e.eventType === 'INSPECTED' || e.eventType === 'INSPECTION_FAILED'
+    (e) => e.event_type === 'INSPECTED' || e.event_type === 'INSPECTION_FAILED'
   );
 
   const legalChecks: LegalCheckCard[] = [
@@ -87,25 +87,25 @@ export async function buildLegalSection(vin: string): Promise<{
       type: 'inspection',
       label: 'NTSA Inspection (MOT)',
       category: 'legal',
-      found: vehicle?.inspectionStatus !== 'unknown' && vehicle?.inspectionStatus !== null,
-      details: vehicle?.inspectionStatus
-        ? `Status: ${vehicle.inspectionStatus}${
-            vehicle.lastInspectionDate
-              ? ` — ${vehicle.lastInspectionDate.toISOString().split('T')[0]}`
+      found: vehicle?.inspection_status !== 'unknown' && vehicle?.inspection_status !== null,
+      details: vehicle?.inspection_status
+        ? `Status: ${vehicle.inspection_status}${
+            vehicle.last_inspection_date
+              ? ` — ${vehicle.last_inspection_date.toISOString().split('T')[0]}`
               : ''
           }`
         : 'No inspection record found',
-      date: vehicle?.lastInspectionDate?.toISOString().split('T')[0],
+      date: vehicle?.last_inspection_date?.toISOString().split('T')[0],
       county: inspectionEvent?.county ?? undefined,
     },
     {
       type: 'caveat',
       label: 'Caveat / Court Order',
       category: 'legal',
-      found: vehicle?.caveatStatus === 'caveat',
-      details: vehicle?.caveatStatus === 'caveat'
+      found: vehicle?.caveat_status === 'caveat',
+      details: vehicle?.caveat_status === 'caveat'
         ? 'Caveat registered against this vehicle'
-        : vehicle?.caveatStatus === 'clear'
+        : vehicle?.caveat_status === 'clear'
           ? 'No caveat found'
           : 'Not checked',
     },
@@ -120,8 +120,8 @@ export async function buildLegalSection(vin: string): Promise<{
       type: 'export_import',
       label: 'Export / Import (KRA)',
       category: 'legal',
-      found: legalEvents.some((e) => e.eventType === 'KRA_CLEARED'),
-      details: legalEvents.some((e) => e.eventType === 'KRA_CLEARED')
+      found: legalEvents.some((e) => e.event_type === 'KRA_CLEARED'),
+      details: legalEvents.some((e) => e.event_type === 'KRA_CLEARED')
         ? 'KRA import clearance record found'
         : 'No KRA clearance record',
     },
@@ -151,6 +151,6 @@ export async function buildLegalSection(vin: string): Promise<{
       hasLegalIssues,
     },
     recordCount,
-    dataStatus: recordCount > 0 ? 'found' : 'not_found',
+    data_status: recordCount > 0 ? 'found' : 'not_found',
   };
 }

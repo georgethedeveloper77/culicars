@@ -1,7 +1,7 @@
 // apps/api/src/services/sectionBuilders/identity.ts
 
 export interface IdentitySection {
-  sectionType: 'identity';
+  section_type: 'identity';
   locked: false;
   plate: string | null;
   vin: string | null;
@@ -10,8 +10,8 @@ export interface IdentitySection {
   year: number | null;
   color: string | null;
   engineSize: string | null;
-  fuelType: string | null;
-  bodyType: string | null;
+  fuel_type: string | null;
+  body_type: string | null;
   registrationDate: string | null;
   confidence: number;
   sourceCount: number;
@@ -31,7 +31,7 @@ export function buildIdentitySection(records: any[]): IdentitySection {
       : 0;
 
   return {
-    sectionType: 'identity',
+    section_type: 'identity',
     locked: false,
     plate: pick('plate'),
     vin: pick('vin'),
@@ -40,8 +40,8 @@ export function buildIdentitySection(records: any[]): IdentitySection {
     year: pick('year'),
     color: pick('color'),
     engineSize: pick('engine_size'),
-    fuelType: pick('fuel_type'),
-    bodyType: pick('body_type'),
+    fuel_type: pick('fuel_type'),
+    body_type: pick('body_type'),
     registrationDate: pick('registration_date'),
     confidence: Math.round(avgConfidence * 100) / 100,
     sourceCount: records.length,

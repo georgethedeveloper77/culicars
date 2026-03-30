@@ -57,11 +57,11 @@ describe('creditService', () => {
   describe('grantCredits', () => {
     it('grants credits and creates ledger entry', async () => {
       const newBalance = await grantCredits({
-        userId: 'user-1',
+        user_id: 'user-1',
         credits: 5,
         type: 'purchase',
         source: 'mpesa_purchase',
-        txRef: 'mpesa-ref-123',
+        tx_ref: 'mpesa-ref-123',
       });
 
       expect(newBalance).toBe(10);
@@ -71,13 +71,13 @@ describe('creditService', () => {
       expect(mockLedger.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
-            userId: 'user-1',
+            user_id: 'user-1',
             type: 'purchase',
-            creditsDelta: 5,
+            credits_delta: 5,
             balanceBefore: 5,
             balanceAfter: 10,
             source: 'mpesa_purchase',
-            txRef: 'mpesa-ref-123',
+            tx_ref: 'mpesa-ref-123',
           }),
         })
       );
@@ -87,16 +87,16 @@ describe('creditService', () => {
       // txRef already exists in ledger
       mockLedger.findFirst.mockResolvedValue({
         id: 'existing-ledger',
-        txRef: 'already-used',
+        tx_ref: 'already-used',
       } as any);
       mockWallet.findUnique.mockResolvedValue({ balance: 10 } as any);
 
       const balance = await grantCredits({
-        userId: 'user-1',
+        user_id: 'user-1',
         credits: 5,
         type: 'purchase',
         source: 'mpesa_purchase',
-        txRef: 'already-used',
+        tx_ref: 'already-used',
       });
 
       // Should NOT call $transaction (skipped due to idempotency)
@@ -107,7 +107,7 @@ describe('creditService', () => {
     it('throws on zero credits', async () => {
       await expect(
         grantCredits({
-          userId: 'user-1',
+          user_id: 'user-1',
           credits: 0,
           type: 'purchase',
           source: 'test',
@@ -118,7 +118,7 @@ describe('creditService', () => {
     it('throws on negative credits', async () => {
       await expect(
         grantCredits({
-          userId: 'user-1',
+          user_id: 'user-1',
           credits: -3,
           type: 'purchase',
           source: 'test',
@@ -130,22 +130,22 @@ describe('creditService', () => {
   describe('deductCredits', () => {
     it('deducts credits and creates negative ledger entry', async () => {
       const newBalance = await deductCredits({
-        userId: 'user-1',
+        user_id: 'user-1',
         credits: 2,
         type: 'spend',
         source: 'report_unlock',
-        reportId: 'report-1',
+        report_id: 'report-1',
       });
 
       expect(newBalance).toBe(3);
       expect(mockLedger.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
-            creditsDelta: -2,
+            credits_delta: -2,
             balanceBefore: 5,
             balanceAfter: 3,
             source: 'report_unlock',
-            reportId: 'report-1',
+            report_id: 'report-1',
           }),
         })
       );
@@ -156,7 +156,7 @@ describe('creditService', () => {
 
       await expect(
         deductCredits({
-          userId: 'user-1',
+          user_id: 'user-1',
           credits: 5,
           type: 'spend',
           source: 'report_unlock',

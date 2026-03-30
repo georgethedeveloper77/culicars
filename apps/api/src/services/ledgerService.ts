@@ -15,14 +15,14 @@ type TxClient = Omit<
 >;
 
 export interface CreateLedgerEntryInput {
-  userId: string;
+  user_id: string;
   type: LedgerType;
-  creditsDelta: number;     // positive = gain, negative = spend
-  balanceBefore: number;
-  balanceAfter: number;
+  credits_delta: number;     // positive = gain, negative = spend
+  balance_before: number;
+  balance_after: number;
   source: string;           // e.g. 'mpesa_purchase', 'report_unlock', 'admin_grant'
-  reportId?: string;
-  txRef?: string;           // provider transaction reference
+  report_id?: string;
+  tx_ref?: string;           // provider transaction reference
   metadata?: Record<string, unknown>;
 }
 
@@ -34,16 +34,16 @@ export async function appendEntry(
   tx: TxClient,
   input: CreateLedgerEntryInput
 ) {
-  return tx.creditLedger.create({
+  return tx.credit_ledger.create({
     data: {
-      userId: input.userId,
+      user_id: input.user_id,
       type: input.type,
-      creditsDelta: input.creditsDelta,
-      balanceBefore: input.balanceBefore,
-      balanceAfter: input.balanceAfter,
+      credits_delta: input.credits_delta,
+      balance_before: input.balance_before,
+      balance_after: input.balance_after,
       source: input.source,
-      reportId: input.reportId ?? null,
-      txRef: input.txRef ?? null,
+      report_id: input.report_id ?? null,
+      tx_ref: input.tx_ref ?? null,
       metadata: (input.metadata ?? undefined) as any,
     },
   });
@@ -60,25 +60,25 @@ export async function getUserLedger(
   const { limit = 50, offset = 0 } = options;
 
   const [entries, total] = await Promise.all([
-    prisma.creditLedger.findMany({
-      where: { userId },
-      orderBy: { createdAt: 'desc' },
+    prisma.credit_ledger.findMany({
+      where: { user_id: userId },
+      orderBy: { created_at: 'desc' },
       take: limit,
       skip: offset,
       select: {
         id: true,
         type: true,
-        creditsDelta: true,
-        balanceBefore: true,
-        balanceAfter: true,
+        credits_delta: true,
+        balance_before: true,
+        balance_after: true,
         source: true,
-        reportId: true,
-        txRef: true,
+        report_id: true,
+        tx_ref: true,
         metadata: true,
-        createdAt: true,
+        created_at: true,
       },
     }),
-    prisma.creditLedger.count({ where: { userId } }),
+    prisma.credit_ledger.count({ where: { user_id: userId } }),
   ]);
 
   return { entries, total, limit, offset };
@@ -88,7 +88,7 @@ export async function getUserLedger(
  * Get a single ledger entry by txRef (for idempotency checks).
  */
 export async function getEntryByTxRef(txRef: string) {
-  return prisma.creditLedger.findFirst({
-    where: { txRef },
+  return prisma.credit_ledger.findFirst({
+    where: { tx_ref: txRef },
   });
 }

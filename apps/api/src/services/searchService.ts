@@ -71,7 +71,7 @@ export async function search(
         {
           vin: vinResult.vin,
           plate: null,
-          plateDisplay: null,
+          plate_display: null,
           confidence: 0,
           vehicle: vinResult.decode.make
             ? {
@@ -79,19 +79,19 @@ export async function search(
                 make: vinResult.decode.make,
                 model: null,
                 year: vinResult.decode.modelYear ? parseInt(vinResult.decode.modelYear, 10) : null,
-                engineCc: null,
-                fuelType: null,
+                engine_cc: null,
+                fuel_type: null,
                 transmission: null,
-                bodyType: null,
+                body_type: null,
                 color: null,
-                countryOfOrigin: vinResult.decode.country,
-                importCountry: null,
-                japanAuctionGrade: null,
-                inspectionStatus: null,
-                ntsaCorVerified: false,
+                country_of_origin: vinResult.decode.country,
+                import_country: null,
+                japan_auction_grade: null,
+                inspection_status: null,
+                ntsa_cor_verified: false,
               }
             : null,
-          reportId: null,
+          report_id: null,
           reportStatus: null,
         },
       ];

@@ -95,7 +95,7 @@ describe('buildFactors', () => {
   it('calculates dataCompleteness correctly', () => {
     const factors = buildFactors({
       contribType: 'SERVICE_RECORD',
-      evidenceUrls: ['photo.jpg'],
+      evidence_urls: ['photo.jpg'],
       verificationDocUrls: [],
       isAuthenticatedUser: true,
       dataFields: { date: '2024-01-01', mileage: 50000, garageName: '' },
@@ -110,7 +110,7 @@ describe('buildFactors', () => {
   it('handles empty data fields gracefully', () => {
     const factors = buildFactors({
       contribType: 'PHOTO_EVIDENCE',
-      evidenceUrls: [],
+      evidence_urls: [],
       verificationDocUrls: [],
       isAuthenticatedUser: false,
       dataFields: {},

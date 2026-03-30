@@ -25,63 +25,63 @@ export interface ScraperJob {
   source: ScraperSource;
   status: JobStatus;
   trigger: JobTrigger;
-  itemsFound: number;
-  itemsStored: number;
-  itemsSkipped: number;
-  startedAt: Date | null;
-  completedAt: Date | null;
-  errorLog: string | null;
-  createdAt: Date;
+  items_found: number;
+  items_stored: number;
+  items_skipped: number;
+  started_at: Date | null;
+  completed_at: Date | null;
+  error_log: string | null;
+  created_at: Date;
 }
 
 export async function createJob(
   source: ScraperSource,
   trigger: JobTrigger = 'scheduled'
 ): Promise<ScraperJob> {
-  return prisma.scraperJob.create({
+  return prisma.scraper_jobs.create({
     data: { source, trigger, status: 'queued' },
-  }) as Promise<ScraperJob>;
+  }) as unknown as Promise<ScraperJob>;
 }
 
 export async function updateJob(
   id: string,
   data: Partial<Pick<ScraperJob, 'status' | 'itemsFound' | 'itemsStored' | 'itemsSkipped' | 'startedAt'>>
 ): Promise<ScraperJob> {
-  return prisma.scraperJob.update({ where: { id }, data }) as Promise<ScraperJob>;
+  return prisma.scraper_jobs.update({ where: { id }, data }) as unknown as Promise<ScraperJob>;
 }
 
 export async function completeJob(
   id: string,
-  counts: { itemsFound: number; itemsStored: number; itemsSkipped: number }
+  counts: { items_found: number; items_stored: number; items_skipped: number }
 ): Promise<ScraperJob> {
-  return prisma.scraperJob.update({
+  return prisma.scraper_jobs.update({
     where: { id },
     data: {
       status: 'completed',
-      completedAt: new Date(),
+      completed_at: new Date(),
       ...counts,
     },
-  }) as Promise<ScraperJob>;
+  }) as unknown as Promise<ScraperJob>;
 }
 
 export async function failJob(id: string, errorMessage: string): Promise<ScraperJob> {
-  return prisma.scraperJob.update({
+  return prisma.scraper_jobs.update({
     where: { id },
     data: {
       status: 'failed',
-      completedAt: new Date(),
-      errorLog: errorMessage,
+      completed_at: new Date(),
+      error_log: errorMessage,
     },
-  }) as Promise<ScraperJob>;
+  }) as unknown as Promise<ScraperJob>;
 }
 
 export async function getJob(id: string): Promise<ScraperJob | null> {
-  return prisma.scraperJob.findUnique({ where: { id } }) as Promise<ScraperJob | null>;
+  return prisma.scraper_jobs.findUnique({ where: { id } }) as Promise<ScraperJob | null>;
 }
 
 export async function listJobs(limit = 50): Promise<ScraperJob[]> {
-  return prisma.scraperJob.findMany({
-    orderBy: { createdAt: 'desc' },
+  return prisma.scraper_jobs.findMany({
+    orderBy: { created_at: 'desc' },
     take: limit,
-  }) as Promise<ScraperJob[]>;
+  }) as unknown as Promise<ScraperJob[]>;
 }

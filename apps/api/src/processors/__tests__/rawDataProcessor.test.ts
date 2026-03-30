@@ -17,9 +17,9 @@ const makeRecord = (sourceName: string, confidence: number, overrides: Partial<N
   model: 'Fielder',
   year: 2019,
   engineCapacity: '1500cc',
-  fuelType: 'Petrol',
+  fuel_type: 'Petrol',
   color: 'White',
-  bodyType: 'Station Wagon',
+  body_type: 'Station Wagon',
   transmissionType: 'Automatic',
   registrationDate: '2019-06-01',
   importDate: null,
@@ -42,7 +42,7 @@ const makeAdapter = (sourceName: string, confidence: number, overrides: Partial<
 
 const nullAdapter = (sourceName: string) => ({
   sourceName,
-  isEnabled:    () => true,
+  is_enabled:    () => true,
   fetchByVin:   vi.fn().mockResolvedValue(null),
   fetchByPlate: vi.fn().mockResolvedValue(null),
 });
@@ -139,7 +139,7 @@ describe('rawDataProcessor', () => {
   it('does not throw when an adapter throws unexpectedly', async () => {
     const badAdapter = {
       sourceName:   'bad_source',
-      isEnabled:    () => true,
+      is_enabled:    () => true,
       fetchByVin:   vi.fn().mockRejectedValue(new Error('Network error')),
       fetchByPlate: vi.fn().mockResolvedValue(null),
     };
@@ -154,7 +154,7 @@ describe('rawDataProcessor', () => {
   it('falls back to plate query when VIN returns null', async () => {
     const adapter = {
       sourceName:   'ntsa_cor',
-      isEnabled:    () => true,
+      is_enabled:    () => true,
       fetchByVin:   vi.fn().mockResolvedValue(null),
       fetchByPlate: vi.fn().mockResolvedValue(makeRecord('ntsa_cor', 1.0, { vin: null, plate: 'KCA 123A' })),
     };

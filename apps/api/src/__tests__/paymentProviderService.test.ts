@@ -56,7 +56,7 @@ const mockPayment = vi.mocked(prisma.payment);
 const mockAdapter: PaymentProviderAdapter = {
   slug: 'mpesa',
   initiate: vi.fn().mockResolvedValue({
-    providerRef: 'mpesa-ref-123',
+    provider_ref: 'mpesa-ref-123',
     providerData: { checkoutRequestId: 'mpesa-ref-123' },
   }),
   verify: vi.fn().mockResolvedValue({ status: 'success' }),
@@ -72,8 +72,8 @@ describe('paymentProviderService', () => {
   describe('getEnabledProviders', () => {
     it('returns only enabled providers with registered adapters', async () => {
       mockProviders.findMany.mockResolvedValue([
-        { id: '1', name: 'M-Pesa', slug: 'mpesa', isEnabled: true },
-        { id: '2', name: 'PayPal', slug: 'paypal', isEnabled: true },
+        { id: '1', name: 'M-Pesa', slug: 'mpesa', is_enabled: true },
+        { id: '2', name: 'PayPal', slug: 'paypal', is_enabled: true },
       ] as any);
 
       const providers = await getEnabledProviders();
@@ -91,13 +91,13 @@ describe('paymentProviderService', () => {
 
   describe('isProviderEnabled', () => {
     it('returns true for enabled provider with adapter', async () => {
-      mockProviders.findUnique.mockResolvedValue({ isEnabled: true } as any);
+      mockProviders.findUnique.mockResolvedValue({ is_enabled: true } as any);
       const result = await isProviderEnabled('mpesa');
       expect(result).toBe(true);
     });
 
     it('returns false for disabled provider', async () => {
-      mockProviders.findUnique.mockResolvedValue({ isEnabled: false } as any);
+      mockProviders.findUnique.mockResolvedValue({ is_enabled: false } as any);
       const result = await isProviderEnabled('mpesa');
       expect(result).toBe(false);
     });
@@ -111,10 +111,10 @@ describe('paymentProviderService', () => {
 
   describe('initiatePayment', () => {
     it('creates pending payment and calls provider', async () => {
-      mockProviders.findUnique.mockResolvedValue({ isEnabled: true } as any);
+      mockProviders.findUnique.mockResolvedValue({ is_enabled: true } as any);
       mockPayment.create.mockResolvedValue({
         id: 'pay-1',
-        userId: 'user-1',
+        user_id: 'user-1',
         provider: 'mpesa',
         amount: 15000,
         currency: 'KES',
@@ -124,7 +124,7 @@ describe('paymentProviderService', () => {
       mockPayment.update.mockResolvedValue({} as any);
 
       const result = await initiatePayment({
-        userId: 'user-1',
+        user_id: 'user-1',
         packId: 'culicars_credits_1',
         provider: 'mpesa',
         phone: '0712345678',
@@ -133,12 +133,12 @@ describe('paymentProviderService', () => {
       expect(result.paymentId).toBe('pay-1');
       expect(result.provider).toBe('mpesa');
       expect(result.status).toBe('pending');
-      expect(result.providerRef).toBe('mpesa-ref-123');
+      expect(result.provider_ref).toBe('mpesa-ref-123');
 
       expect(mockPayment.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
-            userId: 'user-1',
+            user_id: 'user-1',
             provider: 'mpesa',
             currency: 'KES',
             credits: 1,
@@ -151,7 +151,7 @@ describe('paymentProviderService', () => {
     it('throws on invalid pack ID', async () => {
       await expect(
         initiatePayment({
-          userId: 'user-1',
+          user_id: 'user-1',
           packId: 'nonexistent_pack',
           provider: 'mpesa',
         })
@@ -159,11 +159,11 @@ describe('paymentProviderService', () => {
     });
 
     it('throws on disabled provider', async () => {
-      mockProviders.findUnique.mockResolvedValue({ isEnabled: false } as any);
+      mockProviders.findUnique.mockResolvedValue({ is_enabled: false } as any);
 
       await expect(
         initiatePayment({
-          userId: 'user-1',
+          user_id: 'user-1',
           packId: 'culicars_credits_1',
           provider: 'mpesa',
         })
@@ -171,7 +171,7 @@ describe('paymentProviderService', () => {
     });
 
     it('marks payment as failed if provider initiation fails', async () => {
-      mockProviders.findUnique.mockResolvedValue({ isEnabled: true } as any);
+      mockProviders.findUnique.mockResolvedValue({ is_enabled: true } as any);
       mockPayment.create.mockResolvedValue({
         id: 'pay-fail',
         status: 'pending',
@@ -181,7 +181,7 @@ describe('paymentProviderService', () => {
 
       await expect(
         initiatePayment({
-          userId: 'user-1',
+          user_id: 'user-1',
           packId: 'culicars_credits_1',
           provider: 'mpesa',
           phone: '0712345678',
@@ -201,13 +201,13 @@ describe('paymentProviderService', () => {
     it('confirms pending payment and grants credits', async () => {
       mockPayment.findFirst.mockResolvedValue({
         id: 'pay-1',
-        userId: 'user-1',
+        user_id: 'user-1',
         provider: 'mpesa',
         amount: 15000,
         currency: 'KES',
         credits: 1,
         status: 'pending',
-        providerRef: 'mpesa-ref-123',
+        provider_ref: 'mpesa-ref-123',
       } as any);
       mockPayment.update.mockResolvedValue({} as any);
 
@@ -273,9 +273,9 @@ describe('paymentProviderService', () => {
         currency: 'KES',
         credits: 1,
         status: 'success',
-        providerRef: 'mpesa-ref-123',
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        provider_ref: 'mpesa-ref-123',
+        created_at: new Date(),
+        updated_at: new Date(),
       } as any);
 
       const result = await getPaymentById('pay-1');

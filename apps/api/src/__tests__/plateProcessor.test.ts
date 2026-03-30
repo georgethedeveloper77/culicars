@@ -87,7 +87,7 @@ describe('plateProcessor', () => {
       (mockPrisma.plateVinMap.findFirst as MockInstance).mockResolvedValue({
         id: 'existing-id',
         confidence: 0.5,
-        verifiedAt: null,
+        verified_at: null,
       });
       (mockPrisma.plateVinMap.update as MockInstance).mockResolvedValue({});
 
@@ -109,7 +109,7 @@ describe('plateProcessor', () => {
 
       expect(mockPrisma.plateVinMap.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: expect.objectContaining({ verifiedAt: expect.any(Date) }),
+          data: expect.objectContaining({ verified_at: expect.any(Date) }),
         })
       );
     });
@@ -122,7 +122,7 @@ describe('plateProcessor', () => {
 
       expect(mockPrisma.plateVinMap.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: expect.objectContaining({ verifiedAt: null }),
+          data: expect.objectContaining({ verified_at: null }),
         })
       );
     });

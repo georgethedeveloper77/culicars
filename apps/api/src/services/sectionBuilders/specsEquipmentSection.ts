@@ -75,20 +75,20 @@ function decodeVinOptions(vin: string, vehicle: Record<string, unknown>): VinOpt
   });
 
   // Add spec-derived codes
-  if (vehicle.engineCc) {
+  if (vehicle.engine_cc) {
     codes.push({
       category: 'Powertrain',
       code: 'ENG',
       label: 'Engine Displacement',
-      value: `${vehicle.engineCc}cc`,
+      value: `${vehicle.engine_cc}cc`,
     });
   }
-  if (vehicle.fuelType) {
+  if (vehicle.fuel_type) {
     codes.push({
       category: 'Powertrain',
       code: 'FUEL',
       label: 'Fuel Type',
-      value: vehicle.fuelType as string,
+      value: vehicle.fuel_type as string,
     });
   }
   if (vehicle.transmission) {
@@ -99,12 +99,12 @@ function decodeVinOptions(vin: string, vehicle: Record<string, unknown>): VinOpt
       value: vehicle.transmission as string,
     });
   }
-  if (vehicle.bodyType) {
+  if (vehicle.body_type) {
     codes.push({
       category: 'Body',
       code: 'BODY',
       label: 'Body Type',
-      value: vehicle.bodyType as string,
+      value: vehicle.body_type as string,
     });
   }
 
@@ -113,10 +113,10 @@ function decodeVinOptions(vin: string, vehicle: Record<string, unknown>): VinOpt
 
 export async function buildSpecsEquipmentSection(vin: string): Promise<{
   data: SpecsEquipmentSectionData;
-  recordCount: number;
-  dataStatus: 'found' | 'not_found' | 'not_checked';
+  record_count: number;
+  data_status: 'found' | 'not_found' | 'not_checked';
 }> {
-  const vehicle = await prisma.vehicle.findUnique({
+  const vehicle = await prisma.vehicles.findUnique({
     where: { vin },
   });
 
@@ -124,8 +124,8 @@ export async function buildSpecsEquipmentSection(vin: string): Promise<{
     return {
       data: {
         basicSpecs: {
-          make: null, model: null, bodyType: null, year: null,
-          engineCc: null, power: null, transmission: null,
+          make: null, model: null, body_type: null, year: null,
+          engine_cc: null, power: null, transmission: null,
           driveLayout: null, plantCountry: null,
         },
         optionCodes: [],
@@ -139,8 +139,8 @@ export async function buildSpecsEquipmentSection(vin: string): Promise<{
           originCountry: null, importDate: null, kraClearanceStatus: null,
         },
       },
-      recordCount: 0,
-      dataStatus: 'not_found',
+      record_count: 0,
+      data_status: 'not_found',
     };
   }
 
@@ -148,9 +148,9 @@ export async function buildSpecsEquipmentSection(vin: string): Promise<{
 
   // Determine steering side — most JDM imports are RHD
   const steeringSide =
-    vehicle.importCountry === 'JP' || vehicle.countryOfOrigin === 'JP'
+    vehicle.import_country === 'JP' || vehicle.country_of_origin === 'JP'
       ? 'RHD'
-      : vehicle.importCountry === 'UK' || vehicle.countryOfOrigin === 'UK'
+      : vehicle.import_country === 'UK' || vehicle.country_of_origin === 'UK'
         ? 'RHD'
         : 'LHD';
 
@@ -158,32 +158,32 @@ export async function buildSpecsEquipmentSection(vin: string): Promise<{
     basicSpecs: {
       make: vehicle.make,
       model: vehicle.model,
-      bodyType: vehicle.bodyType,
+      body_type: vehicle.body_type,
       year: vehicle.year,
-      engineCc: vehicle.engineCc,
-      power: vehicle.engineCc
-        ? `~${Math.round(vehicle.engineCc * 0.075)} hp (est.)`
+      engine_cc: vehicle.engine_cc,
+      power: vehicle.engine_cc
+        ? `~${Math.round(vehicle.engine_cc * 0.075)} hp (est.)`
         : null,
       transmission: vehicle.transmission,
       driveLayout: null, // Future: from VIN decode API
-      plantCountry: vehicle.countryOfOrigin,
+      plantCountry: vehicle.country_of_origin,
     },
     optionCodes,
     kenyaAdditions: {
       steeringSide,
       emissionStandard: null, // Future: from VIN decode
-      countryOfFirstReg: vehicle.countryOfOrigin,
+      countryOfFirstReg: vehicle.country_of_origin,
     },
     japanAuction:
-      vehicle.japanAuctionGrade || vehicle.japanAuctionMileage
+      vehicle.japan_auction_grade || vehicle.japan_auction_mileage
         ? {
-            grade: vehicle.japanAuctionGrade,
-            mileageAtExport: vehicle.japanAuctionMileage,
+            grade: vehicle.japan_auction_grade,
+            mileageAtExport: vehicle.japan_auction_mileage,
             auctionHouse: null, // Future: from BE FORWARD data
           }
         : null,
     importDetails: {
-      originCountry: vehicle.countryOfOrigin,
+      originCountry: vehicle.country_of_origin,
       importDate: null, // Future: from KRA import events
       kraClearanceStatus: null, // Future: from KRA events
     },
@@ -191,7 +191,7 @@ export async function buildSpecsEquipmentSection(vin: string): Promise<{
 
   return {
     data,
-    recordCount: optionCodes.length + 1, // specs + codes
-    dataStatus: 'found',
+    record_count: optionCodes.length + 1, // specs + codes
+    data_status: 'found',
   };
 }

@@ -42,7 +42,7 @@ describe('duplicateResolver', () => {
       await isDuplicateEvent(baseCandidate);
 
       const call = (mockPrisma.vehicleEvent.findFirst as MockInstance).mock.calls[0][0];
-      const { gte, lte } = call.where.eventDate;
+      const { gte, lte } = call.where.event_date;
 
       const diffStart = baseCandidate.event_date.getTime() - gte.getTime();
       const diffEnd = lte.getTime() - baseCandidate.event_date.getTime();
@@ -57,7 +57,7 @@ describe('duplicateResolver', () => {
       await isDuplicateEvent(baseCandidate);
 
       const call = (mockPrisma.vehicleEvent.findFirst as MockInstance).mock.calls[0][0];
-      expect(call.where.sourceRef).toBe('svc-001');
+      expect(call.where.source_ref).toBe('svc-001');
     });
 
     it('omits source_ref from query when null', async () => {
@@ -65,7 +65,7 @@ describe('duplicateResolver', () => {
       await isDuplicateEvent({ ...baseCandidate, source_ref: null });
 
       const call = (mockPrisma.vehicleEvent.findFirst as MockInstance).mock.calls[0][0];
-      expect(call.where.sourceRef).toBeUndefined();
+      expect(call.where.source_ref).toBeUndefined();
     });
 
     it('new events more than 30 days apart are not duplicates', async () => {

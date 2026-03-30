@@ -4,17 +4,17 @@ import type { StolenAlertResult, StolenReportRecord } from '../types/stolen_repo
 
 export async function checkPlate(plate: string): Promise<StolenAlertResult> {
   const normalised = normalisePlate(plate);
-  const reports = await prisma.stolenReport.findMany({
+  const reports = await prisma.stolen_reports.findMany({
     where: { plate: normalised, status: 'active' },
-    orderBy: { createdAt: 'desc' },
+    orderBy: { created_at: 'desc' },
   });
   return { hasActiveReport: reports.length > 0, reports: reports.map(mapReport) };
 }
 
 export async function checkVin(vin: string): Promise<StolenAlertResult> {
-  const reports = await prisma.stolenReport.findMany({
+  const reports = await prisma.stolen_reports.findMany({
     where: { vin, status: 'active' },
-    orderBy: { createdAt: 'desc' },
+    orderBy: { created_at: 'desc' },
   });
   return { hasActiveReport: reports.length > 0, reports: reports.map(mapReport) };
 }
@@ -31,9 +31,9 @@ export async function checkVehicle(params: {
   if (params.plate) conditions.push({ plate: normalisePlate(params.plate), status: 'active' });
   if (params.vin) conditions.push({ vin: params.vin, status: 'active' });
 
-  const reports = await prisma.stolenReport.findMany({
+  const reports = await prisma.stolen_reports.findMany({
     where: { OR: conditions },
-    orderBy: { createdAt: 'desc' },
+    orderBy: { created_at: 'desc' },
   });
 
   const seen = new Set<string>();
@@ -54,28 +54,28 @@ function mapReport(row: Record<string, unknown>): StolenReportRecord {
   return {
     id: row['id'] as string,
     plate: row['plate'] as string,
-    plateDisplay: (row['plateDisplay'] as string | null) ?? null,
+    plate_display: (row['plateDisplay'] as string | null) ?? null,
     vin: (row['vin'] as string | null) ?? null,
-    reporterUserId: (row['reporterUserId'] as string | null) ?? null,
-    reporterType: row['reporterType'] as 'owner' | 'family' | 'witness' | 'police',
+    reporter_user_id: (row['reporterUserId'] as string | null) ?? null,
+    reporter_type: row['reporterType'] as 'owner' | 'family' | 'witness' | 'police',
     dateStolenIso: row['dateStolen'] as string,
-    countyStolen: row['countyStolen'] as string,
-    townStolen: row['townStolen'] as string,
-    policeObNumber: (row['policeObNumber'] as string | null) ?? null,
-    policeStation: (row['policeStation'] as string | null) ?? null,
-    carColor: row['carColor'] as string,
+    county_stolen: row['countyStolen'] as string,
+    town_stolen: row['townStolen'] as string,
+    police_ob_number: (row['policeObNumber'] as string | null) ?? null,
+    police_station: (row['policeStation'] as string | null) ?? null,
+    car_color: row['carColor'] as string,
     identifyingMarks: (row['identifyingMarks'] as string | null) ?? null,
     photoUrls: (row['photoUrls'] as string[]) ?? [],
     contactPhone: (row['contactPhone'] as string | null) ?? null,
     contactEmail: (row['contactEmail'] as string | null) ?? null,
     status: row['status'] as 'pending' | 'active' | 'recovered' | 'rejected' | 'duplicate',
-    isObVerified: Boolean(row['isObVerified']),
-    adminNote: (row['adminNote'] as string | null) ?? null,
-    reviewedBy: (row['reviewedBy'] as string | null) ?? null,
-    reviewedAt: row['reviewedAt'] ? new Date(row['reviewedAt'] as string) : null,
-    recoveryDate: (row['recoveryDate'] as string | null) ?? null,
-    recoveryCounty: (row['recoveryCounty'] as string | null) ?? null,
-    recoveryNotes: (row['recoveryNotes'] as string | null) ?? null,
-    createdAt: new Date(row['createdAt'] as string),
+    is_ob_verified: Boolean(row['isObVerified']),
+    admin_note: (row['adminNote'] as string | null) ?? null,
+    reviewed_by: (row['reviewedBy'] as string | null) ?? null,
+    reviewed_at: row['reviewedAt'] ? new Date(row['reviewedAt'] as string) : null,
+    recovery_date: (row['recoveryDate'] as string | null) ?? null,
+    recovery_county: (row['recoveryCounty'] as string | null) ?? null,
+    recovery_notes: (row['recoveryNotes'] as string | null) ?? null,
+    created_at: new Date(row['createdAt'] as string),
   };
 }

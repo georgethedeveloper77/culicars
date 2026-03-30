@@ -47,7 +47,7 @@ export const revenuecatProvider: PaymentProviderAdapter = {
     // We only process the webhook callback server-side.
 
     return {
-      providerRef: `rc_${input.paymentId}`,
+      provider_ref: `rc_${input.paymentId}`,
       providerData: {
         note: 'RevenueCat purchases are initiated on the client via the RevenueCat SDK.',
         packId: input.packId,

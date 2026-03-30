@@ -32,19 +32,19 @@ export interface ContributionModeration {
 export interface ContributionRecord {
   id: string;
   vin: string;
-  userId: string | null;
+  user_id: string | null;
   type: ContribType;
   title: string;
   description: string | null;
   data: Record<string, unknown> | null;
-  evidenceUrls: string[];
+  evidence_urls: string[];
   verificationDocUrls: string[];
   status: ContribStatus;
-  adminNote: string | null;
-  reviewedBy: string | null;
-  reviewedAt: Date | null;
+  admin_note: string | null;
+  reviewed_by: string | null;
+  reviewed_at: Date | null;
   confidenceScore: number | null;
-  createdAt: Date;
+  created_at: Date;
 }
 
 export interface ConfidenceFactors {

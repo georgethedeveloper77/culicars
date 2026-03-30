@@ -25,7 +25,7 @@ function levenshtein(a: string, b: string): number {
 
 export interface FuzzySuggestion {
   plate: string;
-  plateDisplay: string | null;
+  plate_display: string | null;
   vin: string;
   distance: number;
 }
@@ -44,14 +44,14 @@ export async function findSimilarPlates(
 
   const candidates = await prisma.plate_vin_map.findMany({
     where: { plate: { startsWith: prefix } },
-    select: { plate: true, plateDisplay: true, vin: true },
+    select: { plate: true, plate_display: true, vin: true },
     take: 200,
   });
 
   return candidates
     .map((c) => ({
       plate: c.plate,
-      plateDisplay: c.plateDisplay,
+      plate_display: c.plate_display,
       vin: c.vin,
       distance: levenshtein(normalizedPlate, c.plate),
     }))
@@ -65,5 +65,5 @@ export async function getSuggestionStrings(
   maxDistance: number = 2
 ): Promise<string[]> {
   const suggestions = await findSimilarPlates(normalizedPlate, maxDistance);
-  return suggestions.map((s) => s.plateDisplay ?? s.plate);
+  return suggestions.map((s) => s.plate_display ?? s.plate);
 }

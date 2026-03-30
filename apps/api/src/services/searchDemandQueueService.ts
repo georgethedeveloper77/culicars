@@ -11,7 +11,7 @@ export interface DemandQueueEntry {
   timesRequested: number;
   lastRequestedAt: Date;
   enrichedAt: Date | null;
-  createdAt: Date;
+  created_at: Date;
 }
 
 export interface ListQueueResult {

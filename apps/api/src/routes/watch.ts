@@ -44,7 +44,7 @@ router.post(
         lng: z.number().min(-180).max(180).optional(),
         locationName: z.string().max(200).optional(),
         description: z.string().min(10).max(1000),
-        evidenceUrls: z.array(z.string().url()).max(5).optional(),
+        evidence_urls: z.array(z.string().url()).max(5).optional(),
       });
 
       const body = schema.parse(req.body);

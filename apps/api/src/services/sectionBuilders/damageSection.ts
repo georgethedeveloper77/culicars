@@ -47,22 +47,22 @@ function estimateRepairCost(
 
 export async function buildDamageSection(vin: string): Promise<{
   data: DamageSectionData;
-  recordCount: number;
-  dataStatus: 'found' | 'not_found' | 'not_checked';
+  record_count: number;
+  data_status: 'found' | 'not_found' | 'not_checked';
 }> {
-  const damageEvents = await prisma.vehicleEvent.findMany({
+  const damageEvents = await prisma.vehicle_events.findMany({
     where: {
       vin,
-      eventType: 'DAMAGED',
+      event_type: 'DAMAGED',
     },
     select: {
       id: true,
-      eventDate: true,
+      event_date: true,
       county: true,
       source: true,
       metadata: true,
     },
-    orderBy: { eventDate: 'desc' },
+    orderBy: { event_date: 'desc' },
   });
 
   const incidents: DamageIncident[] = damageEvents.map((event) => {
@@ -81,7 +81,7 @@ export async function buildDamageSection(vin: string): Promise<{
       severity,
       repairCostMin: (meta?.repairCostMin as number) || cost.min,
       repairCostMax: (meta?.repairCostMax as number) || cost.max,
-      date: event.eventDate.toISOString().split('T')[0],
+      date: event.event_date.toISOString().split('T')[0],
       county: event.county ?? undefined,
       possibleCause: (meta?.cause as string) || 'Unknown',
       source: event.source ?? 'unknown',
@@ -108,7 +108,7 @@ export async function buildDamageSection(vin: string): Promise<{
       hasStructuralDamage,
       diagramLocations,
     },
-    recordCount: incidents.length,
-    dataStatus: incidents.length > 0 ? 'found' : 'not_found',
+    record_count: incidents.length,
+    data_status: incidents.length > 0 ? 'found' : 'not_found',
   };
 }

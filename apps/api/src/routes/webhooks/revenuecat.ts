@@ -67,8 +67,8 @@ router.post('/', async (req, res) => {
 
     // 4. Idempotency: check if transaction already processed
     const txRef = `rc_${event.transaction_id}`;
-    const existingLedger = await prisma.creditLedger.findFirst({
-      where: { txRef },
+    const existingLedger = await prisma.credit_ledger.findFirst({
+      where: { tx_ref: txRef },
     });
 
     if (existingLedger) {
@@ -96,29 +96,29 @@ router.post('/', async (req, res) => {
     }
 
     // 6. Create payment record + grant credits
-    const payment = await prisma.payment.create({
+    const payment = await prisma.payments.create({
       data: {
-        userId,
+        user_id: userId,
         provider: 'revenuecat',
         amount: Math.round(event.price_in_purchased_currency * 100),
         currency: event.currency || 'USD',
         credits: pack.credits,
         status: 'success',
-        providerRef: txRef,
-        providerMeta: {
+        provider_ref: txRef,
+        provider_meta: {
           store: event.store,
           transactionId: event.transaction_id,
           productId: event.product_id,
-          eventType: event.type,
+          event_type: event.type,
           eventId: event.id,
         },
-        updatedAt: new Date(),
+        updated_at: new Date(),
       },
     });
 
     // 7. Grant credits atomically
     const newBalance = await grantCredits({
-      userId,
+      user_id: userId,
       amount: pack.credits,
       type: 'purchase',
       providerRef: txRef,

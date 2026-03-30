@@ -7,7 +7,7 @@ import type { PaymentProvider } from '@culicars/types';
 const prisma = new PrismaClient();
 
 interface GrantCreditsParams {
-  userId: string;
+  user_id: string;
   amount: number;
   type: string;
   provider?: PaymentProvider;
@@ -26,7 +26,7 @@ interface GrantCreditsParams {
 export async function appendTransaction(
   params: GrantCreditsParams
 ): Promise<{ id: string; newBalance: number } | null> {
-  const { userId, amount, type, provider, providerRef, packId, reportId, meta } = params;
+  const { user_id: userId, amount, type, provider, providerRef, packId, reportId, meta } = params;
 
   try {
     const tx = await (prisma as any).credit_transactions.create({
@@ -84,7 +84,7 @@ export async function deductForUnlock(
   }
 
   await appendTransaction({
-    userId,
+    user_id: userId,
     amount: -cost,
     type: 'unlock',
     reportId,
@@ -100,20 +100,20 @@ export async function deductForUnlock(
  * Returns the transaction ID for matching to the webhook.
  */
 export async function recordPendingPurchase(params: {
-  userId: string;
+  user_id: string;
   packId: string;
   provider: PaymentProvider;
-  providerRef: string;
+  provider_ref: string;
   credits: number;
   meta?: Record<string, unknown>;
 }): Promise<string> {
   const tx = await (prisma as any).credit_transactions.create({
     data: {
-      user_id: params.userId,
+      user_id: params.user_id,
       amount: params.credits,
       type: 'purchase',
       provider: params.provider,
-      provider_ref: params.providerRef,
+      provider_ref: params.provider_ref,
       pack_id: params.packId,
       status: 'pending',
       meta_json: params.meta ?? null,
@@ -128,7 +128,7 @@ export async function recordPendingPurchase(params: {
  */
 export async function confirmPayment(
   providerRef: string
-): Promise<{ userId: string; credits: number } | null> {
+): Promise<{ user_id: string; credits: number } | null> {
   const existing = await (prisma as any).credit_transactions.findUnique({
     where: { provider_ref: providerRef },
   });
@@ -140,7 +140,7 @@ export async function confirmPayment(
 
   if (existing.status === 'confirmed') {
     // Already credited — idempotent no-op
-    return { userId: existing.user_id, credits: existing.amount };
+    return { user_id: existing.user_id, credits: existing.amount };
   }
 
   // We can't UPDATE (append-only rule). Instead, mark old as confirmed.
@@ -152,5 +152,5 @@ export async function confirmPayment(
     data: { status: 'confirmed' },
   });
 
-  return { userId: existing.user_id, credits: existing.amount };
+  return { user_id: existing.user_id, credits: existing.amount };
 }

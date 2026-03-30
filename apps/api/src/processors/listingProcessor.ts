@@ -90,7 +90,7 @@ export async function processListing(
     const normalized = normalizePlate(raw.plate);
     await processPlate({
       plate: normalized,
-      plateDisplay: formatPlate(normalized),
+      plate_display: formatPlate(normalized),
       vin,
       confidence,
       source: eventSource,
@@ -100,8 +100,8 @@ export async function processListing(
   // Insert LISTED_FOR_SALE event
   const inserted = await insertEvent({
     vin,
-    eventType: 'LISTED_FOR_SALE',
-    eventDate: scrapedDate,
+    event_type: 'LISTED_FOR_SALE',
+    event_date: scrapedDate,
     country: 'KE',
     source: eventSource,
     source_ref: raw.listing_id ?? null,

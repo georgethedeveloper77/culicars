@@ -13,9 +13,9 @@ export interface NormalisedRecord {
   model: string | null;
   year: number | null;
   engineCapacity: string | null;
-  fuelType: string | null;
+  fuel_type: string | null;
   color: string | null;
-  bodyType: string | null;
+  body_type: string | null;
   transmissionType: string | null;
   registrationDate: string | null;
   importDate: string | null;
@@ -35,9 +35,9 @@ export interface MergedVehicleRecord {
   model: string | null;
   year: number | null;
   engineCapacity: string | null;
-  fuelType: string | null;
+  fuel_type: string | null;
   color: string | null;
-  bodyType: string | null;
+  body_type: string | null;
   transmissionType: string | null;
   registrationDate: string | null;
   importDate: string | null;

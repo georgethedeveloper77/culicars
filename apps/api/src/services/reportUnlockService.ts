@@ -19,16 +19,16 @@ export async function unlockReport(
   reportId: string
 ): Promise<UnlockResult> {
   // Check if already unlocked
-  const existing = await prisma.reportUnlock.findUnique({
+  const existing = await prisma.report_unlock.findUnique({
     where: {
-      userId_reportId: { userId, reportId },
+      userId_report_id: { userId, reportId },
     },
   });
 
   if (existing) {
     // Already unlocked — return success without charging
-    const wallet = await prisma.wallet.findUnique({
-      where: { userId },
+    const wallet = await prisma.wallets.findUnique({
+      where: { user_id: userId },
       select: { balance: true },
     });
 
@@ -36,12 +36,12 @@ export async function unlockReport(
       success: true,
       creditsSpent: 0,
       balanceAfter: wallet?.balance ?? 0,
-      reportId,
+      report_id: reportId,
     };
   }
 
   // Verify report exists
-  const report = await prisma.report.findUnique({
+  const report = await prisma.reports.findUnique({
     where: { id: reportId },
     select: { id: true, vin: true, status: true },
   });
@@ -57,8 +57,8 @@ export async function unlockReport(
   // Atomic transaction: debit wallet + create ledger entry + create unlock
   const result = await prisma.$transaction(async (tx) => {
     // Get current balance (with row lock via findFirst + forUpdate pattern)
-    const wallet = await tx.wallet.findUnique({
-      where: { userId },
+    const wallet = await tx.wallets.findUnique({
+      where: { user_id: userId },
     });
 
     if (!wallet) {
@@ -75,32 +75,32 @@ export async function unlockReport(
     const balanceAfter = balanceBefore - UNLOCK_COST;
 
     // Debit wallet
-    await tx.wallet.update({
-      where: { userId },
+    await tx.wallets.update({
+      where: { user_id: userId },
       data: {
         balance: balanceAfter,
-        updatedAt: new Date(),
+        updated_at: new Date(),
       },
     });
 
     // Append to ledger (APPEND ONLY — never UPDATE or DELETE)
-    await tx.creditLedger.create({
+    await tx.credit_ledger.create({
       data: {
-        userId,
+        user_id: userId,
         type: 'spend',
-        creditsDelta: -UNLOCK_COST,
+        credits_delta: -UNLOCK_COST,
         balanceBefore,
         balanceAfter,
         source: 'report_unlock',
-        reportId,
+        report_id: reportId,
       },
     });
 
     // Create unlock record
-    await tx.reportUnlock.create({
+    await tx.report_unlock.create({
       data: {
         userId,
-        reportId,
+        report_id: reportId,
         creditsSpent: UNLOCK_COST,
       },
     });
@@ -109,7 +109,7 @@ export async function unlockReport(
       success: true,
       creditsSpent: UNLOCK_COST,
       balanceAfter,
-      reportId,
+      report_id: reportId,
     };
   });
 
@@ -123,9 +123,9 @@ export async function hasUnlocked(
   userId: string,
   reportId: string
 ): Promise<boolean> {
-  const unlock = await prisma.reportUnlock.findUnique({
+  const unlock = await prisma.report_unlock.findUnique({
     where: {
-      userId_reportId: { userId, reportId },
+      userId_report_id: { userId, reportId },
     },
   });
   return !!unlock;

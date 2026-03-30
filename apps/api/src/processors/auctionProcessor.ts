@@ -89,8 +89,8 @@ export async function processAuction(
   // Insert AUCTIONED event
   const inserted = await insertEvent({
     vin,
-    eventType: 'AUCTIONED',
-    eventDate: auction_date,
+    event_type: 'AUCTIONED',
+    event_date: auction_date,
     country: raw.source === 'BEFORWARD' ? 'JP' : 'KE',
     county: raw.port ?? null,
     source: eventSource,
@@ -118,8 +118,8 @@ export async function processAuction(
   if (raw.has_damage && raw.damage_description) {
     await insertEvent({
       vin,
-      eventType: 'DAMAGED',
-      eventDate: auction_date,
+      event_type: 'DAMAGED',
+      event_date: auction_date,
       country: raw.source === 'BEFORWARD' ? 'JP' : 'KE',
       source: eventSource,
       source_ref: raw.lot_number ? `dmg_${raw.lot_number}` : null,

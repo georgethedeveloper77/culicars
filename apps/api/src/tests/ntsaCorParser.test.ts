@@ -77,7 +77,7 @@ describe('ntsaCorParser', () => {
 
     it('extracts fuel type', () => {
       const { fields } = ntsaCorParser.parse(FULL_COR_TEXT);
-      expect(fields.fuelType).toMatch(/DIESEL/i);
+      expect(fields.fuel_type).toMatch(/DIESEL/i);
     });
 
     it('parses registration date to ISO format', () => {

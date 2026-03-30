@@ -8,36 +8,36 @@ import type { PhotosSectionData, PhotoGroup } from '../../types/report.types';
 
 export async function buildPhotosSection(vin: string): Promise<{
   data: PhotosSectionData;
-  recordCount: number;
-  dataStatus: 'found' | 'not_found' | 'not_checked';
+  record_count: number;
+  data_status: 'found' | 'not_found' | 'not_checked';
 }> {
   // Photos come from contributions (evidence_urls) and events with photo metadata
   const [contributions, photoEvents] = await Promise.all([
-    prisma.contribution.findMany({
+    prisma.contributions.findMany({
       where: {
         vin,
         status: 'approved',
         type: 'PHOTO_EVIDENCE',
       },
       select: {
-        evidenceUrls: true,
-        createdAt: true,
+        evidence_urls: true,
+        created_at: true,
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { created_at: 'desc' },
     }),
 
     // Events that may have photos in metadata (listings, auctions)
-    prisma.vehicleEvent.findMany({
+    prisma.vehicle_events.findMany({
       where: {
         vin,
-        eventType: { in: ['LISTED_FOR_SALE', 'AUCTIONED', 'CONTRIBUTION_ADDED'] },
+        event_type: { in: ['LISTED_FOR_SALE', 'AUCTIONED', 'CONTRIBUTION_ADDED'] },
       },
       select: {
-        eventDate: true,
+        event_date: true,
         source: true,
         metadata: true,
       },
-      orderBy: { eventDate: 'desc' },
+      orderBy: { event_date: 'desc' },
     }),
   ]);
 
@@ -46,10 +46,10 @@ export async function buildPhotosSection(vin: string): Promise<{
 
   // From contributions
   for (const contrib of contributions) {
-    const urls = contrib.evidenceUrls as string[] | null;
+    const urls = contrib.evidence_urls as string[] | null;
     if (urls) {
-      const dateKey = contrib.createdAt
-        ? contrib.createdAt.toISOString().substring(0, 7) // YYYY-MM
+      const dateKey = contrib.created_at
+        ? contrib.created_at.toISOString().substring(0, 7) // YYYY-MM
         : 'unknown';
       for (const url of urls) {
         allPhotos.push({ date: dateKey, url, source: 'contribution' });
@@ -63,7 +63,7 @@ export async function buildPhotosSection(vin: string): Promise<{
     const photoUrls = (meta?.photoUrls as string[] | undefined)
     ?? (meta?.photos as string[] | undefined);
     if (Array.isArray(photoUrls)) {
-      const dateKey = event.eventDate.toISOString().substring(0, 7);
+      const dateKey = event.event_date.toISOString().substring(0, 7);
       for (const url of photoUrls) {
         allPhotos.push({
           date: dateKey,
@@ -103,7 +103,7 @@ export async function buildPhotosSection(vin: string): Promise<{
       groups,
       totalPhotos: allPhotos.length,
     },
-    recordCount: allPhotos.length,
-    dataStatus: allPhotos.length > 0 ? 'found' : 'not_found',
+    record_count: allPhotos.length,
+    data_status: allPhotos.length > 0 ? 'found' : 'not_found',
   };
 }

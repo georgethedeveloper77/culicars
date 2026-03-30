@@ -9,7 +9,7 @@ export interface OdometerReading {
 }
 
 export interface OdometerSection {
-  sectionType: 'odometer';
+  section_type: 'odometer';
   locked: boolean;
   anomalyDetected: boolean;
   latestReading: OdometerReading | null;
@@ -75,7 +75,7 @@ export function buildOdometerSection(
   const latestReading = readings.length > 0 ? readings[readings.length - 1] : null;
 
   return {
-    sectionType: 'odometer',
+    section_type: 'odometer',
     locked: !isUnlocked,
     anomalyDetected,
     latestReading: isUnlocked ? latestReading : null,

@@ -8,33 +8,33 @@ import type { TheftSectionData, TheftCheckCard } from '../../types/report.types'
 
 export async function buildTheftSection(vin: string): Promise<{
   data: TheftSectionData;
-  recordCount: number;
-  dataStatus: 'found' | 'not_found' | 'not_checked';
+  record_count: number;
+  data_status: 'found' | 'not_found' | 'not_checked';
 }> {
   const [stolenReports, theftEvents, recoveryEvents] = await Promise.all([
     // Community stolen reports
-    prisma.stolenReport.findMany({
+    prisma.stolen_reports.findMany({
       where: { vin },
       select: {
-        dateStolen: true,
-        countyStolen: true,
-        policeObNumber: true,
+        date_stolen: true,
+        county_stolen: true,
+        police_ob_number: true,
         status: true,
-        isObVerified: true,
+        is_ob_verified: true,
       },
-      orderBy: { dateStolen: 'desc' },
+      orderBy: { date_stolen: 'desc' },
     }),
 
     // Stolen events
-    prisma.vehicleEvent.findMany({
-      where: { vin, eventType: { in: ['STOLEN', 'WANTED'] } },
-      select: { eventDate: true, source: true, metadata: true },
+    prisma.vehicle_events.findMany({
+      where: { vin, event_type: { in: ['STOLEN', 'WANTED'] } },
+      select: { event_date: true, source: true, metadata: true },
     }),
 
     // Recovery events
-    prisma.vehicleEvent.findMany({
-      where: { vin, eventType: 'RECOVERED' },
-      select: { eventDate: true, source: true },
+    prisma.vehicle_events.findMany({
+      where: { vin, event_type: 'RECOVERED' },
+      select: { event_date: true, source: true },
     }),
   ]);
 
@@ -70,11 +70,11 @@ export async function buildTheftSection(vin: string): Promise<{
   ];
 
   const communityReports = stolenReports.map((r) => ({
-    dateStolen: r.dateStolen.toISOString().split('T')[0],
-    county: r.countyStolen,
-    obNumber: r.policeObNumber,
+    date_stolen: r.date_stolen.toISOString().split('T')[0],
+    county: r.county_stolen,
+    obNumber: r.police_ob_number,
     status: r.status ?? 'pending',
-    isObVerified: r.isObVerified ?? false,
+    is_ob_verified: r.is_ob_verified ?? false,
   }));
 
   const recordCount = stolenReports.length + theftEvents.length;
@@ -88,6 +88,6 @@ export async function buildTheftSection(vin: string): Promise<{
       communityReports,
     },
     recordCount,
-    dataStatus: recordCount > 0 ? 'found' : 'not_found',
+    data_status: recordCount > 0 ? 'found' : 'not_found',
   };
 }

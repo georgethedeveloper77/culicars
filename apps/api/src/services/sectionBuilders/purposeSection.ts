@@ -7,36 +7,36 @@ import prisma from '../../lib/prisma';
 import type { PurposeSectionData, PurposeCheckCard } from '../../types/report.types';
 
 const PURPOSE_CHECKS = [
-  { type: 'PSV',            label: 'PSV / Matatu',          eventType: 'PSV_LICENSED' },
-  { type: 'Taxi',           label: 'Taxi / Uber / Bolt',    eventType: null },
-  { type: 'Rental',         label: 'Rental / Hire Car',     eventType: null },
-  { type: 'Transport',      label: 'Transport / Lorry',     eventType: null },
-  { type: 'Police',         label: 'Police / Government',   eventType: null },
-  { type: 'DrivingSchool',  label: 'Driving School',        eventType: null },
-  { type: 'Ambulance',      label: 'Ambulance / Medical',   eventType: null },
+  { type: 'PSV',            label: 'PSV / Matatu',          event_type: 'PSV_LICENSED' },
+  { type: 'Taxi',           label: 'Taxi / Uber / Bolt',    event_type: null },
+  { type: 'Rental',         label: 'Rental / Hire Car',     event_type: null },
+  { type: 'Transport',      label: 'Transport / Lorry',     event_type: null },
+  { type: 'Police',         label: 'Police / Government',   event_type: null },
+  { type: 'DrivingSchool',  label: 'Driving School',        event_type: null },
+  { type: 'Ambulance',      label: 'Ambulance / Medical',   event_type: null },
 ] as const;
 
 export async function buildPurposeSection(vin: string): Promise<{
   data: PurposeSectionData;
-  recordCount: number;
-  dataStatus: 'found' | 'not_found' | 'not_checked';
+  record_count: number;
+  data_status: 'found' | 'not_found' | 'not_checked';
 }> {
   const [vehicle, psvEvents, allEvents] = await Promise.all([
-    prisma.vehicle.findUnique({
+    prisma.vehicles.findUnique({
       where: { vin },
-      select: { psvLicensed: true },
+      select: { psv_licensed: true },
     }),
 
     // PSV license events
-    prisma.vehicleEvent.findMany({
-      where: { vin, eventType: 'PSV_LICENSED' },
-      select: { eventDate: true, source: true, metadata: true },
+    prisma.vehicle_events.findMany({
+      where: { vin, event_type: 'PSV_LICENSED' },
+      select: { event_date: true, source: true, metadata: true },
     }),
 
     // All events — check metadata for commercial use indicators
-    prisma.vehicleEvent.findMany({
+    prisma.vehicle_events.findMany({
       where: { vin },
-      select: { eventType: true, metadata: true, source: true },
+      select: { event_type: true, metadata: true, source: true },
     }),
   ]);
 
@@ -46,7 +46,7 @@ export async function buildPurposeSection(vin: string): Promise<{
     let details: string | undefined;
 
     if (check.type === 'PSV') {
-      found = (vehicle?.psvLicensed ?? false) || psvEvents.length > 0;
+      found = (vehicle?.psv_licensed ?? false) || psvEvents.length > 0;
       if (psvEvents.length > 0) {
         source = psvEvents[0].source ?? undefined;
         details = `PSV licensed — ${psvEvents.length} record(s) found`;
@@ -80,6 +80,6 @@ export async function buildPurposeSection(vin: string): Promise<{
   return {
     data: { checks, hasCommercialHistory },
     recordCount,
-    dataStatus: recordCount > 0 ? 'found' : 'not_found',
+    data_status: recordCount > 0 ? 'found' : 'not_found',
   };
 }

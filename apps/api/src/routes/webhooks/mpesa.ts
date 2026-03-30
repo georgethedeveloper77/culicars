@@ -33,7 +33,7 @@ router.post('/', async (req: Request, res: Response) => {
     }
 
     console.log(
-      `[webhook/mpesa] Confirmed ${result.credits} credits for user ${result.userId} ` +
+      `[webhook/mpesa] Confirmed ${result.credits} credits for user ${result.user_id} ` +
       `(receipt: ${parsed.mpesaReceiptNumber})`
     );
   } catch (err) {

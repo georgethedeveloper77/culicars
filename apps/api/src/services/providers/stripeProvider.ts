@@ -60,7 +60,7 @@ export const stripeProvider: PaymentProviderAdapter = {
     };
 
     return {
-      providerRef: intent.id,
+      provider_ref: intent.id,
       providerData: {
         intentId: intent.id,
         clientSecret: intent.client_secret,
@@ -69,7 +69,7 @@ export const stripeProvider: PaymentProviderAdapter = {
     };
   },
 
-  async verify(providerRef: string) {
+  async verify(provider_ref: string) {
     const intent = (await stripeRequest(
       `/payment_intents/${providerRef}`,
       'GET'
@@ -85,6 +85,6 @@ export const stripeProvider: PaymentProviderAdapter = {
       status = 'failed';
     }
 
-    return { status, providerMeta: intent as unknown as Record<string, unknown> };
+    return { status, provider_meta: intent as unknown as Record<string, unknown> };
   },
 };

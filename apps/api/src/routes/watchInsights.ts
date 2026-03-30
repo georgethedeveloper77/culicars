@@ -39,7 +39,7 @@ router.get('/', async (_req: Request, res: Response) => {
       (prisma as any).watchAlert.count({
         where: {
           status: 'approved',
-          createdAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
+          created_at: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
         },
       }),
     ]);
@@ -68,15 +68,15 @@ router.get('/vehicle', async (req: Request, res: Response) => {
     const [alerts, count] = await Promise.all([
       (prisma as any).watchAlert.findMany({
         where,
-        select: { type: true, description: true, createdAt: true },
-        orderBy: { createdAt: 'desc' },
+        select: { type: true, description: true, created_at: true },
+        orderBy: { created_at: 'desc' },
         take: 5,
       }),
       (prisma as any).watchAlert.count({ where }),
     ]);
 
     const hasAlerts = count > 0;
-    const types: string[] = [...new Set(alerts.map((a: any) => a.type))];
+    const types: string[] = [...new Set<string>(alerts.map((a: any) => a.type))];
 
     res.json({
       hasAlerts,

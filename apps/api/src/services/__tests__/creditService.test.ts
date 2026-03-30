@@ -87,7 +87,7 @@ describe('confirmPayment', () => {
       amount: 15,
     });
     const result = await confirmPayment('ref-already-confirmed');
-    expect(result).toEqual({ userId: 'user-1', credits: 15 });
+    expect(result).toEqual({ user_id: 'user-1', credits: 15 });
     expect(mockTx.update).not.toHaveBeenCalled();
   });
 
@@ -99,7 +99,7 @@ describe('confirmPayment', () => {
     });
     mockTx.update.mockResolvedValue({});
     const result = await confirmPayment('ref-pending');
-    expect(result).toEqual({ userId: 'user-2', credits: 5 });
+    expect(result).toEqual({ user_id: 'user-2', credits: 5 });
     expect(mockTx.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { provider_ref: 'ref-pending' },

@@ -10,10 +10,10 @@ export interface SearchRequest {
 export interface SearchCandidate {
   vin: string;
   plate: string | null;
-  plateDisplay: string | null;
+  plate_display: string | null;
   confidence: number;
   vehicle: VehicleSummary | null;
-  reportId: string | null;
+  report_id: string | null;
   reportStatus: string | null;
 }
 
@@ -22,16 +22,16 @@ export interface VehicleSummary {
   make: string | null;
   model: string | null;
   year: number | null;
-  engineCc: number | null;
-  fuelType: string | null;
+  engine_cc: number | null;
+  fuel_type: string | null;
   transmission: string | null;
-  bodyType: string | null;
+  body_type: string | null;
   color: string | null;
-  countryOfOrigin: string | null;
-  importCountry: string | null;
-  japanAuctionGrade: string | null;
-  inspectionStatus: string | null;
-  ntsaCorVerified: boolean;
+  country_of_origin: string | null;
+  import_country: string | null;
+  japan_auction_grade: string | null;
+  inspection_status: string | null;
+  ntsa_cor_verified: boolean;
 }
 
 export interface StolenAlert {
@@ -43,14 +43,14 @@ export interface StolenAlert {
 export interface StolenAlertReport {
   id: string;
   plate: string;
-  plateDisplay: string | null;
-  dateStolen: string;
-  countyStolen: string;
-  policeObNumber: string | null;
-  isObVerified: boolean;
-  carColor: string | null;
+  plate_display: string | null;
+  date_stolen: string;
+  county_stolen: string;
+  police_ob_number: string | null;
+  is_ob_verified: boolean;
+  car_color: string | null;
   status: string;
-  createdAt: string;
+  created_at: string;
 }
 
 export interface SearchResponse {

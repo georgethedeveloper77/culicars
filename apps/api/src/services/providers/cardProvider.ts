@@ -20,7 +20,7 @@ async function getGatewayConfig(): Promise<{
   merchantId?: string;
   ipnId?: string;
 } | null> {
-  const provider = await prisma.paymentProvider.findUnique({
+  const provider = await prisma.payment_providers.findUnique({
     where: { slug: 'card' },
     select: { config: true },
   });
@@ -110,7 +110,7 @@ async function initiatePesapal(
   };
 
   return {
-    providerRef: order.order_tracking_id,
+    provider_ref: order.order_tracking_id,
     providerData: {
       redirectUrl: order.redirect_url,
       gateway: 'pesapal',
@@ -162,7 +162,7 @@ async function initiateFlutterwave(
   };
 
   return {
-    providerRef: paymentId,
+    provider_ref: paymentId,
     providerData: {
       redirectUrl: data.data.link,
       gateway: 'flutterwave',

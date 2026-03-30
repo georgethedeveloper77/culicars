@@ -43,12 +43,12 @@ router.post(
       const { vin, plate } = result.data;
       const userId = req.user!.id;
 
-      const consent = await prisma.corConsent.create({
+      const consent = await prisma.cor_consents.create({
         data: {
-          userId,
+          user_id: userId,
           vin,
           plate,
-          pdfProcessed: false,
+          pdf_processed: false,
         },
       });
 
@@ -132,10 +132,10 @@ router.post(
       }
 
       // ── 4. Record the OCR scan ────────────────────────────────────────────
-      const ocrScan = await prisma.ocrScan.create({
+      const ocrScan = await prisma.ocr_scans.create({
         data: {
-          userId,
-          imageUrl: pdfUrl ?? 'base64-upload',
+          user_id: userId,
+          image_url: pdfUrl ?? 'base64-upload',
           documentType: 'ntsa_cor',
           rawOcrResult: { text: rawText } as any,
           extractedPlate: extractedPlate ?? null,
@@ -148,9 +148,9 @@ router.post(
 
       // ── 5. Mark consent as processed ─────────────────────────────────────
       if (consentId) {
-        await prisma.corConsent.updateMany({
-          where: { id: consentId, userId },
-          data: { pdfProcessed: true, processedAt: new Date() },
+        await prisma.cor_consents.updateMany({
+          where: { id: consentId, user_id: userId },
+          data: { pdf_processed: true, processed_at: new Date() },
         }).catch(() => {}); // non-blocking
       }
 
@@ -210,7 +210,7 @@ router.get(
         source: record.source,
         normalisedData: record.normalised_json,
         confidence: record.confidence,
-        createdAt: record.created_at,
+        created_at: record.created_at,
       });
     } catch (err) {
       next(err);

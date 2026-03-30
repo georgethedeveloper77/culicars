@@ -19,12 +19,12 @@ export async function isDuplicateEvent(candidate: EventCandidate): Promise<boole
   const windowEnd = new Date(event_date);
   windowEnd.setDate(windowEnd.getDate() + DEDUP_WINDOW_DAYS);
 
-  const existing = await prisma.vehicleEvent.findFirst({
+  const existing = await prisma.vehicle_events.findFirst({
     where: {
       vin,
-      eventType: event_type as any,
-      eventDate: { gte: windowStart, lte: windowEnd },
-      ...(source_ref ? { sourceRef: source_ref } : {}),
+      event_type: event_type as any,
+      event_date: { gte: windowStart, lte: windowEnd },
+      ...(source_ref ? { source_ref: source_ref } : {}),
     },
   });
 

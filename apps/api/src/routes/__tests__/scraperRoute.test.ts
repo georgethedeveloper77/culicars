@@ -23,8 +23,8 @@ app.use('/scraper', scraperRouter);
 const mockMerged: MergedVehicleRecord = {
   vin: 'TESTVIN123', plate: 'KCA 123A',
   make: 'Toyota', model: 'Fielder', year: 2019,
-  engineCapacity: '1500cc', fuelType: 'Petrol', color: 'White',
-  bodyType: 'Station Wagon', transmissionType: 'Automatic',
+  engineCapacity: '1500cc', fuel_type: 'Petrol', color: 'White',
+  body_type: 'Station Wagon', transmissionType: 'Automatic',
   registrationDate: '2019-06-01', importDate: null,
   mileage: 45000, mileageUnit: 'km', auctionGrade: null,
   resultState: 'verified', confidence: 1.0,
@@ -68,7 +68,7 @@ describe('POST /scraper/process', () => {
   it('returns a shell (not empty) for pending_enrichment', async () => {
     const emptyMerged: MergedVehicleRecord = {
       vin: null, plate: 'KCA 999Z', make: null, model: null, year: null,
-      engineCapacity: null, fuelType: null, color: null, bodyType: null,
+      engineCapacity: null, fuel_type: null, color: null, body_type: null,
       transmissionType: null, registrationDate: null, importDate: null,
       mileage: null, mileageUnit: null, auctionGrade: null,
       resultState: 'pending_enrichment', confidence: 0,

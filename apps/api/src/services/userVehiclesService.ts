@@ -111,14 +111,14 @@ export async function updatePreferredLocation(
   input: UpdatePreferredLocationInput,
 ) {
   return (prisma as any).profile.upsert({
-    where: { userId },
+    where: { user_id: userId },
     update: {
       preferred_lat: input.lat,
       preferred_lng: input.lng,
       preferred_location_name: input.locationName ?? null,
     },
     create: {
-      userId,
+      user_id: userId,
       preferred_lat: input.lat,
       preferred_lng: input.lng,
       preferred_location_name: input.locationName ?? null,
@@ -128,7 +128,7 @@ export async function updatePreferredLocation(
 
 export async function getPreferredLocation(userId: string) {
   const profile = await (prisma as any).profile.findUnique({
-    where: { userId },
+    where: { user_id: userId },
     select: {
       preferred_lat: true,
       preferred_lng: true,

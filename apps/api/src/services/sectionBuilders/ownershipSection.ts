@@ -8,24 +8,24 @@ import type { OwnershipSectionData } from '../../types/report.types';
 
 export async function buildOwnershipSection(vin: string): Promise<{
   data: OwnershipSectionData;
-  recordCount: number;
-  dataStatus: 'found' | 'not_found' | 'not_checked';
+  record_count: number;
+  data_status: 'found' | 'not_found' | 'not_checked';
 }> {
-  const ownershipEvents = await prisma.vehicleEvent.findMany({
+  const ownershipEvents = await prisma.vehicle_events.findMany({
     where: {
       vin,
-      eventType: 'OWNERSHIP_CHANGE',
+      event_type: 'OWNERSHIP_CHANGE',
     },
     select: {
-      eventDate: true,
+      event_date: true,
       county: true,
       source: true,
     },
-    orderBy: { eventDate: 'asc' },
+    orderBy: { event_date: 'asc' },
   });
 
   const transfers = ownershipEvents.map((e) => ({
-    date: e.eventDate.toISOString().split('T')[0],
+    date: e.event_date.toISOString().split('T')[0],
     county: e.county ?? undefined,
     source: e.source ?? 'unknown',
   }));
@@ -39,7 +39,7 @@ export async function buildOwnershipSection(vin: string): Promise<{
       transfers,
       highTurnover,
     },
-    recordCount: transferCount,
-    dataStatus: transferCount > 0 ? 'found' : 'not_found',
+    record_count: transferCount,
+    data_status: transferCount > 0 ? 'found' : 'not_found',
   };
 }

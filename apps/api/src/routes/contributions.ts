@@ -62,7 +62,7 @@ router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
     const reqWithUser = req as Request & { user?: { id: string; role: string } };
     const userId = reqWithUser.user?.id;
     const isAdmin = reqWithUser.user?.role === 'admin';
-    const isOwner = contribution.userId === userId;
+    const isOwner = contribution.user_id === userId;
 
     if (!isAdmin && !isOwner && contribution.status !== 'approved') {
       return res.status(403).json({ error: 'Forbidden' });

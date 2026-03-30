@@ -8,28 +8,28 @@ import type { ServiceSectionData, ServiceEntry } from '../../types/report.types'
 
 export async function buildServiceSection(vin: string): Promise<{
   data: ServiceSectionData;
-  recordCount: number;
-  dataStatus: 'found' | 'not_found' | 'not_checked';
+  record_count: number;
+  data_status: 'found' | 'not_found' | 'not_checked';
 }> {
-  const serviceEvents = await prisma.vehicleEvent.findMany({
+  const serviceEvents = await prisma.vehicle_events.findMany({
     where: {
       vin,
-      eventType: 'SERVICED',
+      event_type: 'SERVICED',
     },
     select: {
-      eventDate: true,
+      event_date: true,
       county: true,
       source: true,
       metadata: true,
     },
-    orderBy: { eventDate: 'desc' },
+    orderBy: { event_date: 'desc' },
   });
 
   const entries: ServiceEntry[] = serviceEvents.map((event) => {
     const meta = event.metadata as Record<string, unknown> | null;
 
     return {
-      date: event.eventDate.toISOString().split('T')[0],
+      date: event.event_date.toISOString().split('T')[0],
       garageName: (meta?.garageName as string) || 'Unknown garage',
       county: event.county ?? undefined,
       mileage: (meta?.mileage as number) || undefined,
@@ -51,7 +51,7 @@ export async function buildServiceSection(vin: string): Promise<{
       lastServiceDate: entries.length > 0 ? entries[0].date : null,
       mileageVerification,
     },
-    recordCount: entries.length,
-    dataStatus: entries.length > 0 ? 'found' : 'not_found',
+    record_count: entries.length,
+    data_status: entries.length > 0 ? 'found' : 'not_found',
   };
 }

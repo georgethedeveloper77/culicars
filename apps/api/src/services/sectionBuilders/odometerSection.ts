@@ -13,25 +13,25 @@ import type { OdometerSectionData } from '../../types/report.types';
 
 export async function buildOdometerSection(vin: string): Promise<{
   data: OdometerSectionData;
-  recordCount: number;
-  dataStatus: 'found' | 'not_found' | 'not_checked';
+  record_count: number;
+  data_status: 'found' | 'not_found' | 'not_checked';
 }> {
   const [vehicle, mileageEvents] = await Promise.all([
-    prisma.vehicle.findUnique({
+    prisma.vehicles.findUnique({
       where: { vin },
       select: {
         year: true,
         make: true,
         model: true,
-        japanAuctionMileage: true,
+        japan_auction_mileage: true,
       },
     }),
 
     // Events that may carry mileage in metadata
-    prisma.vehicleEvent.findMany({
+    prisma.vehicle_events.findMany({
       where: {
         vin,
-        eventType: {
+        event_type: {
           in: [
             'SERVICED',
             'INSPECTED',
@@ -43,11 +43,11 @@ export async function buildOdometerSection(vin: string): Promise<{
         },
       },
       select: {
-        eventDate: true,
+        event_date: true,
         source: true,
         metadata: true,
       },
-      orderBy: { eventDate: 'asc' },
+      orderBy: { event_date: 'asc' },
     }),
   ]);
 
@@ -55,12 +55,12 @@ export async function buildOdometerSection(vin: string): Promise<{
   const entries: MileageEntry[] = [];
 
   // Japan auction mileage (pre-export)
-  if (vehicle?.japanAuctionMileage) {
+  if (vehicle?.japan_auction_mileage) {
     // Estimate export date as 1 year before current year if year known
     const exportYear = vehicle.year ? vehicle.year + 1 : new Date().getFullYear() - 5;
     entries.push({
       date: `${exportYear}-01-01`,
-      mileage: vehicle.japanAuctionMileage,
+      mileage: vehicle.japan_auction_mileage,
       source: 'Japan Auction',
     });
   }
@@ -71,7 +71,7 @@ export async function buildOdometerSection(vin: string): Promise<{
     const mileage = meta?.mileage as number | undefined;
     if (mileage && mileage > 0) {
       entries.push({
-        date: event.eventDate.toISOString().split('T')[0],
+        date: event.event_date.toISOString().split('T')[0],
         mileage,
         source: event.source ?? 'unknown',
       });
@@ -105,7 +105,7 @@ export async function buildOdometerSection(vin: string): Promise<{
 
   return {
     data,
-    recordCount: entries.length,
-    dataStatus: entries.length > 0 ? 'found' : 'not_found',
+    record_count: entries.length,
+    data_status: entries.length > 0 ? 'found' : 'not_found',
   };
 }

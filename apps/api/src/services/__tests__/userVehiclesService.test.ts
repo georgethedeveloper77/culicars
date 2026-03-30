@@ -99,12 +99,12 @@ describe('removeUserVehicle', () => {
 
 describe('updatePreferredLocation', () => {
   it('upserts the profile with coordinates', async () => {
-    db.profile.upsert.mockResolvedValue({ userId: 'u1', preferred_lat: -1.3, preferred_lng: 36.8 });
+    db.profile.upsert.mockResolvedValue({ user_id: 'u1', preferred_lat: -1.3, preferred_lng: 36.8 });
 
     const result = await updatePreferredLocation('u1', { lat: -1.3, lng: 36.8, locationName: 'Nairobi' });
     expect(db.profile.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { userId: 'u1' },
+        where: { user_id: 'u1' },
         update: expect.objectContaining({ preferred_lat: -1.3 }),
       }),
     );
