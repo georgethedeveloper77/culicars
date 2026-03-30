@@ -1,5 +1,5 @@
 // apps/api/src/services/fuzzyMatcher.ts
-import prisma from '../lib/prisma';
+import { prisma } from '../lib/prisma';
 
 function levenshtein(a: string, b: string): number {
   const m = a.length;

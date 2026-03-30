@@ -1,6 +1,6 @@
 // apps/api/src/services/stolenReportService.ts
 
-import prisma from '../lib/prisma';
+import { prisma } from '../lib/prisma';
 import type {
   StolenReportSubmission,
   StolenReportReview,

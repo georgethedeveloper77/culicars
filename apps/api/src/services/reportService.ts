@@ -3,7 +3,7 @@
 // Get by VIN (auto-generate if needed), get by ID, preview
 // ============================================================
 
-import prisma from '../lib/prisma';
+import { prisma } from '../lib/prisma';
 import { generateReport } from './reportGenerator';
 import { FREE_SECTIONS, type SectionType } from '../types/report.types';
 import type { FullReport, ReportPreview, ReportSection } from '../types/report.types';

@@ -6,7 +6,7 @@
 // All mutations happen inside Prisma interactive transactions.
 // ============================================================
 
-import prisma from '../lib/prisma';
+import { prisma } from '../lib/prisma';
 import type { PrismaClient, Prisma } from '@prisma/client';
 
 type TxClient = Omit<

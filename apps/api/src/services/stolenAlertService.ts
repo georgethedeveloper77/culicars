@@ -1,5 +1,5 @@
 // apps/api/src/services/stolenAlertService.ts
-import prisma from '../lib/prisma';
+import { prisma } from '../lib/prisma';
 import type { StolenAlertResult, StolenReportRecord } from '../types/stolen_report.types';
 
 export async function checkPlate(plate: string): Promise<StolenAlertResult> {

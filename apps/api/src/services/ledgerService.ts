@@ -5,7 +5,7 @@
 // Every credit mutation gets a ledger entry with balance snapshot.
 // ============================================================
 
-import prisma from '../lib/prisma';
+import { prisma } from '../lib/prisma';
 import type { PrismaClient } from '@prisma/client';
 import type { LedgerType } from '../types/payment.types';
 

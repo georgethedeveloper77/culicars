@@ -3,7 +3,7 @@
 // Origin country + Japan auction data + KRA clearance
 // ============================================================
 
-import prisma from '../../lib/prisma';
+import { prisma } from '../../lib/prisma';
 import type { ImportSectionData } from '../../types/report.types';
 
 export async function buildImportSection(vin: string): Promise<{

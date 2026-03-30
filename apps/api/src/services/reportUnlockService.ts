@@ -3,7 +3,7 @@
 // Atomic wallet debit + unlock record creation
 // ============================================================
 
-import prisma from '../lib/prisma';
+import { prisma } from '../lib/prisma';
 import type { UnlockResult } from '../types/report.types';
 
 // Cost to unlock a full report (in credits)

@@ -3,7 +3,7 @@
 // Mileage history, rollback detection, chart data
 // ============================================================
 
-import prisma from '../../lib/prisma';
+import { prisma } from '../../lib/prisma';
 import {
   analyzeMileage,
   estimateAverageForSimilar,

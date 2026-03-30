@@ -1,5 +1,5 @@
 // apps/api/src/services/plateResolver.ts
-import prisma from '../lib/prisma';
+import { prisma } from '../lib/prisma';
 import type { SearchCandidate, VehicleSummary } from '../types/search.types';
 
 export async function resolveByPlate(

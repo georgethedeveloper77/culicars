@@ -1,6 +1,6 @@
 // apps/api/src/routes/health.ts
 import { Router } from 'express';
-import prisma from '../lib/prisma';
+import { prisma } from '../lib/prisma';
 
 const router: import("express").Router = Router();
 

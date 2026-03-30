@@ -3,7 +3,7 @@
 // Transfer count + ownership history
 // ============================================================
 
-import prisma from '../../lib/prisma';
+import { prisma } from '../../lib/prisma';
 import type { OwnershipSectionData } from '../../types/report.types';
 
 export async function buildOwnershipSection(vin: string): Promise<{

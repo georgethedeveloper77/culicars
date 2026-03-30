@@ -1,5 +1,5 @@
 // apps/api/src/services/scraperJobService.ts
-import prisma from '../lib/prisma';
+import { prisma } from '../lib/prisma';
 
 export type ScraperSource =
   | 'JIJI'

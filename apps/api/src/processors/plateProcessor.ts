@@ -1,5 +1,5 @@
 // apps/api/src/processors/plateProcessor.ts
-import prisma from '../lib/prisma';
+import { prisma } from '../lib/prisma';
 
 export interface PlateVinData {
   plate: string;        // Normalized: 'KCA123A'

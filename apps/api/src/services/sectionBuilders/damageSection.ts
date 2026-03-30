@@ -3,7 +3,7 @@
 // 3D car diagram location + severity + KES cost range
 // ============================================================
 
-import prisma from '../../lib/prisma';
+import { prisma } from '../../lib/prisma';
 import type { DamageSectionData, DamageIncident } from '../../types/report.types';
 
 // Location codes for 3D car diagram positioning

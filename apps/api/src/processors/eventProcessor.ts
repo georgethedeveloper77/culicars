@@ -1,5 +1,5 @@
 // apps/api/src/processors/eventProcessor.ts
-import prisma from '../lib/prisma';
+import { prisma } from '../lib/prisma';
 import { isDuplicateEvent } from './duplicateResolver';
 
 export interface VehicleEventData {

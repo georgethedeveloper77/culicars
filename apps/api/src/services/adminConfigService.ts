@@ -1,6 +1,6 @@
 // apps/api/src/services/adminConfigService.ts
 
-import prisma from '../lib/prisma';
+import { prisma } from '../lib/prisma';
 import type {
   AdminConfigKey,
   AdminConfigMap,

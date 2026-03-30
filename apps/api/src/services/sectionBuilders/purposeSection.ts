@@ -3,7 +3,7 @@
 // Was this vehicle used commercially? PSV/Taxi/Rental/etc.
 // ============================================================
 
-import prisma from '../../lib/prisma';
+import { prisma } from '../../lib/prisma';
 import type { PurposeSectionData, PurposeCheckCard } from '../../types/report.types';
 
 const PURPOSE_CHECKS = [

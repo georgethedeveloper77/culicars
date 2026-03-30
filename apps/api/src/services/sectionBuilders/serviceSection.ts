@@ -3,7 +3,7 @@
 // Service records from Auto Express, Peach Cars, contributions
 // ============================================================
 
-import prisma from '../../lib/prisma';
+import { prisma } from '../../lib/prisma';
 import type { ServiceSectionData, ServiceEntry } from '../../types/report.types';
 
 export async function buildServiceSection(vin: string): Promise<{

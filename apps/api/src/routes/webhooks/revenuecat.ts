@@ -12,7 +12,7 @@ import { env } from '../../config/env';
 import { resolveProductToPack } from '../../services/providers/revenuecatProvider';
 import { confirmPayment, getPaymentByRef } from '../../services/paymentProviderService';
 import { appendTransaction as grantCredits } from '../../services/creditService';
-import prisma from '../../lib/prisma';
+import { prisma } from '../../lib/prisma';
 import type { RevenuecatWebhookBody } from '../../types/payment.types';
 
 const router: import("express").Router = Router();

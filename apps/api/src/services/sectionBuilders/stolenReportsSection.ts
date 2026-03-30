@@ -3,7 +3,7 @@
 // Community-submitted stolen vehicle reports
 // ============================================================
 
-import prisma from '../../lib/prisma';
+import { prisma } from '../../lib/prisma';
 import type { StolenReportsSectionData } from '../../types/report.types';
 
 export async function buildStolenReportsSection(vin: string): Promise<{

@@ -1,5 +1,5 @@
 // apps/api/src/processors/vehicleProcessor.ts
-import prisma from '../lib/prisma';
+import { prisma } from '../lib/prisma';
 
 export interface VehicleData {
   vin: string;

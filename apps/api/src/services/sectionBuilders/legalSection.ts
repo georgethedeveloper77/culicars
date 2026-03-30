@@ -3,7 +3,7 @@
 // Financial restrictions + legal checks
 // ============================================================
 
-import prisma from '../../lib/prisma';
+import { prisma } from '../../lib/prisma';
 import type { LegalSectionData, LegalCheckCard } from '../../types/report.types';
 
 export async function buildLegalSection(vin: string): Promise<{

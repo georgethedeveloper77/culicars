@@ -3,7 +3,7 @@
 // VIN option codes + Japan auction grade + Kenya additions
 // ============================================================
 
-import prisma from '../../lib/prisma';
+import { prisma } from '../../lib/prisma';
 import type { SpecsEquipmentSectionData, VinOptionCode } from '../../types/report.types';
 
 /**

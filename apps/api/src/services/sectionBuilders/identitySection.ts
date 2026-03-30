@@ -3,7 +3,7 @@
 // VIN decode + basic specs + associated plates
 // ============================================================
 
-import prisma from '../../lib/prisma';
+import { prisma } from '../../lib/prisma';
 import type { IdentitySectionData } from '../../types/report.types';
 
 export async function buildIdentitySection(vin: string): Promise<{

@@ -1,5 +1,5 @@
 // apps/api/src/services/scrapers/baseScraper.ts
-import prisma from '../../lib/prisma';
+import { prisma } from '../../lib/prisma';
 
 export interface RawScrapedItem {
   source: string;

@@ -3,7 +3,7 @@
 // Police databases + community stolen reports
 // ============================================================
 
-import prisma from '../../lib/prisma';
+import { prisma } from '../../lib/prisma';
 import type { TheftSectionData, TheftCheckCard } from '../../types/report.types';
 
 export async function buildTheftSection(vin: string): Promise<{

@@ -3,7 +3,7 @@
 // Photos grouped by date from contributions, scrapers, auctions
 // ============================================================
 
-import prisma from '../../lib/prisma';
+import { prisma } from '../../lib/prisma';
 import type { PhotosSectionData, PhotoGroup } from '../../types/report.types';
 
 export async function buildPhotosSection(vin: string): Promise<{

@@ -7,7 +7,7 @@
 // ============================================================
 
 import { env } from '../../config/env';
-import prisma from '../../lib/prisma';
+import { prisma } from '../../lib/prisma';
 import type { PaymentProviderAdapter, PaymentStatus } from '../../types/payment.types';
 
 /**

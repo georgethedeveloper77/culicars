@@ -1,5 +1,5 @@
 // apps/api/src/processors/duplicateResolver.ts
-import prisma from '../lib/prisma';
+import { prisma } from '../lib/prisma';
 
 export interface EventCandidate {
   vin: string;

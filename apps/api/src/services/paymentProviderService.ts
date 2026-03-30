@@ -6,7 +6,7 @@
 //               webhook → verify → grant credits
 // ============================================================
 
-import prisma from '../lib/prisma';
+import { prisma } from '../lib/prisma';
 import { getPackById, getPackPrice, type CreditPack } from '../config/creditPacks';
 import { appendTransaction as grantCredits } from './creditService';
 import type {

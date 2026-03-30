@@ -3,7 +3,7 @@
 // Chronological list of every known event in the vehicle's life
 // ============================================================
 
-import prisma from '../../lib/prisma';
+import { prisma } from '../../lib/prisma';
 import type { TimelineSectionData, TimelineEvent } from '../../types/report.types';
 
 // Human-readable event type labels

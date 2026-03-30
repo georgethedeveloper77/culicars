@@ -3,7 +3,7 @@
 // Applies approved contributions to the live vehicle record.
 // Called by contributionService.moderate() when status → 'approved'.
 
-import prisma from '../lib/prisma';
+import { prisma } from '../lib/prisma';
 import type { ContribType } from '../types/contribution.types.js';
 
 interface ContributionRow {
