@@ -1,19 +1,17 @@
 // apps/api/src/middleware/requireRole.ts
+// Accepts both legacy single-string and new array form:
+//   requireRole('admin')
+//   requireRole(['admin', 'employee'])
+
 import { Request, Response, NextFunction } from 'express';
 
-type Role = 'guest' | 'user' | 'admin' | 'dealer' | 'employee';
-
-export function requireRole(...roles: Role[]) {
+export function requireRole(roles: string | string[]) {
+  const allowed = Array.isArray(roles) ? roles : [roles];
   return (req: Request, res: Response, next: NextFunction) => {
-    if (!req.user) {
-      return res.status(401).json({ error: 'UNAUTHORIZED', message: 'Authentication required' });
+    const userRole = (req as any).user?.role;
+    if (!userRole || !allowed.includes(userRole)) {
+      return res.status(403).json({ error: 'Forbidden' });
     }
-    if (!roles.includes(req.user.role as Role)) {
-      return res.status(403).json({
-        error: 'FORBIDDEN',
-        message: `Requires role: ${roles.join(' or ')}`,
-      });
-    }
-    next();
+    return next();
   };
 }

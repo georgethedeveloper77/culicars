@@ -11,7 +11,7 @@ import {
   removeDeviceToken,
 } from '../services/notificationService';
 
-const router = Router();
+const router: ReturnType<typeof Router> = Router();
 
 // GET /notifications — in-app inbox
 router.get('/', auth, async (req: Request, res: Response) => {

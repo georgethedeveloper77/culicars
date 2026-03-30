@@ -1,107 +1,117 @@
 // apps/api/src/routes/contributions.ts
 
-import { Router, Request, Response, NextFunction } from 'express';
-import { validateContributionSubmission } from '../services/contributionValidator';
-import {
-  submitContribution,
-  getContributionsByVin,
-  moderateContribution,
-  getContributionById,
-} from '../services/contributionService';
+import { Router, Request, Response } from 'express';
+import { auth } from '../middleware/auth';
 import { requireRole } from '../middleware/requireRole';
+import {
+  createContribution,
+  moderateContribution,
+  getPendingContributions,
+  getApprovedContributions,
+  getAllContributionsForVehicle,
+  ContributionType,
+  ContributionStatus,
+} from '../services/contributionService';
 
-const router: import("express").Router = Router();
+const router: ReturnType<typeof Router> = Router();
 
-// ---------------------------------------------------------------------------
-// POST /contributions
-// Submit a new contribution — no account required (optionalAuth applied in app.ts)
-// ---------------------------------------------------------------------------
-router.post('/', async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const validation = validateContributionSubmission(req.body);
-    if (!validation.valid) {
-      return res.status(400).json({ error: 'Validation failed', details: validation.errors });
-    }
+const VALID_TYPES: ContributionType[] = ['odometer', 'service_record', 'damage', 'listing_photo'];
 
-    const userId = (req as Request & { user?: { id: string } }).user?.id ?? null;
-    const contribution = await submitContribution(req.body, userId);
+/**
+ * POST /contributions
+ * Submit a structured contribution. Requires auth.
+ */
+router.post('/', auth, async (req: Request, res: Response) => {
+  const { plate, vin, type, data, evidenceUrls } = req.body;
+  const userId = (req as any).user?.id;
 
-    return res.status(201).json({ contribution });
-  } catch (err) {
-    next(err);
+  if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+  if (!plate) return res.status(400).json({ error: 'plate is required' });
+  if (!type || !VALID_TYPES.includes(type)) {
+    return res.status(400).json({ error: `type must be one of: ${VALID_TYPES.join(', ')}` });
   }
+  if (!data || typeof data !== 'object') {
+    return res.status(400).json({ error: 'data object is required' });
+  }
+
+  // Evidence images are required for odometer and damage contributions
+  if (['odometer', 'damage'].includes(type)) {
+    if (!Array.isArray(evidenceUrls) || evidenceUrls.length === 0) {
+      return res.status(400).json({ error: 'Evidence image(s) required for this contribution type' });
+    }
+  }
+
+  const contribution = await createContribution({
+    plate,
+    vin,
+    type,
+    data,
+    evidenceUrls: evidenceUrls ?? [],
+    userId,
+  });
+
+  return res.status(201).json(contribution);
 });
 
-// ---------------------------------------------------------------------------
-// GET /contributions/vin/:vin
-// List approved contributions for a vehicle
-// Admin gets all (pending, flagged, rejected too)
-// ---------------------------------------------------------------------------
-router.get('/vin/:vin', async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const isAdmin =
-      (req as Request & { user?: { role: string } }).user?.role === 'admin';
-    const contributions = await getContributionsByVin(req.params.vin, isAdmin);
-    return res.json({ contributions });
-  } catch (err) {
-    next(err);
-  }
+/**
+ * GET /contributions/pending
+ * Moderation queue — admin and employee only.
+ */
+router.get('/pending', auth, requireRole(['admin', 'employee']), async (req: Request, res: Response) => {
+  const limit = Math.min(Number(req.query.limit) || 50, 100);
+  const offset = Number(req.query.offset) || 0;
+
+  const result = await getPendingContributions(limit, offset);
+  return res.json(result);
 });
 
-// ---------------------------------------------------------------------------
-// GET /contributions/:id
-// Get a single contribution (admin or owner)
-// ---------------------------------------------------------------------------
-router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const contribution = await getContributionById(req.params.id);
-    if (!contribution) {
-      return res.status(404).json({ error: 'Contribution not found' });
-    }
+/**
+ * GET /contributions/vehicle?plate=&vin=
+ * All contributions for a vehicle (admin). Approved only for regular users.
+ */
+router.get('/vehicle', auth, async (req: Request, res: Response) => {
+  const { plate, vin } = req.query as { plate?: string; vin?: string };
+  if (!plate) return res.status(400).json({ error: 'plate is required' });
 
-    const reqWithUser = req as Request & { user?: { id: string; role: string } };
-    const userId = reqWithUser.user?.id;
-    const isAdmin = reqWithUser.user?.role === 'admin';
-    const isOwner = contribution.user_id === userId;
+  const userRole = (req as any).user?.role;
+  const isStaff = ['admin', 'employee'].includes(userRole);
 
-    if (!isAdmin && !isOwner && contribution.status !== 'approved') {
-      return res.status(403).json({ error: 'Forbidden' });
-    }
+  const contributions = isStaff
+    ? await getAllContributionsForVehicle(plate, vin)
+    : await getApprovedContributions(plate, vin);
 
-    return res.json({ contribution });
-  } catch (err) {
-    next(err);
-  }
+  return res.json({ contributions });
 });
 
-// ---------------------------------------------------------------------------
-// PATCH /contributions/:id/moderate  (admin only)
-// ---------------------------------------------------------------------------
+/**
+ * PATCH /contributions/:id/moderate
+ * Moderate a contribution — admin and employee only.
+ * Records are immutable — rejected records are retained for audit.
+ */
 router.patch(
   '/:id/moderate',
-  requireRole('admin'),
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const { status, adminNote } = req.body;
+  auth,
+  requireRole(['admin', 'employee']),
+  async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const { status, moderatorNote } = req.body;
+    const moderatorId = (req as any).user?.id;
 
-      if (!['approved', 'rejected', 'flagged'].includes(status)) {
-        return res.status(400).json({
-          error: 'status must be one of: approved, rejected, flagged',
-        });
-      }
+    const VALID_STATUSES: ContributionStatus[] = [
+      'approved',
+      'rejected',
+      'disputed',
+      'needs_more_info',
+      'archived',
+    ];
 
-      const adminUserId = (req as Request & { user: { id: string } }).user.id;
-      const contribution = await moderateContribution(
-        req.params.id,
-        { status, adminNote },
-        adminUserId,
-      );
-
-      return res.json({ contribution });
-    } catch (err) {
-      next(err);
+    if (!status || !VALID_STATUSES.includes(status)) {
+      return res.status(400).json({ error: `status must be one of: ${VALID_STATUSES.join(', ')}` });
     }
-  },
+
+    const updated = await moderateContribution(id, status, moderatorNote, moderatorId);
+    return res.json(updated);
+  }
 );
 
 export default router;

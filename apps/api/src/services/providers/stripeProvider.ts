@@ -41,7 +41,7 @@ export const stripeProvider: PaymentProviderAdapter = {
   slug: 'stripe',
 
   async initiate(input) {
-    const { paymentId, amount, currency, credits, userId } = input;
+    const { paymentId, amount, currency, credits, user_id: userId } = input;
 
     const amountInCents = Math.round(amount * 100);
 
@@ -71,7 +71,7 @@ export const stripeProvider: PaymentProviderAdapter = {
 
   async verify(provider_ref: string) {
     const intent = (await stripeRequest(
-      `/payment_intents/${providerRef}`,
+      `/payment_intents/${provider_ref}`,
       'GET'
     )) as { status: string };
 

@@ -12,7 +12,7 @@ import {
   RelationshipType,
 } from '../services/userVehiclesService';
 
-const router = Router();
+const router: ReturnType<typeof Router> = Router();
 
 // All routes require auth
 router.use(auth);

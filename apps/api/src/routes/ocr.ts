@@ -68,7 +68,7 @@ router.post('/scan', upload.single('image'), async (req: Request, res: Response)
 router.post(
   '/ntsa-cor',
   authMiddleware,
-  requireRole('admin', 'employee'),
+  requireRole(['admin', 'employee']),
   upload.single('pdf'),
   async (req: Request, res: Response) => {
     // check admin config toggle
@@ -125,7 +125,7 @@ router.post(
 router.get(
   '/ntsa-cor/last/:vin',
   authMiddleware,
-  requireRole('admin', 'employee'),
+  requireRole(['admin', 'employee']),
   async (req: Request, res: Response) => {
     const { vin } = req.params;
 

@@ -82,7 +82,7 @@ router.post(
 router.get(
   '/users',
   auth,
-  requireRole('admin', 'employee'),
+  requireRole(['admin', 'employee']),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const page = parseInt((req.query.page as string) ?? '1', 10);
@@ -100,7 +100,7 @@ router.get(
 router.get(
   '/users/:id',
   auth,
-  requireRole('admin', 'employee'),
+  requireRole(['admin', 'employee']),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const profile = await authService.getProfile(req.params.id);

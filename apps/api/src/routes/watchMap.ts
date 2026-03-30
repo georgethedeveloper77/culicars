@@ -6,7 +6,7 @@ import { Router, Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { notifyNearbyUsers } from '../services/notificationService';
 
-const router = Router();
+const router: ReturnType<typeof Router> = Router();
 const prisma = new PrismaClient();
 
 // GET /watch/map/pins?lat=&lng=&radius=&type=

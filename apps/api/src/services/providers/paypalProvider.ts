@@ -125,7 +125,7 @@ export const paypalProvider: PaymentProviderAdapter = {
     const token = await getAccessToken();
 
     const res = await fetch(
-      `${getBaseUrl()}/v2/checkout/orders/${providerRef}`,
+      `${getBaseUrl()}/v2/checkout/orders/${provider_ref}`,
       {
         headers: { Authorization: `Bearer ${token}` },
       }

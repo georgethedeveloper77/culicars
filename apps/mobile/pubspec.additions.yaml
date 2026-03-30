@@ -1,0 +1,17 @@
+# apps/mobile/pubspec.additions.yaml
+# T13 — Add webview_flutter for in-app verification browser
+#
+# Add to your existing pubspec.yaml under dependencies:
+#
+# dependencies:
+#   webview_flutter: ^4.4.4
+#
+# Then run:
+#   flutter pub get
+#
+# iOS: add to ios/Runner/Info.plist:
+#   <key>NSCameraUsageDescription</key>
+#   <string>Used for document scanning during verification</string>
+#
+# Android: minSdkVersion must be >= 19 (already satisfied by most Flutter projects).
+# No additional AndroidManifest changes needed for WebView in Flutter 3.x.

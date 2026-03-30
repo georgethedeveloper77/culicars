@@ -155,7 +155,7 @@ export const mpesaProvider: PaymentProviderAdapter = {
           BusinessShortCode: env.MPESA_SHORTCODE,
           Password: password,
           Timestamp: timestamp,
-          CheckoutRequestID: providerRef,
+          CheckoutRequestID: provider_ref,
         }),
       }
     );

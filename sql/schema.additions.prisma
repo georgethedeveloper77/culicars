@@ -1,0 +1,44 @@
+// packages/database/prisma/schema.additions.prisma
+// T13–T14 model additions — merge into schema.prisma
+//
+// Add these models to your existing schema.prisma.
+// Run: npx prisma db pull && npx prisma generate
+
+model VehicleVerification {
+  id          String    @id @default(uuid())
+  userId      String    @map("user_id")
+  plate       String
+  vin         String?
+  status      String    @default("pending") // pending | completed | failed | manual_upload
+  corFields   Json?     @map("cor_fields")
+  completedAt DateTime? @map("completed_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  @@index([userId, plate])
+  @@index([plate])
+  @@map("vehicle_verification")
+}
+
+model Contribution {
+  id            String    @id @default(uuid())
+  plate         String
+  vin           String?
+  type          String    // odometer | service_record | damage | listing_photo
+  userId        String    @map("user_id")
+  dataJson      Json      @default("{}") @map("data_json")
+  evidenceUrls  String[]  @default([]) @map("evidence_urls")
+  status        String    @default("pending")
+  // pending | approved | rejected | disputed | needs_more_info | archived
+  moderatedBy   String?   @map("moderated_by")
+  moderatorNote String?   @map("moderator_note")
+  moderatedAt   DateTime? @map("moderated_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  @@index([plate])
+  @@index([vin])
+  @@index([status])
+  @@index([userId])
+  @@map("contributions")
+}

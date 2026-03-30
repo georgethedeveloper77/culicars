@@ -124,7 +124,7 @@ async function initiateFlutterwave(
   input: Parameters<PaymentProviderAdapter['initiate']>[0],
   config: any
 ) {
-  const { paymentId, amount, currency, credits, userId } = input;
+  const { paymentId, amount, currency, credits, user_id: userId } = input;
 
   const res = await fetch('https://api.flutterwave.com/v3/payments', {
     method: 'POST',

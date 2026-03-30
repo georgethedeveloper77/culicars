@@ -85,7 +85,7 @@ export async function runScraper(
     // Process the raw data immediately after scraping
     const procResult = await processJobRawData(jobId);
 
-    await completeJob(jobId, { itemsFound: items_found, itemsStored: items_stored, itemsSkipped: items_skipped });
+    await completeJob(jobId, { items_found: items_found, items_stored: items_stored, items_skipped: items_skipped });
 
     return {
       jobId,

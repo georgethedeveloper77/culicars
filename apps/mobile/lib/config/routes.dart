@@ -1,6 +1,7 @@
 // lib/config/routes.dart
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/auth/auth_state.dart';
 import '../features/onboarding/splash_screen.dart';
 import '../features/onboarding/onboarding_screen.dart';
@@ -18,6 +19,9 @@ import '../features/contribute/contribute_screen.dart';
 import '../features/dashboard/dashboard_screen.dart';
 import '../features/dashboard/my_reports_screen.dart';
 import '../features/dashboard/transaction_history_screen.dart';
+import '../features/watch/watch_screen.dart';
+import '../features/profile/my_vehicles_screen.dart';
+import '../features/notifications/notifications_screen.dart';
 import '../app.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -30,7 +34,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       final loc = state.matchedLocation;
       if (loc == '/splash' || loc == '/onboarding' ||
           loc.startsWith('/login') || loc.startsWith('/signup')) return null;
-      final protected = ['/dashboard', '/my-reports', '/billing', '/my-stolen-reports'];
+      final protected = [
+        '/dashboard', '/my-reports', '/billing',
+        '/my-stolen-reports', '/my-vehicles', '/notifications',
+      ];
       if (protected.any((r) => loc.startsWith(r)) && !loggedIn) return '/login';
       return null;
     },
@@ -75,9 +82,24 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: '/contribute',
             builder: (_, s) => ContributeScreen(vin: s.uri.queryParameters['vin']),
           ),
-          GoRoute(path: '/dashboard',  builder: (_, __) => const DashboardScreen()),
-          GoRoute(path: '/my-reports', builder: (_, __) => const MyReportsScreen()),
-          GoRoute(path: '/billing',    builder: (_, __) => const TransactionHistoryScreen()),
+          GoRoute(path: '/dashboard',      builder: (_, __) => const DashboardScreen()),
+          GoRoute(path: '/my-reports',     builder: (_, __) => const MyReportsScreen()),
+          GoRoute(path: '/billing',        builder: (_, __) => const TransactionHistoryScreen()),
+
+          // T11/T12 — Watch
+          GoRoute(path: '/watch',          builder: (_, __) => const WatchScreen()),
+
+          // T10 — My Vehicles
+          GoRoute(path: '/my-vehicles',    builder: (_, __) => const MyVehiclesScreen()),
+
+          // T12 — Notifications (pass session token from Supabase)
+          GoRoute(
+            path: '/notifications',
+            builder: (_, __) {
+              final token = Supabase.instance.client.auth.currentSession?.accessToken ?? '';
+              return NotificationsScreen(authToken: token);
+            },
+          ),
         ],
       ),
     ],

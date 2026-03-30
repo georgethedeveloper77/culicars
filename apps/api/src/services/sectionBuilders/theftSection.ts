@@ -77,7 +77,7 @@ export async function buildTheftSection(vin: string): Promise<{
     is_ob_verified: r.is_ob_verified ?? false,
   }));
 
-  const recordCount = stolenReports.length + theftEvents.length;
+  const record_count = stolenReports.length + theftEvents.length;
 
   return {
     data: {
@@ -87,7 +87,7 @@ export async function buildTheftSection(vin: string): Promise<{
       checks,
       communityReports,
     },
-    recordCount,
-    data_status: recordCount > 0 ? 'found' : 'not_found',
+    record_count,
+    data_status: record_count > 0 ? 'found' : 'not_found',
   };
 }

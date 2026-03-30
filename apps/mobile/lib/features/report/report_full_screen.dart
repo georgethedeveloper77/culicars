@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:dio/dio.dart';
+import 'widgets/owner_verification_widget.dart';
+import 'widgets/contribution_cards.dart';
 
 // ─── Data model ───────────────────────────────────────────────────────────
 
@@ -72,6 +74,7 @@ class _ReportFullScreenState extends ConsumerState<ReportFullScreen> {
   bool _isUnlocked = false;
   bool _unlocking = false;
   String? _error;
+  bool _ownershipVerified = false;
 
   @override
   void initState() {
@@ -82,9 +85,11 @@ class _ReportFullScreenState extends ConsumerState<ReportFullScreen> {
   Future<void> _loadReport() async {
     try {
       final res = await _dio.get('/reports/${widget.reportId}/preview');
+      final ownership = (res.data['report']?['sections']?['ownership']) as Map<String, dynamic>?;
       setState(() {
         _report = VehicleReport.fromJson(res.data, res.data['isUnlocked'] as bool);
         _isUnlocked = res.data['isUnlocked'] as bool;
+        _ownershipVerified = ownership?['verified'] as bool? ?? false;
       });
     } catch (e) {
       setState(() => _error = 'Failed to load report');
@@ -95,9 +100,11 @@ class _ReportFullScreenState extends ConsumerState<ReportFullScreen> {
     setState(() => _unlocking = true);
     try {
       final res = await _dio.post('/reports/${widget.reportId}/unlock');
+      final ownership = (res.data['report']?['sections']?['ownership']) as Map<String, dynamic>?;
       setState(() {
         _report = VehicleReport.fromJson(res.data, true);
         _isUnlocked = true;
+        _ownershipVerified = ownership?['verified'] as bool? ?? false;
       });
     } on DioException catch (e) {
       final statusCode = e.response?.statusCode;
@@ -139,6 +146,10 @@ class _ReportFullScreenState extends ConsumerState<ReportFullScreen> {
     final report = _report!;
     final s = report.sections;
 
+    // Ownership confidence for verification banner
+    final ownershipData = s['ownership'] as Map<String, dynamic>?;
+    final ownershipConfidence = (ownershipData?['confidence'] as num? ?? 0.0).toDouble();
+
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
@@ -173,6 +184,21 @@ class _ReportFullScreenState extends ConsumerState<ReportFullScreen> {
               _StolenAlertsSection(data: s['stolenAlerts'] as Map<String, dynamic>),
             ],
 
+            // ── Verify owner banner — shown when confidence is low, unlocked or not ──
+            if (report.state != 'pending_enrichment') ...[
+              const SizedBox(height: 12),
+              OwnerVerificationWidget(
+                plate: report.plate ?? '',
+                reportId: report.id,
+                ownershipConfidence: ownershipConfidence,
+                isVerified: _ownershipVerified,
+                onVerificationComplete: () {
+                  setState(() => _ownershipVerified = true);
+                  _loadReport();
+                },
+              ),
+            ],
+
             if (!_isUnlocked && report.state != 'pending_enrichment') ...[
               const SizedBox(height: 12),
               _UnlockCard(unlocking: _unlocking, onUnlock: _unlock),
@@ -191,7 +217,11 @@ class _ReportFullScreenState extends ConsumerState<ReportFullScreen> {
             if (_isUnlocked) ...[
               const SizedBox(height: 12),
               if (s['ownership'] != null)
-                _OwnershipSection(data: s['ownership'] as Map<String, dynamic>, vin: report.vin),
+                _OwnershipSection(
+                  data: s['ownership'] as Map<String, dynamic>,
+                  vin: report.vin,
+                  isVerified: _ownershipVerified,
+                ),
               const SizedBox(height: 12),
               if (s['damage'] != null)
                 _DamageSection(data: s['damage'] as Map<String, dynamic>),
@@ -204,6 +234,13 @@ class _ReportFullScreenState extends ConsumerState<ReportFullScreen> {
               const SizedBox(height: 12),
               if (s['communityInsights'] != null)
                 _CommunityInsightsSection(data: s['communityInsights'] as Map<String, dynamic>),
+
+              // ── Contribution cards — bottom of unlocked report ──
+              const SizedBox(height: 20),
+              ContributionCardsStrip(
+                plate: report.plate ?? '',
+                vin: report.vin,
+              ),
             ],
 
             const SizedBox(height: 24),
@@ -226,7 +263,6 @@ class _StateBadge extends StatelessWidget {
   final String state;
   const _StateBadge({required this.state});
 
-  // FIX: replaced Dart 3 record tuple (String, Color) with a plain _StateMeta class
   static _StateMeta _stateMeta(String state) {
     switch (state) {
       case 'verified':
@@ -348,9 +384,8 @@ class _IdentitySection extends StatelessWidget {
       {'label': 'Color',     'value': data['color'] as String?},
       {'label': 'Fuel Type', 'value': data['fuelType'] as String?},
       {'label': 'Body Type', 'value': data['bodyType'] as String?},
-    ].where((f) => f['value'] != null).toList(); // <--- Ensure this semicolon exists!
+    ].where((f) => f['value'] != null).toList();
 
-    // Now these variables will parse correctly
     final int sources = data['sourceCount'] ?? 0;
     final int confidence = ((data['confidence'] as num? ?? 0.0) * 100).round();
 
@@ -539,15 +574,18 @@ class _PendingShell extends StatelessWidget {
 class _OwnershipSection extends StatelessWidget {
   final Map<String, dynamic> data;
   final String vin;
-  const _OwnershipSection({required this.data, required this.vin});
+  final bool isVerified;
+  const _OwnershipSection({
+    required this.data,
+    required this.vin,
+    required this.isVerified,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final verified = data['verified'] as bool? ?? false;
     final confidence = (data['confidence'] as num? ?? 0.0).toDouble();
     final ownerCount = data['ownerCount'];
     final lastTransfer = data['lastTransferDate'] as String?;
-    final verificationRequired = data['verificationRequired'] as bool? ?? false;
 
     return Card(
       child: Padding(
@@ -558,7 +596,7 @@ class _OwnershipSection extends StatelessWidget {
             const Text('Ownership',
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
             const SizedBox(height: 8),
-            if (verified)
+            if (isVerified)
               const Text('✓ Officially verified',
                   style: TextStyle(color: Colors.green, fontWeight: FontWeight.w600))
             else
@@ -567,14 +605,7 @@ class _OwnershipSection extends StatelessWidget {
             if (ownerCount != null) Text('Previous owners: $ownerCount'),
             if (lastTransfer != null)
               Text('Last transfer: ${_formatDate(lastTransfer)}'),
-            if (verificationRequired) ...[
-              const SizedBox(height: 8),
-              TextButton.icon(
-                onPressed: () => context.push('/verify?vin=$vin'),
-                icon: const Icon(Icons.verified_user_outlined, size: 16),
-                label: const Text('Verify official record'),
-              ),
-            ],
+            // Verification CTA removed — handled by OwnerVerificationWidget above
           ],
         ),
       ),
@@ -630,7 +661,6 @@ class _OdometerSection extends StatelessWidget {
     final latest = data['latestReading'] as Map<String, dynamic>?;
     final count = (data['readings'] as List?)?.length ?? 0;
 
-    // FIX: format number without regex that caused parse error
     String formatOdometer(num value) {
       final parts = <String>[];
       var v = value.toInt();
@@ -655,8 +685,7 @@ class _OdometerSection extends StatelessWidget {
                 if (anomaly) ...[
                   const SizedBox(width: 8),
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
                         color: Colors.orange[100],
                         borderRadius: BorderRadius.circular(10)),
@@ -767,8 +796,7 @@ class _CommunityInsightsSection extends StatelessWidget {
             const SizedBox(height: 8),
             if (!available)
               Text(
-                placeholder ??
-                    'Community data will appear here as Watch grows.',
+                placeholder ?? 'Community data will appear here as Watch grows.',
                 style: const TextStyle(color: Colors.grey, fontSize: 13),
               )
             else

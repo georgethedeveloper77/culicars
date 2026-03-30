@@ -64,15 +64,15 @@ async function sendFcmPush(token: string, title: string, body: string, data?: Re
 // ---------------------------------------------------------------------------
 
 export async function createNotification(input: CreateNotificationInput): Promise<void> {
-  const { userId, type, title, body, dataJson } = input;
+  const { user_id, type, title, body, dataJson } = input;
 
   await (prisma as any).notification.create({
-    data: { userId, type, title, body, dataJson: dataJson ?? undefined },
+    data: { user_id, type, title, body, dataJson: dataJson ?? undefined },
   });
 
   // Fan out to user's registered device tokens
   const tokens: { token: string }[] = await (prisma as any).deviceToken.findMany({
-    where: { userId },
+    where: { user_id },
     select: { token: true },
   });
 
@@ -177,7 +177,7 @@ export async function notifyReportReady(userId: string, plate: string, report_id
     type: 'report_ready',
     title: 'Vehicle report ready',
     body: `Your report for ${plate} is now available.`,
-    dataJson: { reportId, plate },
+    dataJson: { report_id, plate },
   });
 }
 
@@ -187,7 +187,7 @@ export async function notifyReportUpdated(userId: string, plate: string, report_
     type: 'report_updated',
     title: 'Report updated',
     body: `New data is available for ${plate}.`,
-    dataJson: { reportId, plate },
+    dataJson: { report_id, plate },
   });
 }
 

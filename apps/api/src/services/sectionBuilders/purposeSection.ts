@@ -75,11 +75,11 @@ export async function buildPurposeSection(vin: string): Promise<{
   });
 
   const hasCommercialHistory = checks.some((c) => c.found);
-  const recordCount = checks.filter((c) => c.found).length;
+  const record_count = checks.filter((c) => c.found).length;
 
   return {
     data: { checks, hasCommercialHistory },
-    recordCount,
-    data_status: recordCount > 0 ? 'found' : 'not_found',
+    record_count,
+    data_status: record_count > 0 ? 'found' : 'not_found',
   };
 }

@@ -91,11 +91,11 @@ export async function buildImportSection(vin: string): Promise<{
     beForwardData: beForwardMeta || null,
   };
 
-  const recordCount = importEvents.length + (vehicle.is_imported ? 1 : 0);
+  const record_count = importEvents.length + (vehicle.is_imported ? 1 : 0);
 
   return {
     data,
-    recordCount,
-    data_status: recordCount > 0 || vehicle.is_imported ? 'found' : 'not_found',
+    record_count,
+    data_status: record_count > 0 || vehicle.is_imported ? 'found' : 'not_found',
   };
 }

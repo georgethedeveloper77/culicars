@@ -95,14 +95,14 @@ export async function getReportPreview(
   if (userId) {
     const unlock = await prisma.report_unlock.findUnique({
       where: {
-        userId_report_id: { userId, reportId },
+        user_id_report_id: { user_id: userId, report_id: reportId },
       },
     });
     isUnlocked = !!unlock;
   }
 
   // Adjust locked status if user has unlocked
-  const sectionSummary = (report.report_sections ?? []).map((s) => ({
+  const sectionSummary = ((report as any).report_sections ?? []).map((s) => ({
     section_type: s.section_type as SectionType,
     is_locked: isUnlocked ? false : s.is_locked ?? true,
     data_status: s.data_status as 'found' | 'not_found' | 'not_checked',
@@ -154,7 +154,7 @@ export async function getFullReport(
   if (userId) {
     const unlock = await prisma.report_unlock.findUnique({
       where: {
-        userId_report_id: { userId, reportId },
+        user_id_report_id: { user_id: userId, report_id: reportId },
       },
     });
     isUnlocked = !!unlock;
@@ -166,7 +166,7 @@ export async function getFullReport(
     orderBy: { id: 'asc' },
   });
 
-  const sections: ReportSection[] = dbSections.map((s) => {
+  const sections = dbSections.map((s) => {
     const sectionType = s.section_type as SectionType;
     const isFree = FREE_SECTIONS.includes(sectionType);
     const locked = !isFree && !isUnlocked && s.is_locked;

@@ -139,7 +139,7 @@ export async function buildLegalSection(vin: string): Promise<{
     (c) => c.found && (c.type === 'caveat' || c.type === 'scrap' || c.type === 'insurance_writeoff')
   );
 
-  const recordCount =
+  const record_count =
     financialRestrictions.filter((c) => c.found).length +
     legalChecks.filter((c) => c.found).length;
 
@@ -150,7 +150,7 @@ export async function buildLegalSection(vin: string): Promise<{
       hasFinancialIssues,
       hasLegalIssues,
     },
-    recordCount,
-    data_status: recordCount > 0 ? 'found' : 'not_found',
+    record_count,
+    data_status: record_count > 0 ? 'found' : 'not_found',
   };
 }

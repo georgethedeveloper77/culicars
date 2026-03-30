@@ -5,7 +5,7 @@
 import { Router, Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 
-const router = Router();
+const router: ReturnType<typeof Router> = Router();
 const prisma = new PrismaClient();
 
 // GET /watch/insights — platform-wide signals

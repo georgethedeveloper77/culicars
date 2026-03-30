@@ -21,7 +21,7 @@ export async function unlockReport(
   // Check if already unlocked
   const existing = await prisma.report_unlock.findUnique({
     where: {
-      userId_report_id: { userId, reportId },
+      user_id_report_id: { user_id: userId, report_id: reportId },
     },
   });
 
@@ -71,8 +71,8 @@ export async function unlockReport(
       );
     }
 
-    const balanceBefore = wallet.balance;
-    const balanceAfter = balanceBefore - UNLOCK_COST;
+    const balance_before = wallet.balance;
+    const balanceAfter = balance_before - UNLOCK_COST;
 
     // Debit wallet
     await tx.wallets.update({
@@ -89,19 +89,19 @@ export async function unlockReport(
         user_id: userId,
         type: 'spend',
         credits_delta: -UNLOCK_COST,
-        balanceBefore,
-        balanceAfter,
+        balance_before,
+        balance_after: balanceAfter,
         source: 'report_unlock',
         report_id: reportId,
       },
     });
 
     // Create unlock record
-    await tx.report_unlock.create({
+    await tx.report_unlocks.create({
       data: {
-        userId,
+        user_id: userId,
         report_id: reportId,
-        creditsSpent: UNLOCK_COST,
+        credits_spent: UNLOCK_COST,
       },
     });
 
@@ -125,7 +125,7 @@ export async function hasUnlocked(
 ): Promise<boolean> {
   const unlock = await prisma.report_unlock.findUnique({
     where: {
-      userId_report_id: { userId, reportId },
+      user_id_report_id: { user_id: userId, report_id: reportId },
     },
   });
   return !!unlock;

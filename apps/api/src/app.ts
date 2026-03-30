@@ -16,7 +16,6 @@ import { optionalAuth } from './middleware/optionalAuth';
 import { auth } from './middleware/auth';
 import { requireRole } from './middleware/requireRole';
 
-
 // Routes — Threads 1-5
 import healthRouter from './routes/health';
 import searchRouter from './routes/search';
@@ -38,10 +37,24 @@ import revenuecatWebhookRouter from './routes/webhooks/revenuecat';
 import scraperRouter     from './routes/scraper';
 import demandQueueRouter from './routes/admin/demandQueue';
 
-
 // Routes — Thread 8: Contributions + Stolen Reports
 import contributionsRouter from './routes/contributions';
 import stolenRouter from './routes/stolen';
+
+// Routes — Thread 10: User Vehicles
+import userVehiclesRouter from './routes/userVehicles';
+
+// Routes — Thread 11/12: Notifications
+import notificationsRouter from './routes/notifications';
+
+// Routes — Thread 12/13: Data Sources
+import dataSourcesRouter from './routes/dataSources';
+
+// Routes — Thread 13: Official Verification
+import verificationRouter from './routes/verification';
+
+// Routes — Thread 15: Analytics
+import analyticsRouter from './routes/analytics';
 
 // Provider registration — Thread 6
 import { registerProvider } from './services/paymentProviderService';
@@ -76,29 +89,32 @@ app.use(requestLogger);
 app.use(ipRateLimiter);
 
 // ── Routes ────────────────────────────────────────
-app.use('/auth', authRouter); 
-app.use('/health', healthRouter);
-app.use('/search', optionalAuth, searchRouter);                    // Thread 3
-app.use('/watch', watchRouter);
-app.use('/ocr', auth, ocrRouter);                                  // Thread 4
-app.use('/ocr', ocrRouter);                                        // Thread 4
-app.use('/ntsa', auth, ntsaRouter);                                // Thread 4
-app.use('/reports', optionalAuth, reportsRouter);                  // Thread 5
-app.use('/payments', optionalAuth, paymentsRouter);                // Thread 6
-app.use('/credits', auth, creditsRouter);                          // Thread 6
-app.use('/admin/scraper', requireRole('admin'), scraperRouter);    // Thread 7
-app.use('/contributions', optionalAuth, contributionsRouter);      // Thread 8
-app.use('/stolen-reports', optionalAuth, stolenRouter);            // Thread 8
-// inside your route block:
-app.use('/scraper',            scraperRouter);
-app.use('/admin/demand-queue', demandQueueRouter);
+app.use('/auth',         authRouter);
+app.use('/health',       healthRouter);
+app.use('/search',       optionalAuth, searchRouter);                     // T3
+app.use('/watch',        watchRouter);                                    // T11/T12
+app.use('/ocr',          auth, ocrRouter);                                // T4 — auth only, duplicate removed
+app.use('/ntsa',         auth, ntsaRouter);                               // T4
+app.use('/reports',      optionalAuth, reportsRouter);                    // T8
+app.use('/payments',     optionalAuth, paymentsRouter);                   // T9
+app.use('/credits',      auth, creditsRouter);                            // T9
+app.use('/user/vehicles', auth, userVehiclesRouter);                      // T10
+app.use('/notifications', auth, notificationsRouter);                     // T12
+app.use('/contributions', optionalAuth, contributionsRouter);             // T14
+app.use('/stolen-reports', optionalAuth, stolenRouter);                   // T8
+app.use('/verify',       auth, verificationRouter);                       // T13
+app.use('/analytics',    analyticsRouter);                                // T15
+app.use('/data-sources', auth, dataSourcesRouter);                        // T7b
+app.use('/admin/scraper', requireRole('admin'), scraperRouter);           // T7
+app.use('/admin/demand-queue', demandQueueRouter);                        // T7
+app.use('/admin/config', adminConfigRouter);                              // T5
+app.use('/scraper',      scraperRouter);                                  // T7 legacy
 
 // Webhooks — NO auth middleware (providers authenticate differently)
 // Stripe already mounted above (before json parser)
-app.use('/webhooks/mpesa', mpesaWebhookRouter);
-app.use('/webhooks/paypal', paypalWebhookRouter);
+app.use('/webhooks/mpesa',      mpesaWebhookRouter);
+app.use('/webhooks/paypal',     paypalWebhookRouter);
 app.use('/webhooks/revenuecat', revenuecatWebhookRouter);
-app.use('/admin/config', adminConfigRouter);
 
 // ── 404 Catch-All ─────────────────────────────────
 app.use((_req, res) => {
@@ -113,8 +129,6 @@ app.use((_req, res) => {
 app.use(errorHandler);
 
 // ── Scheduled Jobs ────────────────────────────────
-// Initialised here so they start when the app module is loaded in index.ts.
-// node-cron is no-op in test environments (SCRAPER_ENABLED=false).
 initScheduledScrape();
 
 export default app;

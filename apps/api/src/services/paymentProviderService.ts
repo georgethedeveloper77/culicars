@@ -108,7 +108,7 @@ export async function initiatePayment(
       currency,
       credits: pack.credits,
       packId,
-      userId,
+      user_id: userId,
       phone,
       returnUrl,
       cancelUrl,
@@ -118,7 +118,7 @@ export async function initiatePayment(
     await prisma.payments.update({
       where: { id: payment.id },
       data: {
-  providerRef: result.providerRef,
+        provider_ref: result.provider_ref,
         provider_meta: (result.providerData ?? undefined) as any,
         updated_at: new Date(),
       },
@@ -128,7 +128,7 @@ export async function initiatePayment(
       paymentId: payment.id,
       provider,
       status: 'pending',
-providerRef: result.providerRef,
+providerRef: result.provider_ref,
       providerData: result.providerData,
     };
   } catch (err) {
@@ -143,7 +143,7 @@ providerRef: result.providerRef,
 
 /**
  * Confirm a payment after webhook/callback.
- * Idempotent: if providerRef already succeeded, returns early.
+ * Idempotent: if provider_ref already succeeded, returns early.
  * Grants credits atomically on success.
  */
 export async function confirmPayment(
@@ -152,11 +152,11 @@ export async function confirmPayment(
 ): Promise<{ paymentId: string; credits: number; newBalance: number } | null> {
   // 1. Find payment by provider_ref (UNIQUE constraint = idempotency)
   const payment = await prisma.payments.findFirst({
-    where: { provider_ref: providerRef },
+    where: { provider_ref: provider_ref },
   });
 
   if (!payment) {
-    console.warn(`[PaymentProvider] No payment found for ref: ${providerRef}`);
+    console.warn(`[PaymentProvider] No payment found for ref: ${provider_ref}`);
     return null;
   }
 
@@ -188,7 +188,7 @@ export async function confirmPayment(
     amount: payment.credits,
     type: 'purchase',
     meta: { source: `${payment.provider}_purchase`, paymentId: payment.id, amount: payment.amount, currency: payment.currency },
-    providerRef: providerRef,
+    providerRef: provider_ref,
   });
 
   return {
@@ -206,7 +206,7 @@ export async function failPayment(
   reason?: string
 ): Promise<void> {
   const payment = await prisma.payments.findFirst({
-    where: { provider_ref: providerRef },
+    where: { provider_ref: provider_ref },
   });
 
   if (!payment || payment.status !== 'pending') return;
@@ -242,10 +242,10 @@ export async function getPaymentById(paymentId: string) {
 }
 
 /**
- * Get payment by providerRef.
+ * Get payment by provider_ref.
  */
 export async function getPaymentByRef(provider_ref: string) {
   return prisma.payments.findFirst({
-    where: { provider_ref: providerRef },
+    where: { provider_ref: provider_ref },
   });
 }

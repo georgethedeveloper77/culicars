@@ -1,11 +1,12 @@
 // apps/web/src/app/watch/insights/page.tsx
 import { Suspense } from 'react';
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? 'https://api.culicars.com';
-
-async function getInsights() {
+async function fetchInsights() {
+  const API = process.env.NEXT_PUBLIC_API_URL ?? 'https://api.culicars.com';
   try {
-    const res = await fetch(`${API}/watch/insights`, { next: { revalidate: 300 } });
+    const res = await fetch(`${API}/analytics/watch/public`, {
+      next: { revalidate: 300 }, // cache 5 minutes
+    });
     if (!res.ok) return null;
     return res.json();
   } catch {
@@ -13,69 +14,80 @@ async function getInsights() {
   }
 }
 
-const ALERT_LABELS: Record<string, string> = {
-  stolen_vehicle: 'Stolen vehicle',
-  recovered_vehicle: 'Recovery',
-  damage: 'Damage',
-  vandalism: 'Vandalism',
-  parts_theft: 'Parts theft',
-  suspicious_activity: 'Suspicious activity',
-  hijack: 'Hijacking',
-};
-
 export default async function WatchInsightsPage() {
-  const data = await getInsights();
+  const insights = await fetchInsights();
 
   return (
-    <main className="max-w-2xl mx-auto px-4 py-10">
-      <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">Watch Insights</h1>
-      <p className="text-sm text-gray-500 mb-8">
-        Aggregated community intelligence from verified vehicle alerts across Kenya.
-      </p>
+    <main className="min-h-screen bg-background px-4 py-10">
+      <div className="max-w-3xl mx-auto">
+        <h1 className="text-2xl font-semibold text-foreground mb-2">Vehicle watch insights</h1>
+        <p className="text-muted-foreground text-sm mb-8">
+          Aggregated community intelligence from verified watch alerts across Kenya.
+        </p>
 
-      {!data ? (
-        <p className="text-gray-500 text-sm">No insights available at this time.</p>
-      ) : (
-        <div className="space-y-8">
-          {/* Alert type breakdown */}
-          <section>
-            <h2 className="text-base font-semibold text-gray-900 dark:text-white mb-3">Alert breakdown</h2>
-            <div className="space-y-2">
-              {(data.alertTypes ?? []).map((item: { type: string; count: number }) => {
-                const max = data.alertTypes[0]?.count ?? 1;
-                const pct = Math.round((item.count / max) * 100);
-                return (
-                  <div key={item.type}>
-                    <div className="flex justify-between text-sm mb-0.5">
-                      <span className="text-gray-700 dark:text-gray-300">
-                        {ALERT_LABELS[item.type] ?? item.type}
+        {!insights ? (
+          <p className="text-muted-foreground text-sm">No insights available yet.</p>
+        ) : (
+          <div className="space-y-10">
+            {/* Hotspot areas */}
+            <section>
+              <h2 className="text-base font-semibold text-foreground mb-3">Top alert areas</h2>
+              {insights.topHotspots?.length > 0 ? (
+                <div className="space-y-2">
+                  {insights.topHotspots.map((h: any, i: number) => (
+                    <div key={i} className="flex items-center gap-3 bg-muted/30 rounded-lg px-4 py-3">
+                      <span className="text-xs font-mono text-muted-foreground w-4">{i + 1}</span>
+                      <span className="text-sm text-foreground flex-1 font-mono">{h.area}</span>
+                      <span className="text-xs text-muted-foreground">{h.alertCount} alerts</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">No hotspot data yet.</p>
+              )}
+            </section>
+
+            {/* Most reported models */}
+            <section>
+              <h2 className="text-base font-semibold text-foreground mb-3">Most reported vehicle models</h2>
+              {insights.mostReportedModels?.length > 0 ? (
+                <div className="space-y-2">
+                  {insights.mostReportedModels.map((m: any, i: number) => (
+                    <div key={i} className="flex items-center gap-3 bg-muted/30 rounded-lg px-4 py-3">
+                      <span className="text-xs font-mono text-muted-foreground w-4">{i + 1}</span>
+                      <span className="text-sm text-foreground flex-1">
+                        {m.make} {m.model}
                       </span>
-                      <span className="text-gray-500 tabular-nums">{item.count}</span>
+                      <span className="text-xs text-muted-foreground">{m.count} reports</span>
                     </div>
-                    <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                      <div className="h-full bg-blue-500 rounded-full" style={{ width: `${pct}%` }} />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">No model data yet.</p>
+              )}
+            </section>
 
-          {/* Recent activity */}
-          <section>
-            <h2 className="text-base font-semibold text-gray-900 dark:text-white mb-1">Recent activity</h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              {data.recentCount ?? 0} alerts verified in the last 30 days.
-            </p>
-          </section>
-
-          <div className="border-t pt-6">
-            <a href="/watch/map" className="text-sm text-blue-600 dark:text-blue-400 hover:underline">
-              View live map →
-            </a>
+            {/* Summary stats */}
+            <section>
+              <h2 className="text-base font-semibold text-foreground mb-3">Community activity</h2>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-muted/30 rounded-xl p-4">
+                  <p className="text-2xl font-bold text-foreground">{insights.totalAlerts ?? 0}</p>
+                  <p className="text-xs text-muted-foreground mt-1">Total alerts submitted</p>
+                </div>
+                <div className="bg-muted/30 rounded-xl p-4">
+                  <p className="text-2xl font-bold text-foreground">
+                    {insights.approvalRate != null
+                      ? `${Math.round(insights.approvalRate * 100)}%`
+                      : '—'}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">Verified by moderators</p>
+                </div>
+              </div>
+            </section>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </main>
   );
 }

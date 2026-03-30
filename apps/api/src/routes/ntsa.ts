@@ -136,7 +136,7 @@ router.post(
         data: {
           user_id: userId,
           image_url: pdfUrl ?? 'base64-upload',
-          documentType: 'ntsa_cor',
+          document_type: 'ntsa_cor',
           rawOcrResult: { text: rawText } as any,
           extractedPlate: extractedPlate ?? null,
           extractedVin: extractedVin ?? null,

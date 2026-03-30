@@ -1,149 +1,157 @@
 // apps/api/src/services/contributionService.ts
 
-import prisma from '../lib/prisma';
-import { scoreContribution, buildFactors } from './confidenceScorer.js';
-import { applyContribution } from './enrichmentService.js';
-import type {
-  ContributionSubmission,
-  ContributionModeration,
-  ContributionRecord,
-  ContribType,
-} from '../types/contribution.types.js';
+import { PrismaClient } from '@prisma/client';
 
-// ---------------------------------------------------------------------------
-// Submit
-// ---------------------------------------------------------------------------
+const prisma = new PrismaClient();
 
-export async function submitContribution(
-  submission: ContributionSubmission,
-  user_id: string | null,
-): Promise<ContributionRecord> {
-  // Ensure vehicle exists
-  const vehicle = await prisma.vehicles.findUnique({ where: { vin: submission.vin } });
-  if (!vehicle) {
-    throw Object.assign(new Error(`Vehicle not found: ${submission.vin}`), { status: 404 });
-  }
+export type ContributionType = 'odometer' | 'service_record' | 'damage' | 'listing_photo';
+export type ContributionStatus = 'pending' | 'approved' | 'rejected' | 'disputed' | 'needs_more_info' | 'archived';
 
-  const factors = buildFactors({
-    contribType: submission.type as ContribType,
-    evidence_urls: submission.evidenceUrls ?? [],
-    verificationDocUrls: submission.verificationDocUrls ?? [],
-    isAuthenticatedUser: userId !== null,
-    dataFields: (submission.data as Record<string, unknown>) ?? {},
-  });
+export interface ContributionData {
+  odometer?: { value: number; unit: 'km' | 'miles'; dateObserved: string };
+  serviceRecord?: { date: string; garageName: string; mileage: number; workSummary: string };
+  damage?: { date: string; location: string; optionalCostRange?: string };
+  listingPhoto?: { sourceUrl?: string; notes?: string };
+}
 
-  const confidenceScore = scoreContribution(factors);
+export interface CreateContributionInput {
+  plate: string;
+  vin?: string;
+  type: ContributionType;
+  data: ContributionData;
+  evidenceUrls: string[];
+  userId: string;
+}
 
-  const record = await prisma.contributions.create({
+/**
+ * Create a new contribution. Starts in 'pending' for moderation.
+ * All records are immutable — rejected records are retained for audit.
+ */
+export async function createContribution(input: CreateContributionInput) {
+  const contribution = await (prisma as any).contribution.create({
     data: {
-      vin: submission.vin,
-      user_id: userId,
-      type: submission.type,
-      title: submission.title.trim(),
-      description: submission.description?.trim() ?? null,
-      data: (submission.data ?? {}) as any,
-      evidence_urls: submission.evidenceUrls ?? [],
-      verificationDocUrls: submission.verificationDocUrls ?? [],
+      plate: input.plate.toUpperCase(),
+      vin: input.vin ?? null,
+      type: input.type,
+      userId: input.userId,
+      dataJson: input.data as any,
+      evidenceUrls: input.evidenceUrls,
       status: 'pending',
-      confidence_score: confidenceScore,
     },
   });
 
-  return mapContribution(record);
+  return contribution;
 }
 
-// ---------------------------------------------------------------------------
-// List by VIN
-// ---------------------------------------------------------------------------
-
-export async function getContributionsByVin(
-  vin: string,
-  includeAll = false,
-): Promise<ContributionRecord[]> {
-  const where: Record<string, unknown> = { vin };
-  if (!includeAll) {
-    where['status'] = 'approved';
-  }
-
-  const rows = await prisma.contributions.findMany({
-    where,
-    orderBy: { created_at: 'desc' },
-  });
-
-  return rows.map(mapContribution);
-}
-
-// ---------------------------------------------------------------------------
-// Moderate (admin)
-// ---------------------------------------------------------------------------
-
+/**
+ * Moderate a contribution. Status transitions are append-only — no delete.
+ * Approved contributions enrich reports but never overwrite canonical records.
+ */
 export async function moderateContribution(
-  id: string,
-  moderation: ContributionModeration,
-  adminUserId: string,
-): Promise<ContributionRecord> {
-  const existing = await prisma.contributions.findUnique({ where: { id } });
-  if (!existing) {
-    throw Object.assign(new Error('Contribution not found'), { status: 404 });
-  }
-
-  const updated = await prisma.contributions.update({
-    where: { id },
+  contributionId: string,
+  status: ContributionStatus,
+  moderatorNote?: string,
+  moderatorId?: string
+) {
+  const updated = await (prisma as any).contribution.update({
+    where: { id: contributionId },
     data: {
-      status: moderation.status,
-      admin_note: moderation.adminNote ?? null,
-      reviewed_by: adminUserId,
-      reviewed_at: new Date(),
+      status,
+      moderatorNote: moderatorNote ?? null,
+      moderatedBy: moderatorId ?? null,
+      moderatedAt: new Date(),
     },
   });
 
-  // Apply to vehicle record if approved
-  if (moderation.status === 'approved') {
-    const contributionRow = {
-      id: updated.id,
-      vin: updated.vin,
-      type: updated.type as ContribType,
-      title: updated.title,
-      description: updated.description,
-      data: updated.data as Record<string, unknown> | null,
-      evidence_urls: updated.evidence_urls as string[],
-      confidenceScore: updated.confidence_score ? Number(updated.confidence_score) : null,
-    };
-    await applyContribution(contributionRow);
+  // If approved, trigger report enrichment (non-blocking)
+  if (status === 'approved') {
+    enrichReportFromContribution(updated).catch((err) =>
+      console.error('[contributionService] enrichReportFromContribution failed:', err)
+    );
   }
 
-  return mapContribution(updated);
+  return updated;
 }
 
-// ---------------------------------------------------------------------------
-// Get single
-// ---------------------------------------------------------------------------
+/**
+ * Fetch contributions for moderation queue (admin use).
+ */
+export async function getPendingContributions(limit = 50, offset = 0) {
+  const [items, total] = await Promise.all([
+    (prisma as any).contribution.findMany({
+      where: { status: 'pending' },
+      orderBy: { createdAt: 'asc' },
+      take: limit,
+      skip: offset,
+    }),
+    (prisma as any).contribution.count({ where: { status: 'pending' } }),
+  ]);
 
-export async function getContributionById(id: string): Promise<ContributionRecord | null> {
-  const row = await prisma.contributions.findUnique({ where: { id } });
-  return row ? mapContribution(row) : null;
+  return { items, total };
 }
 
-// ---------------------------------------------------------------------------
-// Mapper
-// ---------------------------------------------------------------------------
+/**
+ * Fetch approved contributions for a given vehicle (for report enrichment).
+ */
+export async function getApprovedContributions(plate: string, vin?: string) {
+  return (prisma as any).contribution.findMany({
+    where: {
+      OR: [{ plate }, ...(vin ? [{ vin }] : [])],
+      status: 'approved',
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+}
 
-function mapContribution(row: Record<string, unknown>): ContributionRecord {
-  return {
-    id: row['id'] as string,
-    vin: row['vin'] as string,
-    user_id: (row['user_id'] as string | null) ?? null,
-    type: row['type'] as ContribType,
-    title: row['title'] as string,
-    description: (row['description'] as string | null) ?? null,
-    data: (row['data'] as Record<string, unknown> | null) ?? null,
-    evidence_urls: (row['evidence_urls'] as string[]) ?? [],
-    verificationDocUrls: (row['verification_doc_urls'] as string[]) ?? [],
-    status: row['status'] as 'pending' | 'approved' | 'rejected' | 'flagged',
-    admin_note: (row['admin_note'] as string | null) ?? null,
-    reviewed_by: (row['reviewed_by'] as string | null) ?? null,
-    reviewed_at: row['reviewed_at'] ? new Date(row['reviewed_at'] as string) : null,
-    confidenceScore: row['confidence_score'] ? Number(row['confidence_score']) : null,
-    created_at: new Date(row['created_at'] as string),
-  };
+/**
+ * Fetch all contributions for a vehicle (for admin/report view — all statuses).
+ */
+export async function getAllContributionsForVehicle(plate: string, vin?: string) {
+  return (prisma as any).contribution.findMany({
+    where: {
+      OR: [{ plate }, ...(vin ? [{ vin }] : [])],
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+}
+
+/**
+ * Enrich a report from an approved contribution.
+ * Approved contributions NEVER overwrite records with confidence >= 0.8.
+ * Contribution trust cap: 0.4.
+ */
+async function enrichReportFromContribution(contribution: any) {
+  const CONTRIBUTION_CONFIDENCE_CAP = 0.4;
+
+  // Check if a canonical record already covers this field with higher confidence
+  const existing = await (prisma as any).rawRecord.findFirst({
+    where: {
+      OR: [
+        { plate: contribution.plate },
+        ...(contribution.vin ? [{ vin: contribution.vin }] : []),
+      ],
+      source: { not: 'community_contribution' },
+      confidence: { gte: 0.8 },
+    },
+  });
+
+  // Do not overwrite strong canonical records
+  if (existing) {
+    console.info(
+      `[contributionService] Skipping enrichment — canonical record with confidence ${existing.confidence} exists for ${contribution.plate}`
+    );
+    return;
+  }
+
+  await (prisma as any).rawRecord.create({
+    data: {
+      plate: contribution.plate,
+      vin: contribution.vin ?? null,
+      source: 'community_contribution',
+      sourceId: `contribution_${contribution.id}`,
+      rawJson: contribution.dataJson,
+      normalisedJson: contribution.dataJson,
+      confidence: CONTRIBUTION_CONFIDENCE_CAP,
+    },
+  });
 }
