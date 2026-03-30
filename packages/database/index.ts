@@ -21,3 +21,4 @@ export type {
 } from '@prisma/client';
 
 export { prisma } from './lib/prisma';
+export { default } from './lib/prisma';

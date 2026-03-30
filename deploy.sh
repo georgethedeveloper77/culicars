@@ -27,28 +27,45 @@ DIRECT_DATABASE_URL="$DB_URL" \
   npx prisma@5.22.0 db pull --schema=packages/database/prisma/schema.prisma
 echo "✅ Schema up to date"
 
-# ── 4. Generate Prisma client ─────────────────────────────────────────────────
+# ── 4. Pin Prisma output path (db pull overwrites it) ────────────────────────
+echo "📌 Pinning Prisma client output path..."
+python3 -c "
+import re
+path = 'packages/database/prisma/schema.prisma'
+with open(path) as f: src = f.read()
+if 'output' not in src.split('datasource')[0]:
+    src = src.replace(
+        'generator client {\n  provider = \"prisma-client-js\"',
+        'generator client {\n  provider = \"prisma-client-js\"\n  output   = \"../../../node_modules/.prisma/client\"'
+    )
+    with open(path, 'w') as f: f.write(src)
+    print('output path pinned')
+else:
+    print('output path already set')
+"
+
+# ── 5. Generate Prisma client ─────────────────────────────────────────────────
 echo "🔧 Generating Prisma client..."
 pnpm --filter @culicars/database exec prisma generate
 echo "✅ Prisma client generated"
 
-# ── 5. Build packages (types + utils) ────────────────────────────────────────
+# ── 6. Build packages (types + utils) ────────────────────────────────────────
 echo "🔨 Building packages..."
 pnpm --filter @culicars/types build
 pnpm --filter @culicars/utils build
 echo "✅ Packages built"
 
-# ── 6. Build API ──────────────────────────────────────────────────────────────
+# ── 7. Build API ──────────────────────────────────────────────────────────────
 echo "🔨 Building API..."
 pnpm --filter @culicars/api build
 echo "✅ API built"
 
-# ── 7. Build Web ──────────────────────────────────────────────────────────────
+# ── 8. Build Web ──────────────────────────────────────────────────────────────
 echo "🔨 Building Web (culicars.com)..."
 pnpm --filter @culicars/web build
 echo "✅ Web built"
 
-# ── 8. Build Admin ────────────────────────────────────────────────────────────
+# ── 9. Build Admin ────────────────────────────────────────────────────────────
 echo "🔨 Building Admin (admin.culicars.com)..."
 pnpm --filter @culicars/admin build
 echo "✅ Admin built"

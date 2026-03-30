@@ -53,7 +53,7 @@ export async function getReportPreview(
   const report = await prisma.reports.findUnique({
     where: { id: reportId },
     include: {
-      sections: {
+      report_sections: {
         select: {
           section_type: true,
           is_locked: true,
@@ -102,7 +102,7 @@ export async function getReportPreview(
   }
 
   // Adjust locked status if user has unlocked
-  const sectionSummary = ((report as any).report_sections ?? []).map((s) => ({
+  const sectionSummary = ((report as any).report_sections ?? []).map((s: any) => ({
     section_type: s.section_type as SectionType,
     is_locked: isUnlocked ? false : s.is_locked ?? true,
     data_status: s.data_status as 'found' | 'not_found' | 'not_checked',
@@ -114,7 +114,7 @@ export async function getReportPreview(
     vin: report.vin,
     status: report.status ?? 'draft',
     risk_score: report.risk_score,
-    risk_level: report.risk_level as ReportPreview['riskLevel'],
+    risk_level: report.risk_level as any,
     recommendation: report.recommendation as ReportPreview['recommendation'],
     sources_checked: report.sources_checked ?? 0,
     records_found: report.records_found ?? 0,
@@ -173,12 +173,13 @@ export async function getFullReport(
 
     return {
       id: s.id,
+      section_type: sectionType,
       sectionType,
       data: locked ? null : (s.data as ReportSection['data']),
       is_locked: locked ?? true,
       record_count: s.record_count ?? 0,
       data_status: s.data_status as 'found' | 'not_found' | 'not_checked',
-    };
+    } as any;
   });
 
   return {
