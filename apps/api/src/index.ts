@@ -1,3 +1,4 @@
+import 'dotenv/config';
 // apps/api/src/index.ts
 // Server entry — starts Express, handles graceful shutdown
 

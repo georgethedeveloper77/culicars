@@ -1,3 +1,4 @@
+import 'dotenv/config';
 // apps/api/src/config/env.ts
 // Zod-validated environment variables. Server won't start if required vars are missing.
 // Thread 6 additions: payment provider vars (all optional — only needed when provider enabled).
