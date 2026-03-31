@@ -66,12 +66,12 @@ async function sendFcmPush(token: string, title: string, body: string, data?: Re
 export async function createNotification(input: CreateNotificationInput): Promise<void> {
   const { user_id, type, title, body, dataJson } = input;
 
-  await (prisma as any).notification.create({
+  await (prisma as any).notifications.create({
     data: { user_id, type, title, body, dataJson: dataJson ?? undefined },
   });
 
   // Fan out to user's registered device tokens
-  const tokens: { token: string }[] = await (prisma as any).deviceToken.findMany({
+  const tokens: { token: string }[] = await (prisma as any).device_tokens.findMany({
     where: { user_id },
     select: { token: true },
   });
@@ -124,7 +124,7 @@ nearbyUsers.map(({ user_id: userId }) =>
 // ---------------------------------------------------------------------------
 
 export async function getNotifications(userId: string, limit = 30) {
-  return (prisma as any).notification.findMany({
+  return (prisma as any).notifications.findMany({
     where: { user_id: userId },
     orderBy: { created_at: 'desc' },
     take: limit,
@@ -132,21 +132,21 @@ export async function getNotifications(userId: string, limit = 30) {
 }
 
 export async function markRead(userId: string, notificationId: string) {
-  return (prisma as any).notification.updateMany({
+  return (prisma as any).notifications.updateMany({
     where: { id: notificationId, user_id: userId },
     data: { read: true },
   });
 }
 
 export async function markAllRead(userId: string) {
-  return (prisma as any).notification.updateMany({
+  return (prisma as any).notifications.updateMany({
     where: { user_id: userId, read: false },
     data: { read: true },
   });
 }
 
 export async function getUnreadCount(userId: string): Promise<number> {
-  return (prisma as any).notification.count({
+  return (prisma as any).notifications.count({
     where: { user_id: userId, read: false },
   });
 }
@@ -156,15 +156,15 @@ export async function getUnreadCount(userId: string): Promise<number> {
 // ---------------------------------------------------------------------------
 
 export async function registerDeviceToken(userId: string, token: string, platform: string): Promise<void> {
-  await (prisma as any).deviceToken.upsert({
-    where: { userId_token: { userId, token } },
-    create: { userId, token, platform },
+  await (prisma as any).device_tokens.upsert({
+    where: { user_id_token: { user_id: userId, token } },
+    create: { user_id: userId, token, platform },
     update: { platform },
   });
 }
 
 export async function removeDeviceToken(userId: string, token: string): Promise<void> {
-  await (prisma as any).deviceToken.deleteMany({ where: { userId, token } });
+  await (prisma as any).device_tokens.deleteMany({ where: { user_id: userId, token } });
 }
 
 // ---------------------------------------------------------------------------

@@ -35,22 +35,22 @@ export async function initiateVerification(
   plate: string,
   vin?: string
 ): Promise<{ verificationId: string; alreadyVerified: boolean }> {
-  const existing = await (prisma as any).vehicleVerification.findFirst({
+  const existing = await (prisma as any).vehicle_verifications.findFirst({
     where: {
-      userId,
+      user_id: userId,
       plate,
       status: 'completed',
-      completedAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
+      completed_at: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
     },
-    orderBy: { completedAt: 'desc' },
+    orderBy: { completed_at: 'desc' },
   });
 
   if (existing) {
     return { verificationId: existing.id, alreadyVerified: true };
   }
 
-  const entry = await (prisma as any).vehicleVerification.create({
-    data: { userId, plate, vin: vin ?? null, status: 'pending' },
+  const entry = await (prisma as any).vehicle_verifications.create({
+    data: { user_id: userId, plate, vin: vin ?? null, status: 'pending' },
   });
 
   return { verificationId: entry.id, alreadyVerified: false };
@@ -67,7 +67,7 @@ export async function attemptLiveFetch(
   const enabled = await getNtsaFetchEnabled();
 
   if (!enabled) {
-    await (prisma as any).vehicleVerification.update({
+    await (prisma as any).vehicle_verifications.update({
       where: { id: verificationId },
       data: { status: 'manual_upload' },
     });
@@ -83,7 +83,7 @@ export async function attemptLiveFetch(
     // Live fetch integrates with NTSA portal here — deferred until access confirmed.
     throw new Error('Live NTSA fetch not yet implemented');
   } catch {
-    await (prisma as any).vehicleVerification.update({
+    await (prisma as any).vehicle_verifications.update({
       where: { id: verificationId },
       data: { status: 'manual_upload' },
     });
@@ -105,7 +105,7 @@ export async function processCORUpload(
   pdfBuffer: Buffer,
   userId: string
 ): Promise<VerificationResult> {
-  const entry = await (prisma as any).vehicleVerification.findFirst({
+  const entry = await (prisma as any).vehicle_verifications.findFirst({
     where: { id: verificationId, userId },
   });
 
@@ -118,7 +118,7 @@ export async function processCORUpload(
   const parseResult = ntsaCorParser.parse(rawText);
 
   if (!parseResult.success || !parseResult.fields) {
-    await (prisma as any).vehicleVerification.update({
+    await (prisma as any).vehicle_verifications.update({
       where: { id: verificationId },
       data: { status: 'failed' },
     });
@@ -140,13 +140,13 @@ export async function processCORUpload(
     ...safeFields
   } = parseResult.fields as any;
 
-  await (prisma as any).vehicleVerification.update({
+  await (prisma as any).vehicle_verifications.update({
     where: { id: verificationId },
     data: {
       status: 'completed',
       cor_fields: safeFields,
-      completedAt: new Date(),
-      vin: safeFields.vin ?? entry.vin,
+      completed_at: new Date(),
+      vin: safeFields.vin ?? entry.vin ?? null,
     },
   });
 
@@ -181,11 +181,11 @@ export async function getVerificationStatus(
   userId: string,
   plate: string
 ): Promise<{ verified: boolean; completedAt?: Date; corFields?: Record<string, any> }> {
-  const entry = await (prisma as any).vehicleVerification.findFirst({
-    where: { userId, plate, status: 'completed' },
-    orderBy: { completedAt: 'desc' },
+  const entry = await (prisma as any).vehicle_verifications.findFirst({
+    where: { user_id: userId, plate, status: 'completed' },
+    orderBy: { completed_at: 'desc' },
   });
 
   if (!entry) return { verified: false };
-  return { verified: true, completedAt: entry.completedAt, corFields: entry.cor_fields };
+  return { verified: true, completed_at: entry.completed_at, corFields: entry.cor_fields };
 }

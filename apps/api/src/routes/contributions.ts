@@ -2,6 +2,7 @@
 
 import { Router, Request, Response } from 'express';
 import { auth } from '../middleware/auth';
+import { optionalAuth } from '../middleware/auth';
 import { requireRole } from '../middleware/requireRole';
 import {
   createContribution,
@@ -19,38 +20,44 @@ const VALID_TYPES: ContributionType[] = ['odometer', 'service_record', 'damage',
 
 /**
  * POST /contributions
- * Submit a structured contribution. Requires auth.
+ * Submit a contribution. Auth optional — anonymous allowed.
  */
-router.post('/', auth, async (req: Request, res: Response) => {
-  const { plate, vin, type, data, evidenceUrls } = req.body;
-  const userId = (req as any).user?.id;
+router.post('/', optionalAuth, async (req: Request, res: Response) => {
+  // accept both 'data' and 'dataJson' for forward-compat
+  const { plate, vin, type, data, dataJson, evidenceUrls } = req.body;
+  const payload = data ?? dataJson;
+  const userId = (req as any).user?.id ?? null;
 
-  if (!userId) return res.status(401).json({ error: 'Unauthorized' });
   if (!plate) return res.status(400).json({ error: 'plate is required' });
   if (!type || !VALID_TYPES.includes(type)) {
     return res.status(400).json({ error: `type must be one of: ${VALID_TYPES.join(', ')}` });
   }
-  if (!data || typeof data !== 'object') {
-    return res.status(400).json({ error: 'data object is required' });
-  }
-
-  // Evidence images are required for odometer and damage contributions
-  if (['odometer', 'damage'].includes(type)) {
-    if (!Array.isArray(evidenceUrls) || evidenceUrls.length === 0) {
-      return res.status(400).json({ error: 'Evidence image(s) required for this contribution type' });
-    }
+  if (!payload || typeof payload !== 'object') {
+    return res.status(400).json({ error: 'data (or dataJson) object is required' });
   }
 
   const contribution = await createContribution({
     plate,
     vin,
     type,
-    data,
+    data: payload,
     evidenceUrls: evidenceUrls ?? [],
     userId,
   });
 
   return res.status(201).json(contribution);
+});
+
+/**
+ * GET /contributions/vin/:vin
+ * All approved contributions for a VIN — public.
+ */
+router.get('/vin/:vin', async (req: Request, res: Response) => {
+  const { vin } = req.params;
+  if (!vin) return res.status(400).json({ error: 'vin is required' });
+
+  const contributions = await getApprovedContributions(undefined, vin);
+  return res.json({ contributions });
 });
 
 /**
@@ -60,14 +67,12 @@ router.post('/', auth, async (req: Request, res: Response) => {
 router.get('/pending', auth, requireRole(['admin', 'employee']), async (req: Request, res: Response) => {
   const limit = Math.min(Number(req.query.limit) || 50, 100);
   const offset = Number(req.query.offset) || 0;
-
   const result = await getPendingContributions(limit, offset);
   return res.json(result);
 });
 
 /**
  * GET /contributions/vehicle?plate=&vin=
- * All contributions for a vehicle (admin). Approved only for regular users.
  */
 router.get('/vehicle', auth, async (req: Request, res: Response) => {
   const { plate, vin } = req.query as { plate?: string; vin?: string };
@@ -85,8 +90,6 @@ router.get('/vehicle', auth, async (req: Request, res: Response) => {
 
 /**
  * PATCH /contributions/:id/moderate
- * Moderate a contribution — admin and employee only.
- * Records are immutable — rejected records are retained for audit.
  */
 router.patch(
   '/:id/moderate',
@@ -98,11 +101,7 @@ router.patch(
     const moderatorId = (req as any).user?.id;
 
     const VALID_STATUSES: ContributionStatus[] = [
-      'approved',
-      'rejected',
-      'disputed',
-      'needs_more_info',
-      'archived',
+      'approved', 'rejected', 'disputed', 'needs_more_info', 'archived',
     ];
 
     if (!status || !VALID_STATUSES.includes(status)) {

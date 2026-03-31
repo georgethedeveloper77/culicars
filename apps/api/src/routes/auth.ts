@@ -113,3 +113,37 @@ router.get(
 );
 
 export { router as authRouter };
+
+// ── QA-compatible login/register via Supabase ─────────────────────────────
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseAdmin = createClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+
+router.post('/register', async (req, res, next) => {
+  try {
+    const { email, password, name } = req.body;
+    const { data, error } = await supabaseAdmin.auth.admin.createUser({
+      email, password,
+      user_metadata: { name },
+      email_confirm: true,
+    });
+    if (error) return res.status(400).json({ error: 'REGISTER_FAILED', message: error.message });
+    return res.json({ success: true, data: { user: data.user } });
+  } catch (err) { next(err); }
+});
+
+router.post('/login', async (req, res, next) => {
+  try {
+    const { email, password } = req.body;
+    const supabaseClient = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_ANON_KEY!
+    );
+    const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+    if (error) return res.status(401).json({ error: 'UNAUTHORIZED', message: error.message });
+    return res.json({ success: true, token: data.session.access_token, user: data.user });
+  } catch (err) { next(err); }
+});
