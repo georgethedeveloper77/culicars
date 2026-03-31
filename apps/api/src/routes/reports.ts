@@ -95,8 +95,8 @@ router.post('/:id/unlock', auth, async (req: Request, res: Response) => {
     await (prisma as any).credit_ledger.create({
       data: {
         user_id: userId, credits_delta: -1, balance_before: wallet.balance, balance_after: wallet.balance - 1, type: 'spend',
-        description: `Report unlock: ${id}`,
-        provider_ref: `unlock_${id}_${userId}`,
+        source: 'report_unlock',
+        tx_ref: `unlock_${id}_${userId}`,
         created_at: new Date(),
       },
     });
