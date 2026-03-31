@@ -45,7 +45,7 @@ export async function createJob(
 
 export async function updateJob(
   id: string,
-  data: Partial<Pick<ScraperJob, 'status' | 'itemsFound' | 'itemsStored' | 'itemsSkipped' | 'startedAt'>>
+  data: Partial<Pick<ScraperJob, 'status' | 'items_found' | 'items_stored' | 'items_skipped' | 'started_at'>>
 ): Promise<ScraperJob> {
   return prisma.scraper_jobs.update({ where: { id }, data }) as unknown as Promise<ScraperJob>;
 }

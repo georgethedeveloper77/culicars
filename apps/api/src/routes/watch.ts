@@ -181,3 +181,15 @@ router.get(
 );
 
 export default router;
+
+// /feed is an alias for /alerts (web app compatibility)
+router.get('/feed', optionalAuth, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 20;
+    const alerts = await watchAlertService.listPublic({ page, limit });
+    res.json({ success: true, data: alerts });
+  } catch (err) {
+    next(err);
+  }
+});

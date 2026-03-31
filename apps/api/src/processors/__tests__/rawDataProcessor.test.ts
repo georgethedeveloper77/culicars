@@ -43,6 +43,7 @@ const makeAdapter = (sourceName: string, confidence: number, overrides: Partial<
 const nullAdapter = (sourceName: string) => ({
   sourceName,
   is_enabled:    () => true,
+  isEnabled:     () => true,
   fetchByVin:   vi.fn().mockResolvedValue(null),
   fetchByPlate: vi.fn().mockResolvedValue(null),
 });
@@ -140,6 +141,7 @@ describe('rawDataProcessor', () => {
     const badAdapter = {
       sourceName:   'bad_source',
       is_enabled:    () => true,
+      isEnabled:     () => true,
       fetchByVin:   vi.fn().mockRejectedValue(new Error('Network error')),
       fetchByPlate: vi.fn().mockResolvedValue(null),
     };
@@ -155,6 +157,7 @@ describe('rawDataProcessor', () => {
     const adapter = {
       sourceName:   'ntsa_cor',
       is_enabled:    () => true,
+      isEnabled:     () => true,
       fetchByVin:   vi.fn().mockResolvedValue(null),
       fetchByPlate: vi.fn().mockResolvedValue(makeRecord('ntsa_cor', 1.0, { vin: null, plate: 'KCA 123A' })),
     };

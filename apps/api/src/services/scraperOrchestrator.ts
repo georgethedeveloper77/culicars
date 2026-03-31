@@ -73,7 +73,7 @@ export async function runScraper(
   const jobId = job.id;
 
   try {
-    await updateJob(jobId, { status: 'running', startedAt: new Date() });
+    await updateJob(jobId, { status: 'running', started_at: new Date() });
 
     const scraper = factory();
     const items = await scraper.scrape();

@@ -94,7 +94,7 @@ router.post('/:id/unlock', auth, async (req: Request, res: Response) => {
     if (!wallet || wallet.balance < 1) return res.status(402).json({ error: 'Insufficient credits' });
     await (prisma as any).credit_ledger.create({
       data: {
-        user_id: userId, amount: -1, type: 'REPORT_UNLOCK',
+        user_id: userId, credits_delta: -1, balance_before: wallet.balance, balance_after: wallet.balance - 1, type: 'spend',
         description: `Report unlock: ${id}`,
         provider_ref: `unlock_${id}_${userId}`,
         created_at: new Date(),
