@@ -78,6 +78,7 @@ const app: Express = express();
 
 // ── Global Middleware ──────────────────────────────
 app.use(helmet());
+app.set('trust proxy', 1);
 app.use(cors(corsOptions));
 
 // IMPORTANT: Stripe webhook needs raw body for signature verification.
