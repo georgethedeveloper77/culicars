@@ -38,18 +38,18 @@ export async function generateReport(
   isUnlocked: boolean = false
 ): Promise<GeneratedReport> {
   // Load all raw records for this VIN
-  const rawRecords = await (prisma as any).raw_record.findMany({
+  const rawRecords = await (prisma as any).raw_records.findMany({
     where: { vin },
     orderBy: { created_at: 'desc' },
   });
 
   // Load approved watch alerts
-  const watchAlerts = await (prisma as any).watch_alert.findMany({
+  const watchAlerts = await (prisma as any).watch_alerts.findMany({
     where: { vin },
   });
 
   // Load approved contributions
-  const contributions = await (prisma as any).contribution.findMany({
+  const contributions = await (prisma as any).contributions.findMany({
     where: { vin, status: 'approved' },
   });
 
@@ -136,13 +136,12 @@ async function upsertReport(
 
   const data = {
     vin,
-    plate,
-    state,
+    status: 'ready' as any,
     risk_score: risk.score,
-    risk_level: risk.level,
-    risk_flags: risk.flags,
-    sections_json: sections,
+    risk_level: risk.level as any,
+    result_state: state as any,
     updated_at: new Date(),
+    generated_at: new Date(),
   };
 
   if (existing) {
@@ -155,7 +154,6 @@ async function upsertReport(
   return (prisma as any).reports.create({
     data: {
       ...data,
-      created_at: new Date(),
     },
   });
 }
@@ -167,11 +165,12 @@ export async function recordReportAccess(
   reportId: string,
   userId: string
 ): Promise<void> {
-  await (prisma as any).report_access.create({
+  await (prisma as any).report_unlocks.create({
     data: {
       report_id: reportId,
       user_id: userId,
-      accessed_at: new Date(),
+      credits_spent: 1,
+      unlocked_at: new Date(),
     },
   });
 }
@@ -183,7 +182,7 @@ export async function hasUnlockedReport(
   reportId: string,
   userId: string
 ): Promise<boolean> {
-  const access = await (prisma as any).report_access.findFirst({
+  const access = await (prisma as any).report_unlocks.findFirst({
     where: { report_id: reportId, user_id: userId },
   });
   return access != null;
