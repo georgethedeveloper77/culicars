@@ -7,7 +7,7 @@ import {
   recordReportAccess,
   hasUnlockedReport,
 } from '../services/reportGenerator.js';
-import { auth } from '../middleware/auth.js';
+import { auth, optionalAuth } from '../middleware/auth.js';
 
 const router: import("express").Router = Router();
 const prisma = new PrismaClient();
@@ -16,7 +16,7 @@ const prisma = new PrismaClient();
 // GET /reports/by-vin/:vin
 // Returns locked or unlocked canonical report
 // ─────────────────────────────────────────────
-router.get('/by-vin/:vin', auth, async (req: Request, res: Response) => {
+router.get('/by-vin/:vin', optionalAuth, async (req: Request, res: Response) => {
   const { vin } = req.params;
   const userId: string = (req as any).user?.id;
 

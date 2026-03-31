@@ -1,6 +1,6 @@
 // apps/api/src/services/reportGenerator.ts
 
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import { computeRiskScore } from './riskScorer.js';
 import { buildIdentitySection } from './sectionBuilders/identity.js';
 import { buildStolenAlertsSection } from './sectionBuilders/stolenAlerts.js';
@@ -10,7 +10,6 @@ import { buildOdometerSection } from './sectionBuilders/odometer.js';
 import { buildTimelineSection } from './sectionBuilders/timeline.js';
 import { buildCommunityInsightsSection } from './sectionBuilders/communityInsights.js';
 
-const prisma = new PrismaClient();
 
 export type ReportState =
   | 'verified'
