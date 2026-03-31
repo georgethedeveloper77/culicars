@@ -130,7 +130,7 @@ async function upsertReport(
   risk: any,
   sections: Record<string, any>
 ): Promise<any> {
-  const existing = await (prisma as any).vehicle_report.findFirst({
+  const existing = await (prisma as any).reports.findFirst({
     where: { vin },
   });
 
@@ -146,13 +146,13 @@ async function upsertReport(
   };
 
   if (existing) {
-    return (prisma as any).vehicle_report.update({
+    return (prisma as any).reports.update({
       where: { id: existing.id },
       data,
     });
   }
 
-  return (prisma as any).vehicle_report.create({
+  return (prisma as any).reports.create({
     data: {
       ...data,
       created_at: new Date(),
